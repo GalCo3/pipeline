@@ -281,7 +281,7 @@ dev = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.43.46" },
     { name = "boto3-stubs", specifier = "~=1.43.46" },
-    { name = "confluent-kafka", extras = ["schemaregistry"], specifier = "==2.8.2" },
+    { name = "confluent-kafka", extras = ["schemaregistry"], specifier = ">=2.8.2" },
     { name = "elasticsearch", specifier = "==8.19.2" },
     { name = "fastavro", specifier = ">=1.12.2" },
     { name = "jsonpickle", specifier = ">=4.1.2" },

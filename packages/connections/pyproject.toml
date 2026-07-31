@@ -6,7 +6,7 @@ requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.43.46",
     "boto3-stubs~=1.43.46",
-    "confluent-kafka[schemaregistry]==2.8.2",
+    "confluent-kafka[schemaregistry]>=2.8.2",
     "fastavro>=1.12.2",
     "jsonschema>=4.26.0",
     "elasticsearch==8.19.2",
