@@ -4,7 +4,9 @@ from hermes.text_extraction.core.router import get_extractor_spec
 from hermes.text_extraction.core.spec import ExtractorSpec, PayloadMode
 from hermes.text_extraction.exceptions import UnsupportedFormatError
 
-dummy_extractor = lambda payload, max_length: ""
+
+def dummy_extractor(payload, max_length):
+    return ""
 
 
 def test_router_successfully_resolves_mapped_format():

@@ -118,7 +118,8 @@ def extract_text(
 
             return spec.fn(**fn_params)
         finally:
-            # Explicitly close the payload to clean the memory (altough python should eventually recycle it)
+            # Explicitly close the payload to free memory (though Python should
+            # eventually recycle it anyway)
             if payload is not None and (
                 isinstance(payload, io.BytesIO) or hasattr(payload, "close")
             ):

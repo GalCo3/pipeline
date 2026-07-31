@@ -67,7 +67,7 @@ class BaseElasticHandler:
         :param scroll: The scroll timeout.
         :return: `SiteResponse` object containing the scroll results.
         """
-        local_response, remote_response = self.search(
+        local_response, _remote_response = self.search(
             index, query, *args, scroll=scroll, size=size, **kwargs
         )
 

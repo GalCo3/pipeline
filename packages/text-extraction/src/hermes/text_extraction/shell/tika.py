@@ -67,7 +67,8 @@ def _execute_network_request(
             },
         )
         raise NetworkExtractionError(
-            f"Remote text extraction returned an error response (Status: {status_code}). Details: {details}",
+            f"Remote text extraction returned an error response "
+            f"(Status: {status_code}). Details: {details}",
             mime_type=mime_type,
         ) from error
     except requests.exceptions.RequestException as error:

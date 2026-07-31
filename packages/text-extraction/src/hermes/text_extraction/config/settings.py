@@ -33,6 +33,7 @@ class AppSettings(BaseSettings):
         bytes_val = value * BYTES_IN_MB
         if bytes_val < HEADER_READ_SIZE_BYTES:
             raise ValueError(
-                f"max_file_size_bytes ({bytes_val}) must be at least HEADER_READ_SIZE_BYTES ({HEADER_READ_SIZE_BYTES})"
+                f"max_file_size_bytes ({bytes_val}) must be at least "
+                f"HEADER_READ_SIZE_BYTES ({HEADER_READ_SIZE_BYTES})"
             )
         return bytes_val

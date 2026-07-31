@@ -35,7 +35,9 @@ def fake_pptx_bytes() -> bytes:
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
             '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
             'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">\n'
-            "<p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Powerpoint slide text content</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld>"
+            "<p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r>"
+            "<a:t>Powerpoint slide text content</a:t>"
+            "</a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld>"
             "</p:sld>"
         )
         zf.writestr("ppt/slides/slide1.xml", slide_xml)

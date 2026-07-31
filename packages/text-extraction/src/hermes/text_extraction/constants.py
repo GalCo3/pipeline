@@ -1,7 +1,7 @@
 # settings
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Final
 
 ENV_PREFIX: Final[str] = "HERMES_TEXT_EXTRACTION__"
@@ -17,7 +17,7 @@ DEFAULT_NETWORK_TIMEOUT_SECONDS: Final[float] = 30.0
 NULL_BYTE: Final[bytes] = b"\x00"
 
 
-class MimeType(str, Enum):
+class MimeType(StrEnum):
     """Strict registry of supported MIME types to prevent typo-driven bugs."""
 
     PDF = "application/pdf"
