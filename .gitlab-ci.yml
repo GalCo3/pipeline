@@ -1,13 +1,13 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/user/application_security/sast/#available-cicd-variables
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure/
-# Dependency Scanning customization: https://docs.gitlab.com/user/application_security/dependency_scanning/dependency_scanning_sbom/#customizing-analyzer-behavior
-# Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
 stages:
 - test
 - secret-detection
+- build
+
 sast:
   stage: test
 include:
@@ -17,3 +17,40 @@ variables:
   SECRET_DETECTION_ENABLED: 'true'
 secret_detection:
   stage: secret-detection
+
+build:
+  stage: build
+  image: quay.io/buildah/stable:latest
+  variables:
+    STORAGE_DRIVER: vfs
+    BUILDAH_FORMAT: docker
+    GIT_DEPTH: "0"
+  before_script:
+    - dnf install -y git python3 >/dev/null
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="${HOME}/.local/bin:${PATH}"
+  script:
+    - set
+    - |
+      python3 ci/find_build.py > affected_services.txt
+      cat affected_services.txt
+
+      buildah login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+
+      while read -r NAME; do
+        [ -z "${NAME}" ] && continue
+
+        IMAGE_NAME="${NAME}-service"
+        SHA_DESTINATION="${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+        LATEST_DESTINATION="${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:latest"
+
+        buildah bud \
+          --file "${CI_PROJECT_DIR}/Dockerfile" \
+          --build-arg SERVICE="${NAME}" \
+          --tag "${SHA_DESTINATION}" \
+          "${CI_PROJECT_DIR}"
+
+        buildah tag "${SHA_DESTINATION}" "${LATEST_DESTINATION}"
+        buildah push "${SHA_DESTINATION}"
+        buildah push "${LATEST_DESTINATION}"
+      done < affected_services.txt
