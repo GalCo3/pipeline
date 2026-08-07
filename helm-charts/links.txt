@@ -1,0 +1,24 @@
+Run helm-charts/scripts/port-forward.sh first.
+
+UIs
+http://localhost:3000    grafana          (anonymous, or admin / grafana)
+http://localhost:8080    kafka-ui
+http://localhost:5601    kibana
+http://localhost:8081    headlamp
+http://localhost:8082    mongo-express
+http://localhost:9001    minio console    (minioadmin / minioadmin)
+
+Grafana
+http://localhost:3000/d/hermes-pipeline          dashboard
+http://localhost:3000/explore                    explore (metrics/logs/traces)
+http://localhost:3000/connections/datasources    datasources
+
+APIs
+http://localhost:9200    elasticsearch
+http://localhost:9000    minio s3         (minioadmin / minioadmin)
+http://localhost:9998    tika
+http://localhost:8090    mimir
+http://localhost:3100    loki
+http://localhost:3200    tempo
+localhost:9092           kafka bootstrap
+mongodb://root:mongoadmin@localhost:27017

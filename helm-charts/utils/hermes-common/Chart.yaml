@@ -1,0 +1,5 @@
+apiVersion: v2
+name: hermes-common
+description: Library chart with the shared workload templates used by the pipeline charts.
+type: library
+version: 0.1.0

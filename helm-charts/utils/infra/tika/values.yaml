@@ -1,0 +1,56 @@
+fullnameOverride: tika
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: apache/tika
+  tag: 2.9.2.1-full
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 9998
+  portName: http
+
+livenessProbe:
+  httpGet:
+    path: /tika
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /tika
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 2Gi
+
+# The upstream Tika image runs as root and has no non-root variant, so
+# runAsNonRoot is not asserted here. On OpenShift the restricted-v2 SCC still
+# forces an arbitrary UID; Tika tolerates that.
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+podAnnotations: {}
+env: {}

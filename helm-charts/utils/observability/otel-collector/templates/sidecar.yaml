@@ -1,0 +1,55 @@
+{{/*
+Sidecar collector. The operator injects this container into any pod annotated
+with `sidecar.opentelemetry.io/inject: "true"`, so the application can export
+to localhost:4317 and stay unaware of where telemetry actually goes.
+*/}}
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ .Values.sidecar.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.sidecar.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: hermes-pipeline
+spec:
+  mode: sidecar
+  resources:
+    {{- toYaml .Values.sidecar.resources | nindent 4 }}
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 127.0.0.1:4317
+          http:
+            endpoint: 127.0.0.1:4318
+
+    processors:
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      batch:
+        timeout: 5s
+
+    exporters:
+      otlp:
+        endpoint: {{ .Values.collector.name }}-collector.{{ .Release.Namespace }}.svc:4317
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]

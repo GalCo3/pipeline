@@ -1,0 +1,10 @@
+apiVersion: v2
+name: tika
+description: Apache Tika server used by the text-extraction package for legacy and image formats.
+type: application
+version: 0.1.0
+appVersion: "2.9.2.1"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../hermes-common

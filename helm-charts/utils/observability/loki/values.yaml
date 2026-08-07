@@ -1,0 +1,145 @@
+# Loki single-binary (-target=all): filesystem chunks, one replica, no cache
+# tier. The collector ships logs to it over OTLP at /otlp/v1/logs.
+fullnameOverride: loki
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: grafana/loki
+  tag: "3.5.9"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 3100
+  targetPort: 3100
+  portName: http
+
+args:
+  - -target=all
+  - -config.file=/etc/loki/loki.yaml
+
+configFiles:
+  loki.yaml: |
+    # Single tenant: no X-Scope-OrgID needed, everything lands in "fake".
+    auth_enabled: false
+
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9096
+      log_level: warn
+
+    common:
+      instance_addr: 127.0.0.1
+      path_prefix: /data
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+      storage:
+        filesystem:
+          chunks_directory: /data/chunks
+          rules_directory: /data/rules
+
+    schema_config:
+      configs:
+        - from: "2024-01-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+
+    limits_config:
+      # OTLP resource attributes arrive as structured metadata, so this has to
+      # stay on or the collector's writes are rejected.
+      allow_structured_metadata: true
+      volume_enabled: true
+      retention_period: 168h
+      reject_old_samples: false
+
+    compactor:
+      working_directory: /data/compactor
+      retention_enabled: true
+      delete_request_store: filesystem
+
+    pattern_ingester:
+      enabled: true
+
+    ruler:
+      storage:
+        type: local
+        local:
+          directory: /data/rules
+
+    analytics:
+      reporting_enabled: false
+
+volumes:
+  - name: config
+    configMap:
+      name: loki
+  - name: data
+    persistentVolumeClaim:
+      claimName: loki
+
+volumeMounts:
+  - name: config
+    mountPath: /etc/loki/loki.yaml
+    subPath: loki.yaml
+  - name: data
+    mountPath: /data
+
+persistence:
+  enabled: true
+  size: 4Gi
+  accessMode: ReadWriteOnce
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 3100
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /ready
+    port: 3100
+  initialDelaySeconds: 90
+  periodSeconds: 30
+  failureThreshold: 6
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# The image ships UID 10001.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3100"
+  prometheus.io/path: /metrics
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+env: {}
+
+strategy:
+  type: Recreate

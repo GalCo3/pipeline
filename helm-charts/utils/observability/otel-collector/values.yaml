@@ -1,0 +1,44 @@
+# Requires the OpenTelemetry Operator (utils/observability/otel-operator) — these are its
+# custom resources, not plain workloads, so the CRDs must exist first.
+
+# Namespace-wide collector: every service's telemetry ends up here.
+collector:
+  name: hermes
+  mode: deployment
+  # contrib, not the k8s distro: only contrib ships the prometheus exporter
+  # that exposes the collected metrics for scraping.
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.156.0
+  replicas: 1
+  scrapeInterval: 30s
+  # "basic" prints one summary line per batch; "detailed" prints every record.
+  debugVerbosity: basic
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Where the collector ships what it gathers. Swapping any of these endpoints
+# for a Grafana Cloud URL (plus a `headers.authorization`) is all that stands
+# between this stack and a hosted one.
+backends:
+  mimir:
+    enabled: true
+    endpoint: http://mimir:8080/api/v1/push
+  loki:
+    enabled: true
+    endpoint: http://loki:3100/otlp
+  tempo:
+    enabled: true
+    endpoint: tempo:4317
+
+# Injected into pods annotated with sidecar.opentelemetry.io/inject: "true".
+sidecar:
+  name: hermes-sidecar
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi

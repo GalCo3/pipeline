@@ -1,0 +1,151 @@
+# Creates the cargo-lexical index and its write alias. Idempotent: an existing index is
+# left untouched, so a re-install never destroys data.
+fullnameOverride: es-index
+
+image:
+  registry: docker.io
+  repository: curlimages/curl
+  tag: 8.11.1
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: false
+
+restartPolicy: OnFailure
+backoffLimit: 5
+ttlSecondsAfterFinished: 600
+
+env:
+  ELASTIC_URL: http://elasticsearch:9200
+  # Logical name the service writes to (cargo-lexical `INDEX_NAME`); becomes an alias
+  # over the physical index, which is what BaseElasticHandler.get_mappings
+  # expects (logical alias → physical index).
+  ALIAS: cargo-lexical-files
+  INDEX: cargo-lexical-files-000001
+
+command:
+  - /bin/sh
+  - -c
+  - |
+    set -eu
+    until curl -sf "$ELASTIC_URL/_cluster/health" >/dev/null; do
+        echo "waiting for elasticsearch..."
+        sleep 3
+    done
+
+    if curl -sf -o /dev/null "$ELASTIC_URL/$INDEX"; then
+        echo "index $INDEX already exists, nothing to do"
+        exit 0
+    fi
+
+    echo "creating index $INDEX with alias $ALIAS"
+    curl -sf -X PUT "$ELASTIC_URL/$INDEX" \
+        -H 'Content-Type: application/json' \
+        --data-binary @/config/index.json
+    echo
+    curl -sf "$ELASTIC_URL/$ALIAS/_mapping" >/dev/null && echo "alias $ALIAS ready"
+
+volumes:
+  - name: config
+    configMap:
+      name: es-index
+
+volumeMounts:
+  - name: config
+    mountPath: /config
+
+# Rendered into the ConfigMap as /config/index.json.
+# Field list mirrors services/cargo-lexical/config/models.py::CargoEnrichedMessage.
+configFiles:
+  index.json:
+    aliases:
+      cargo-files:
+        is_write_index: true
+    settings:
+      index:
+        number_of_shards: 1
+        # Single-node dev cluster: a replica would never be allocated and the
+        # index would sit yellow forever.
+        number_of_replicas: 0
+    mappings:
+      dynamic: strict
+      properties:
+        id:
+          type: keyword
+        name:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
+        holder:
+          type: keyword
+        description:
+          type: text
+        is_verified:
+          type: boolean
+        file_labels:
+          type: nested
+          properties:
+            label_id:
+              type: long
+            label_name:
+              type: keyword
+            created:
+              type: date
+            group_id:
+              type: long
+            group_name:
+              type: keyword
+        path_id:
+          type: keyword
+        path:
+          type: keyword
+        # One term per path segment, so a folder subtree is a term query.
+        path_list:
+          type: keyword
+        reality_id:
+          type: keyword
+        reality_type:
+          type: keyword
+        s3_key:
+          type: keyword
+        s3_bucket:
+          type: keyword
+        created:
+          type: date
+        last_modified:
+          type: date
+        ver_last_modified:
+          type: date
+        delete_date:
+          type: date
+        # The extracted document body: full-text searchable, never aggregated,
+        # so no keyword subfield (documents blow past ignore_above anyway).
+        text_content:
+          type: text
+        type:
+          type: keyword
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# curlimages/curl declares a named user (curl_user), which kubelet cannot
+# verify as non-root, so the UID is stated explicitly.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 100
+  runAsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}

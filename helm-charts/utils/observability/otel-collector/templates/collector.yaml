@@ -1,0 +1,129 @@
+{{/*
+Namespace collector: the single sink for telemetry from every service.
+Receives OTLP from application sidecars and scrapes annotated pods.
+*/}}
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ .Values.collector.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.collector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: hermes-pipeline
+spec:
+  mode: {{ .Values.collector.mode }}
+  image: {{ .Values.collector.image }}
+  replicas: {{ .Values.collector.replicas }}
+  serviceAccount: {{ .Values.collector.name }}
+  resources:
+    {{- toYaml .Values.collector.resources | nindent 4 }}
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      # Anything in the namespace carrying prometheus.io/scrape: "true" is
+      # scraped, which is how the non-OTLP components (kafka, elasticsearch,
+      # mongodb exporters) get collected.
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: hermes-pods
+              scrape_interval: {{ .Values.collector.scrapeInterval }}
+              kubernetes_sd_configs:
+                - role: pod
+                  namespaces:
+                    names:
+                      - {{ .Release.Namespace }}
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                  action: replace
+                  target_label: __metrics_path__
+                  regex: (.+)
+                - source_labels:
+                    [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  target_label: __address__
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  replacement: $$1:$$2
+                - source_labels: [__meta_kubernetes_pod_name]
+                  action: replace
+                  target_label: pod
+                - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                  action: replace
+                  target_label: service
+
+    processors:
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      batch:
+        timeout: 10s
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.deployment.name
+
+    exporters:
+      # Scraped by anything Prometheus-compatible, and readable by hand at
+      # http://{{ .Values.collector.name }}-collector:8889/metrics
+      prometheus:
+        endpoint: 0.0.0.0:8889
+        resource_to_telemetry_conversion:
+          enabled: true
+      debug:
+        verbosity: {{ .Values.collector.debugVerbosity }}
+      {{- if .Values.backends.mimir.enabled }}
+      # Metrics are pushed to Mimir over the Prometheus remote-write protocol.
+      prometheusremotewrite/mimir:
+        endpoint: {{ .Values.backends.mimir.endpoint }}
+        tls:
+          insecure: true
+        resource_to_telemetry_conversion:
+          enabled: true
+      {{- end }}
+      {{- if .Values.backends.loki.enabled }}
+      # Loki 3.x ingests OTLP natively at /otlp/v1/logs — no loki exporter,
+      # which was removed from the collector.
+      otlphttp/loki:
+        endpoint: {{ .Values.backends.loki.endpoint }}
+        tls:
+          insecure: true
+      {{- end }}
+      {{- if .Values.backends.tempo.enabled }}
+      otlp/tempo:
+        endpoint: {{ .Values.backends.tempo.endpoint }}
+        tls:
+          insecure: true
+      {{- end }}
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp, prometheus]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [prometheus{{ if .Values.backends.mimir.enabled }}, prometheusremotewrite/mimir{{ end }}]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [debug{{ if .Values.backends.tempo.enabled }}, otlp/tempo{{ end }}]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [debug{{ if .Values.backends.loki.enabled }}, otlphttp/loki{{ end }}]
+  ports:
+    - name: prom-export
+      port: 8889
+      targetPort: 8889

@@ -1,0 +1,46 @@
+# Local-dev only. No auth, talks plain HTTP to the in-cluster Elasticsearch.
+kibana:
+  fullnameOverride: kibana
+
+  global:
+    security:
+      allowInsecureImages: true
+
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kibana
+    tag: 9.1.2-debian-12-r0
+
+  # Point at the standalone elasticsearch release instead of the chart's
+  # bundled subchart.
+  elasticsearch:
+    hosts:
+      - elasticsearch
+    port: 9200
+
+  service:
+    type: NodePort
+    ports:
+      http: 5601
+    nodePorts:
+      # http://localhost:30561 on Docker Desktop.
+      http: 30561
+
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 768Mi
+    limits:
+      memory: 2Gi
+
+  volumePermissions:
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/os-shell
+      tag: 12-debian-12-r50
+
+  metrics:
+    enabled: false

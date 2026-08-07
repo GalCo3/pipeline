@@ -1,0 +1,10 @@
+apiVersion: v2
+name: otel-operator
+description: OpenTelemetry Operator — provides the OpenTelemetryCollector CRD and sidecar injection.
+type: application
+version: 0.1.0
+appVersion: "0.156.0"
+dependencies:
+  - name: opentelemetry-operator
+    version: 0.120.1
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts

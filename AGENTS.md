@@ -8,9 +8,9 @@ the shared dev tooling config (`ruff`, `ty`); member packages do not repeat it.
 - `packages/` — Python libraries, published under the `hermes` namespace (`hermes.<package>`).
   - `connections/` — client factories/handlers for external services (Kafka, Mongo, Postgres, Elasticsearch, S3).
   - `text-extraction/` — functional-core/imperative-shell pipeline for extracting text from document streams.
-  - `observability/` — placeholder, not yet implemented.
+  - `observability/` — structured logging, tracing, and metrics library.
 - `services/` — deployable applications that consume the `packages/` libraries.
-  - `cargo/` — placeholder service skeleton, not yet implemented.
+  - `cargo-lexical/` — placeholder service skeleton, not yet implemented.
 - `helm-charts/` — Kubernetes deployment charts.
 
 Each subdirectory with its own concerns has an `AGENTS.md`; read the nearest one

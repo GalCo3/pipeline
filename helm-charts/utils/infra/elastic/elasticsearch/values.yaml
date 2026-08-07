@@ -1,0 +1,61 @@
+# Local-dev only. Single node, security disabled, plain HTTP on port 9200.
+elasticsearch:
+  fullnameOverride: elasticsearch
+
+  global:
+    security:
+      allowInsecureImages: true
+
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/elasticsearch
+    tag: 9.1.2-debian-12-r0
+
+  security:
+    enabled: false
+
+  # REST API on localhost:30920
+  service:
+    type: NodePort
+    nodePorts:
+      restAPI: "30920"
+
+  # One node holding every role — master.masterOnly=false makes it a data node too.
+  master:
+    masterOnly: false
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 4Gi
+    heapSize: 512m
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+
+  data:
+    replicaCount: 0
+  coordinating:
+    replicaCount: 0
+  ingest:
+    enabled: false
+    replicaCount: 0
+
+  # Raises vm.max_map_count on the node. Works on Docker Desktop; drop this on
+  # OpenShift, where the node-level sysctl is managed by a MachineConfig.
+  sysctlImage:
+    enabled: true
+    registry: docker.io
+    repository: bitnamilegacy/os-shell
+    tag: 12-debian-12-r50
+
+  volumePermissions:
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/os-shell
+      tag: 12-debian-12-r50
+
+  metrics:
+    enabled: false

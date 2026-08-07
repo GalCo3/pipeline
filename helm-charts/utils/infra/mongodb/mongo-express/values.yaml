@@ -1,0 +1,66 @@
+fullnameOverride: mongo-express
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: mongo-express
+  tag: 1.0.2
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: NodePort
+  port: 8081
+  targetPort: 8081
+  nodePort: 30082
+  portName: http
+
+env:
+  ME_CONFIG_MONGODB_SERVER: mongodb
+  ME_CONFIG_MONGODB_PORT: "27017"
+  ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+  # No login prompt in front of the UI — local dev only.
+  ME_CONFIG_BASICAUTH: "false"
+
+secretEnv:
+  ME_CONFIG_MONGODB_ADMINUSERNAME: root
+  ME_CONFIG_MONGODB_ADMINPASSWORD: mongoadmin
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 10
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+# The image runs as root by default; pin a non-root UID so runAsNonRoot holds.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+podAnnotations: {}

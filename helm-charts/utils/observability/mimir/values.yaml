@@ -1,0 +1,164 @@
+# Mimir in monolithic mode (-target=all): every component in one process,
+# filesystem storage, single replica. Fine for a laptop, never for real load.
+fullnameOverride: mimir
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: grafana/mimir
+  tag: "2.17.1"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  portName: http
+
+args:
+  - -target=all
+  - -config.file=/etc/mimir/mimir.yaml
+
+configFiles:
+  mimir.yaml: |
+    # Single tenant: without this every write/read needs an X-Scope-OrgID
+    # header, which the collector and Grafana would have to set.
+    multitenancy_enabled: false
+
+    server:
+      http_listen_port: 8080
+      grpc_listen_port: 9095
+      log_level: warn
+
+    # All rings are single-member, so memberlist gossips with itself.
+    distributor:
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: memberlist
+    ingester:
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: memberlist
+        replication_factor: 1
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: memberlist
+    compactor:
+      data_dir: /data/compactor
+      sharding_ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: memberlist
+
+    blocks_storage:
+      backend: filesystem
+      filesystem:
+        dir: /data/blocks
+      bucket_store:
+        sync_dir: /data/tsdb-sync
+      tsdb:
+        dir: /data/tsdb
+    ruler_storage:
+      backend: filesystem
+      filesystem:
+        dir: /data/rules
+    ruler:
+      # Scratch dir for evaluated rules; defaults to ./data-ruler.
+      rule_path: /data/ruler-tmp
+    alertmanager:
+      data_dir: /data/alertmanager-state
+    alertmanager_storage:
+      backend: filesystem
+      filesystem:
+        dir: /data/alertmanager
+
+    limits:
+      # The collector batches every 10s and may replay slightly old samples
+      # after a restart; without this those writes are rejected outright.
+      out_of_order_time_window: 10m
+      max_global_series_per_user: 0
+      ingestion_rate: 100000
+      ingestion_burst_size: 200000
+
+    usage_stats:
+      enabled: false
+
+    # Defaults to ./metrics-activity.log, and the working directory is not
+    # writable for a non-root user.
+    activity_tracker:
+      filepath: /data/metrics-activity.log
+
+volumes:
+  - name: config
+    configMap:
+      name: mimir
+  - name: data
+    persistentVolumeClaim:
+      claimName: mimir
+
+volumeMounts:
+  - name: config
+    mountPath: /etc/mimir/mimir.yaml
+    subPath: mimir.yaml
+  - name: data
+    mountPath: /data
+
+persistence:
+  enabled: true
+  size: 4Gi
+  accessMode: ReadWriteOnce
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 90
+  periodSeconds: 30
+  failureThreshold: 6
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 2Gi
+
+# The image ships UID 10001; the data volume must be group-owned to match.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+# Mimir exposes its own metrics on the same port, so the namespace collector
+# scrapes it like any other annotated pod.
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: /metrics
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+env: {}
+
+strategy:
+  type: Recreate

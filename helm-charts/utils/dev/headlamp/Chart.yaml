@@ -1,0 +1,10 @@
+apiVersion: v2
+name: headlamp
+description: Headlamp Kubernetes dashboard — pod list, live logs and exec terminal.
+type: application
+version: 0.1.0
+appVersion: "0.44.0"
+dependencies:
+  - name: headlamp
+    version: 0.44.0
+    repository: https://kubernetes-sigs.github.io/headlamp/

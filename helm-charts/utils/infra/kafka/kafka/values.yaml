@@ -1,0 +1,73 @@
+# Local-dev only. PLAINTEXT everywhere, single KRaft controller-broker node.
+kafka:
+  fullnameOverride: kafka
+
+  # Bitnami removed its public Docker Hub catalog; the maintained tags now live
+  # under bitnamilegacy. allowInsecureImages lets the chart accept them.
+  global:
+    security:
+      allowInsecureImages: true
+
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kafka
+    tag: 4.0.0-debian-12-r10
+
+  listeners:
+    client:
+      protocol: PLAINTEXT
+    controller:
+      protocol: PLAINTEXT
+    interbroker:
+      protocol: PLAINTEXT
+    external:
+      protocol: PLAINTEXT
+
+  controller:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        memory: 1536Mi
+
+  broker:
+    replicaCount: 0
+
+  # Host access for kcat/local tooling: localhost:31092
+  externalAccess:
+    enabled: true
+    controller:
+      forceExpose: true
+      service:
+        type: NodePort
+        domain: localhost
+        nodePorts:
+          - 31092
+
+  # Single-node sizing: without these, internal topics ask for 3 replicas and
+  # __consumer_offsets never gets created, so consumers can never join a group.
+  overrideConfiguration:
+    auto.create.topics.enable: "true"
+    num.partitions: "1"
+    default.replication.factor: "1"
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+    min.insync.replicas: "1"
+
+  # Chart-provided init containers need the legacy registry too.
+  defaultInitContainers:
+    volumePermissions:
+      image:
+        registry: docker.io
+        repository: bitnamilegacy/os-shell
+        tag: 12-debian-12-r50
+
+  metrics:
+    jmx:
+      enabled: false

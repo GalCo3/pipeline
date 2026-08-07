@@ -1,0 +1,221 @@
+# Grafana, with the three backends provisioned as datasources so nothing has
+# to be clicked together after install. Local-dev credentials in plaintext.
+fullnameOverride: grafana
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: grafana/grafana
+  tag: "12.3.0"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+  portName: http
+
+env:
+  GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+  # No sign-in prompt on a single-user local cluster; the admin login below
+  # still works for anything the Viewer role cannot do.
+  GF_AUTH_ANONYMOUS_ENABLED: "true"
+  GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+  GF_USERS_DEFAULT_THEME: dark
+  GF_ANALYTICS_REPORTING_ENABLED: "false"
+  GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+  # Trace-to-logs correlation and the Explore logs view.
+  GF_FEATURE_TOGGLES_ENABLE: traceToProfiles,traceqlEditor
+
+secretEnv:
+  GF_SECURITY_ADMIN_USER: admin
+  GF_SECURITY_ADMIN_PASSWORD: grafana
+
+configFiles:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Mimir
+        uid: mimir
+        type: prometheus
+        access: proxy
+        url: http://mimir:8080/prometheus
+        isDefault: true
+        jsonData:
+          httpMethod: POST
+          prometheusType: Mimir
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki:3100
+        jsonData:
+          # A trace_id in a log line becomes a link into Tempo.
+          derivedFields:
+            - name: TraceID
+              matcherRegex: "trace_id=(\\w+)"
+              datasourceUid: tempo
+              url: "${__value.raw}"
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: -5m
+            spanEndTimeShift: 5m
+            filterByTraceID: true
+          serviceMap:
+            datasourceUid: mimir
+          nodeGraph:
+            enabled: true
+
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: hermes
+        folder: Hermes
+        type: file
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
+
+  hermes.json: |
+    {
+      "title": "Hermes pipeline",
+      "uid": "hermes-pipeline",
+      "tags": ["hermes"],
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Cargo lexical messages processed / s",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (status) (rate(cargo_lexical_messages_processed_total[5m]))",
+              "legendFormat": "{{status}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Collector accepted spans / metrics / logs",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (__name__) (rate({__name__=~\"otelcol_receiver_accepted_(spans|metric_points|log_records)\"}[5m]))",
+              "legendFormat": "{{__name__}}"
+            }
+          ]
+        },
+        {
+          "type": "logs",
+          "title": "Logs",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 8 },
+          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" },
+          "targets": [
+            { "refId": "A", "expr": "{service_name=~\"$service\"}" }
+          ]
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "service",
+            "type": "query",
+            "datasource": { "type": "loki", "uid": "loki" },
+            "query": { "label": "service_name", "refId": "services" },
+            "includeAll": true,
+            "multi": true,
+            "current": { "text": "All", "value": "$__all" }
+          }
+        ]
+      }
+    }
+
+volumes:
+  - name: config
+    configMap:
+      name: grafana
+  - name: data
+    persistentVolumeClaim:
+      claimName: grafana
+
+volumeMounts:
+  - name: config
+    mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+    subPath: datasources.yaml
+  - name: config
+    mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+    subPath: dashboards.yaml
+  - name: config
+    mountPath: /var/lib/grafana/dashboards/hermes.json
+    subPath: hermes.json
+  - name: data
+    mountPath: /var/lib/grafana
+
+persistence:
+  enabled: true
+  size: 2Gi
+  accessMode: ReadWriteOnce
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# The image ships UID 472 (grafana).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: /metrics
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+strategy:
+  type: Recreate

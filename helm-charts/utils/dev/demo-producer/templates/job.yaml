@@ -1,0 +1,3 @@
+{{- if .Values.runOnInstall }}
+{{ include "hermes-common.job" . }}
+{{- end }}

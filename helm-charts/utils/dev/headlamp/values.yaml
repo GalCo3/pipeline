@@ -1,0 +1,30 @@
+headlamp:
+  fullnameOverride: headlamp
+  replicaCount: 1
+
+  service:
+    type: NodePort
+    port: 80
+    # http://localhost:30081 on Docker Desktop.
+    nodePort: 30081
+
+  serviceAccount:
+    create: true
+
+  # SECURITY: cluster-admin plus token-less sign-in. Acceptable only on a
+  # single-user local Docker Desktop cluster — never enable this on a shared
+  # or production cluster, where each user should sign in with their own token.
+  clusterRoleBinding:
+    create: true
+    clusterRoleName: cluster-admin
+
+  config:
+    inCluster: true
+    unsafeUseServiceAccountToken: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi

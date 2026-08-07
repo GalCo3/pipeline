@@ -1,0 +1,85 @@
+fullnameOverride: cargo-lexical
+replicaCount: 1
+
+image:
+  registry: ""
+  repository: cargo-lexical
+  tag: local
+  # Image is built straight into the Docker Desktop engine, so never pull.
+  pullPolicy: IfNotPresent
+
+# The service is a pure consumer — no listening port.
+service:
+  enabled: false
+
+# Non-secret settings. Keys map onto services/cargo-lexical/config/settings.py
+# (pydantic-settings, env_nested_delimiter="__").
+env:
+  CONSUMER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
+  CONSUMER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
+  CONSUMER_CONFIG__SOURCE_TOPICS: cargo-lexical.files
+  CONSUMER_CONFIG__GROUP_ID: cargo-lexical-service
+  CONSUMER_CONFIG__AUTO_OFFSET_RESET: earliest
+  CONSUMER_CONFIG__LIVENESS_FILE_PATH: /tmp/heartbeat
+
+  CARGO_CONFIG__LOCAL_SITE__ENDPOINT: http://minio:9000
+
+  ELASTIC_CONFIG__LOCAL_HOST: http://elasticsearch:9200
+
+  # Dead-letter store for messages the service cannot process.
+  MONGO_CONFIG__LOCAL_HOST: mongodb
+  MONGO_CONFIG__PORT: "27017"
+  MONGO_CONFIG__DATABASE: hermes
+
+  INDEX_NAME: cargo-lexical-files
+  DLS_COLLECTION: dls
+
+  # The injected sidecar, which forwards to the namespace collector.
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+
+  HERMES_TEXT_EXTRACTION__TIKA_SERVER_URL: http://tika:9998
+
+# Rendered into a Secret and injected with envFrom.
+secretEnv:
+  CARGO_CONFIG__LOCAL_SITE__ACCESS_KEY: minioadmin
+  CARGO_CONFIG__LOCAL_SITE__SECRET_KEY: minioadmin
+  ELASTIC_CONFIG__USERNAME: elastic
+  ELASTIC_CONFIG__PASSWORD: changeme
+  MONGO_CONFIG__AUTH__USERNAME: root
+  MONGO_CONFIG__AUTH__PASSWORD: mongoadmin
+
+# The consumer touches this file on every poll (see BaseConsumerHandler).
+livenessProbe:
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - test $(( $(date +%s) - $(stat -c %Y /tmp/heartbeat) )) -lt 120
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# Empty here means the library defaults apply: runAsNonRoot + RuntimeDefault
+# seccomp, no UID pinning, so OpenShift assigns an arbitrary UID.
+podSecurityContext: {}
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+# The OpenTelemetry Operator injects a collector sidecar into this pod, which
+# is what listens on the OTLP endpoint the service exports to.
+podAnnotations:
+  sidecar.opentelemetry.io/inject: "true"

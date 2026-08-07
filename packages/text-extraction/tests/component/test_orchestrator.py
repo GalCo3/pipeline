@@ -82,7 +82,7 @@ def test_orchestrator_successful_extraction(
     result = extract_text(stream, settings)
 
     # Assert
-    assert result == expected_result
+    assert result.text == expected_result
 
 
 # =====================================================================
@@ -92,7 +92,8 @@ def test_orchestrator_successful_extraction(
 
 def test_orchestrator_text_limit_exceeded(fake_unrewindable_stream_class: Any) -> None:
     # Arrange
-    settings = create_settings(max_text_length=10)
+    settings = create_settings()
+    settings.max_text_length = 10  # bypass the MB-to-bytes conversion done on construction
     data = b"Hello, Hermes text extractor!"
     stream = fake_unrewindable_stream_class(data)
 

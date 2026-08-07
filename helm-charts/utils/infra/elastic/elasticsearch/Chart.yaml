@@ -1,0 +1,10 @@
+apiVersion: v2
+name: elasticsearch
+description: Local-dev Elasticsearch (single node, security disabled) wrapping the Bitnami chart.
+type: application
+version: 0.1.0
+appVersion: "9.1.2"
+dependencies:
+  - name: elasticsearch
+    version: 22.1.6
+    repository: https://charts.bitnami.com/bitnami

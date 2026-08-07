@@ -1,0 +1,53 @@
+# Local-dev only. Standalone MinIO with the cargo-lexical bucket pre-created.
+minio:
+  fullnameOverride: minio
+  mode: standalone
+
+  global:
+    security:
+      allowInsecureImages: true
+
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/minio
+    tag: 2025.7.23-debian-12-r3
+
+  clientImage:
+    registry: docker.io
+    repository: bitnamilegacy/minio-client
+    tag: 2025.7.21-debian-12-r2
+
+  # S3 API on localhost:30900
+  service:
+    type: NodePort
+    nodePorts:
+      api: "30900"
+
+  console:
+    enabled: true
+    # Web console on localhost:30901
+    service:
+      type: NodePort
+      nodePorts:
+        http: "30901"
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/minio-object-browser
+      tag: 2.0.2-debian-12-r3
+
+  auth:
+    rootUser: minioadmin
+    rootPassword: minioadmin
+
+  defaultBuckets: cargo-lexical
+
+  persistence:
+    enabled: true
+    size: 2Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi

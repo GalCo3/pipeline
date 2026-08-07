@@ -11,7 +11,7 @@ A service is affected if either:
 
 Writes one line per affected service name to stdout, e.g.:
 
-    cargo
+    cargo-lexical
 """
 
 import json

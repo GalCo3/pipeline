@@ -12,6 +12,7 @@ from hermes.text_extraction.exceptions import (
     ExtractionFailedError,
     HermesExtractionError,
 )
+from hermes.text_extraction.results import ExtractionResult
 from hermes.text_extraction.shell import stream
 from hermes.text_extraction.wiring import get_extractor_spec
 
@@ -55,7 +56,7 @@ def _extraction_boundary(settings: AppSettings) -> Generator[dict[str, str | Non
 def extract_text(
     input_stream: BinaryIO,
     settings: AppSettings,
-) -> str:
+) -> ExtractionResult:
     """Central workflow synchronization engine using Smart Ingress Routing.
 
     Args:
@@ -63,7 +64,7 @@ def extract_text(
         settings: Bounded configuration values.
 
     Returns:
-        The extracted document text.
+        The extracted document text along with its detected MIME type.
 
     Raises:
         FileTooLargeError: If stream exceeds max file size.
@@ -116,7 +117,7 @@ def extract_text(
                     }
                 )
 
-            return spec.fn(**fn_params)
+            return ExtractionResult(text=spec.fn(**fn_params), mime_type=mime_type)
         finally:
             # Explicitly close the payload to free memory (though Python should
             # eventually recycle it anyway)

@@ -8,10 +8,12 @@ from hermes.text_extraction.exceptions import (
     UnsupportedFormatError,
 )
 from hermes.text_extraction.orchestrator import extract_text
+from hermes.text_extraction.results import ExtractionResult
 
 __all__ = [
     "CorruptDocumentError",
     "ExtractionFailedError",
+    "ExtractionResult",
     "FileTooLargeError",
     "HermesExtractionError",
     "NetworkExtractionError",

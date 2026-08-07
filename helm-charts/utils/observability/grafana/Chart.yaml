@@ -1,0 +1,10 @@
+apiVersion: v2
+name: grafana
+description: Grafana with Mimir/Loki/Tempo datasources pre-provisioned, on the hermes-common library chart.
+type: application
+version: 0.1.0
+appVersion: "12.3.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../hermes-common

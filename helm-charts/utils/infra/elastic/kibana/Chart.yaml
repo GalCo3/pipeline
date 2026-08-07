@@ -1,0 +1,10 @@
+apiVersion: v2
+name: kibana
+description: Kibana pointed at the local Elasticsearch, wrapping the Bitnami chart.
+type: application
+version: 0.1.0
+appVersion: "9.1.2"
+dependencies:
+  - name: kibana
+    version: 12.1.10
+    repository: https://charts.bitnami.com/bitnami

@@ -1,0 +1,52 @@
+{{/*
+The namespace collector discovers pods (prometheus receiver) and enriches
+telemetry with pod metadata (k8sattributes), both of which need read access to
+the core API.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.collector.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.collector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: hermes-pipeline
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.collector.name }}-{{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.collector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+rules:
+  - apiGroups: [""]
+    resources: [pods, namespaces, nodes, services, endpoints]
+    verbs: [get, list, watch]
+  - apiGroups: ["apps"]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [nodes/metrics]
+    verbs: [get]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.collector.name }}-{{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.collector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.collector.name }}-{{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.collector.name }}
+    namespace: {{ .Release.Namespace }}

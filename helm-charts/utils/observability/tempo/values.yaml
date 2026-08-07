@@ -1,0 +1,159 @@
+# Tempo monolithic: local block storage, one replica, OTLP ingest on 4317/4318.
+# The namespace collector forwards traces here.
+fullnameOverride: tempo
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: grafana/tempo
+  tag: "2.8.2"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 3200
+  targetPort: 3200
+  portName: http
+  # Query API on 3200 (above), OTLP ingest on these.
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+
+extraContainerPorts:
+  - name: otlp-grpc
+    containerPort: 4317
+    protocol: TCP
+  - name: otlp-http
+    containerPort: 4318
+    protocol: TCP
+
+args:
+  - -config.file=/etc/tempo/tempo.yaml
+
+configFiles:
+  tempo.yaml: |
+    server:
+      http_listen_port: 3200
+      log_level: warn
+
+    # Grafana's trace-to-logs and live tailing need this.
+    stream_over_http_enabled: true
+
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+
+    ingester:
+      # Short blocks so traces become queryable within minutes, not hours.
+      max_block_duration: 5m
+
+    compactor:
+      compaction:
+        block_retention: 168h
+
+    metrics_generator:
+      registry:
+        external_labels:
+          source: tempo
+      storage:
+        path: /data/generator/wal
+        # Service-graph and span metrics land in Mimir alongside app metrics.
+        remote_write:
+          - url: http://mimir:8080/api/v1/push
+            send_exemplars: true
+      traces_storage:
+        path: /data/generator/traces
+
+    overrides:
+      defaults:
+        metrics_generator:
+          processors:
+            - service-graphs
+            - span-metrics
+
+    storage:
+      trace:
+        backend: local
+        wal:
+          path: /data/wal
+        local:
+          path: /data/blocks
+
+volumes:
+  - name: config
+    configMap:
+      name: tempo
+  - name: data
+    persistentVolumeClaim:
+      claimName: tempo
+
+volumeMounts:
+  - name: config
+    mountPath: /etc/tempo/tempo.yaml
+    subPath: tempo.yaml
+  - name: data
+    mountPath: /data
+
+persistence:
+  enabled: true
+  size: 4Gi
+  accessMode: ReadWriteOnce
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 3200
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /ready
+    port: 3200
+  initialDelaySeconds: 90
+  periodSeconds: 30
+  failureThreshold: 6
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# The image ships UID 10001.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3200"
+  prometheus.io/path: /metrics
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+env: {}
+
+strategy:
+  type: Recreate

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: minio
+description: Local-dev MinIO (standalone) wrapping the Bitnami chart, pre-creating the cargo-lexical bucket.
+type: application
+version: 0.1.0
+appVersion: "2025.7.23"
+dependencies:
+  - name: minio
+    version: 17.0.21
+    repository: https://charts.bitnami.com/bitnami

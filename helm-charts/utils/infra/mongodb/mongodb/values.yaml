@@ -1,0 +1,86 @@
+# Local-dev only: standalone node, root credentials in plaintext.
+#
+# The official image is used rather than a Bitnami wrapper because the
+# bitnamilegacy MongoDB tags ship amd64 only, which excludes Apple Silicon.
+fullnameOverride: mongodb
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: mongo
+  tag: "8.0"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: NodePort
+  port: 27017
+  targetPort: 27017
+  nodePort: 30017
+  portName: mongodb
+
+env:
+  MONGO_INITDB_DATABASE: hermes
+
+secretEnv:
+  MONGO_INITDB_ROOT_USERNAME: root
+  MONGO_INITDB_ROOT_PASSWORD: mongoadmin
+
+persistence:
+  enabled: true
+  size: 4Gi
+  accessMode: ReadWriteOnce
+
+volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: mongodb
+
+volumeMounts:
+  - name: data
+    mountPath: /data/db
+
+readinessProbe:
+  exec:
+    command:
+      - mongosh
+      - --quiet
+      - --eval
+      - "db.adminCommand('ping')"
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 6
+
+livenessProbe:
+  exec:
+    command:
+      - mongosh
+      - --quiet
+      - --eval
+      - "db.adminCommand('ping')"
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# The official image ships the mongodb user as UID 999 and needs the data
+# volume group-owned to match, hence the explicit fsGroup.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 999
+  runAsGroup: 999
+  fsGroup: 999
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}

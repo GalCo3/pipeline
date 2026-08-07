@@ -30,3 +30,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Helm
+helm-charts/**/charts/*.tgz
+
+# Claude
+.claude
