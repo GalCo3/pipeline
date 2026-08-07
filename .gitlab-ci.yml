@@ -40,7 +40,7 @@ build:
       while read -r NAME; do
         [ -z "${NAME}" ] && continue
 
-        IMAGE_NAME="${NAME}-service"
+        IMAGE_NAME="${NAME}"
         SHA_DESTINATION="${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
         LATEST_DESTINATION="${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:latest"
 
