@@ -1,0 +1,53 @@
+# Values override file for Remote / Restricted OpenShift Environment deployment.
+# Usage: helm upgrade --install otel-collector helm-charts/utils/observability/otel-collector -f helm-charts/utils/observability/otel-collector/values-remote.yaml -n hermes
+
+collector:
+  name: hermes
+  mode: deployment
+  image: registry.marganit-1.idf.cts/mazpen-hermes/otel-collector-contrib
+  replicas: 1
+  scrapeInterval: 30s
+  debugVerbosity: basic
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Remote backends configuration
+backends:
+  mimir:
+    enabled: true
+    endpoint: https://monitoring.tf-hermes.south.mimir.idf.cts/api/v1/push
+    headers: {}
+      # X-Scope-OrgID: "tenant-name"
+    basicAuth:
+      enabled: false
+      username: ""
+      password: ""
+    tls:
+      enabled: true
+      secretName: mimir-certs
+      caFile: /etc/otel/certs/ca.crt
+      certFile: /etc/otel/certs/mimir.crt
+      keyFile: /etc/otel/certs/mimir.key
+      insecure: false
+      insecureSkipVerify: false
+
+  loki:
+    enabled: false
+    endpoint: http://loki:3100/otlp
+
+  tempo:
+    enabled: false
+    endpoint: tempo:4317
+
+sidecar:
+  name: hermes-sidecar
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi

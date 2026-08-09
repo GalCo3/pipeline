@@ -1,0 +1,22 @@
+# Values override file for Remote / Restricted OpenShift Environment deployment.
+# Usage: helm upgrade --install otel-operator helm-charts/utils/observability/otel-operator -f helm-charts/utils/observability/otel-operator/values-remote.yaml -n hermes
+
+opentelemetry-operator:
+  fullnameOverride: otel-operator
+
+  manager:
+    collectorImage:
+      repository: registry.marganit-1.idf.cts/mazpen-hermes/otel-collector-k8s
+      tag: "0.156.0"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+
+  admissionWebhooks:
+    certManager:
+      enabled: false
+    autoGenerateCert:
+      enabled: true
