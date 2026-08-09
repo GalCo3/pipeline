@@ -47,7 +47,7 @@ def main():
                     local_response, remote_response = elastic_handler.update_by_id(
                         settings.index_name,
                         cargo_message.id,
-                        {"doc": cargo_message.model_dump()},
+                        {"doc": cargo_message.model_dump(mode="json")},
                         is_multisite=True,
                     )
                     site_error(
@@ -65,7 +65,7 @@ def main():
                     continue
 
                 cargo_enriched_message = CargoEnrichedMessage(
-                    **cargo_message.model_dump(),
+                    **cargo_message.model_dump(mode="json"),
                     text_content=extraction_result.text,
                     type=extraction_result.mime_type,
                 )
@@ -73,7 +73,7 @@ def main():
                 local_response, remote_response = elastic_handler.index(
                     settings.index_name,
                     cargo_enriched_message.id,
-                    cargo_enriched_message.model_dump(),
+                    cargo_enriched_message.model_dump(mode="json"),
                     is_multisite=True,
                 )
                 site_error(

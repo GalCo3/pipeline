@@ -1,5 +1,7 @@
+from datetime import datetime
 from http import HTTPStatus
 
+from dateutil import parser
 from exceptions import CargoFileNotFoundError
 
 from hermes.connections import BaseS3Handler
@@ -8,6 +10,14 @@ from hermes.text_extraction import ExtractionResult, UnsupportedFormatError, ext
 from hermes.text_extraction.config import AppSettings
 
 logger = get_logger(__name__)
+
+
+def parse_date_value(value: str) -> datetime:
+    val_clean = value.strip()
+    try:
+        return datetime.fromisoformat(val_clean)
+    except ValueError:
+        return parser.parse(val_clean)
 
 
 def extract_cargo_files_text(
@@ -33,3 +43,4 @@ def extract_cargo_files_text(
             raise CargoFileNotFoundError("Cargo file not found in S3")
 
         raise response.error
+
