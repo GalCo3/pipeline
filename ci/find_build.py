@@ -58,8 +58,9 @@ def main() -> None:
     }
     services = {name: path for name, path in members.items() if path.parts[:1] == ("services",)}
 
-    if changed is None:
-        # No prior commit to diff against: can't tell what changed, so build everything.
+    if changed is None or Path("Dockerfile") in changed:
+        # No prior commit to diff against, or the shared Dockerfile changed
+        # (every service is built from it): build everything.
         affected = sorted(services)
     else:
         changed_members = {

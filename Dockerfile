@@ -1,6 +1,5 @@
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
 
-# Which workspace member under services/ to build and run, e.g. "cargo-lexical".
 ARG SERVICE
 ENV SERVICE=${SERVICE} \
     UV_COMPILE_BYTECODE=1 \

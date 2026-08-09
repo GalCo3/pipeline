@@ -1,6 +1,10 @@
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+      changes:
+        - "services/**/*"
+        - "packages/**/*"
+        - "Dockerfile"
     - if: '$CI_PIPELINE_SOURCE == "web"'
 
 stages:
