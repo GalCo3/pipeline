@@ -22,7 +22,7 @@ class LabelItem(BaseModel):
 class CargoMessage(BaseModel):
     id: str
     name: str
-    holder: str | None  # only in non-operational
+    holder: str | None = None  # only in non-operational
     description: str
     is_verified: bool | None = None  # only in operational
     file_labels: list[LabelItem] | None = []  # only in operational
