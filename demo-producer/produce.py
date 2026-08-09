@@ -35,6 +35,9 @@ S3_BUCKET = os.environ.get("S3_BUCKET", "cargo-lexical")
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 # 0 = produce the demo batch once and exit; >0 = keep re-producing every N seconds.
 INTERVAL_SECONDS = float(os.environ.get("INTERVAL_SECONDS", "0"))
+# Also produce one message whose S3 object does not exist, so the service's
+# CargoFileNotFoundError path lands it in the dead-letter store.
+INCLUDE_DLQ_TEST = os.environ.get("INCLUDE_DLQ_TEST", "1") == "1"
 # Keeps document ids and S3 keys distinct across re-runs of the job, so a rerun
 # adds documents instead of overwriting the previous batch.
 RUN_SEED = int(os.environ.get("RUN_SEED", "") or zlib.crc32(socket.gethostname().encode()) % 90_000)
@@ -186,6 +189,19 @@ def main() -> None:
                 value=json.dumps(message).encode("utf-8"),
                 on_delivery=delivery_report,
             )
+        if INCLUDE_DLQ_TEST:
+            doc_id = RUN_SEED * 1_000 + run_id * 100 + 99
+            message = build_message(
+                doc_id, f"demo/run-{RUN_SEED}-{run_id}/does-not-exist.pdf", "dlq-test.pdf"
+            )
+            producer.produce(
+                TOPIC,
+                key=str(doc_id),
+                value=json.dumps(message).encode("utf-8"),
+                on_delivery=delivery_report,
+            )
+            logger.info("Produced DLQ test message %d (missing S3 object)", doc_id)
+
         producer.flush(10)
         logger.info("Batch %d produced to topic %s", run_id, TOPIC)
 
