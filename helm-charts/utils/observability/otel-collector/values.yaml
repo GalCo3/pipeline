@@ -19,18 +19,32 @@ collector:
     limits:
       memory: 1Gi
 
-# Where the collector ships what it gathers. Swapping any of these endpoints
-# for a Grafana Cloud URL (plus a `headers.authorization`) is all that stands
-# between this stack and a hosted one.
+# Where the collector ships what it gathers.
 backends:
   mimir:
     enabled: true
-    endpoint: http://mimir:8080/api/v1/push
+    endpoint: https://mimir.internal.your-company.com/api/v1/push
+    headers: {}
+      # X-Scope-OrgID: "tenant-name"
+    basicAuth:
+      enabled: false
+      username: ""
+      password: ""
+    tls:
+      enabled: true
+      secretName: mimir-tls-secret
+      caFile: /etc/otel/certs/ca.crt
+      certFile: /etc/otel/certs/tls.crt
+      keyFile: /etc/otel/certs/tls.key
+      insecure: false
+      insecureSkipVerify: false
+
   loki:
-    enabled: true
+    enabled: false
     endpoint: http://loki:3100/otlp
+
   tempo:
-    enabled: true
+    enabled: false
     endpoint: tempo:4317
 
 # Injected into pods annotated with sidecar.opentelemetry.io/inject: "true".
