@@ -1,27 +1,36 @@
-FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+# syntax=docker/dockerfile:1.7-labs
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
 
 ARG SERVICE
-ENV SERVICE=${SERVICE} \
-    UV_COMPILE_BYTECODE=1 \
+ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
 WORKDIR /app
 
-# Resolve dependencies from the manifests alone. Source edits do not touch
-# these files, so this layer — and the wheel downloads behind it — survive
-# a rebuild. `--no-install-workspace` skips the first-party packages, whose
-# sources arrive in the next layer.
 COPY pyproject.toml uv.lock ./
-COPY packages/ packages/
-COPY services/ services/
+COPY --parents packages/*/pyproject.toml services/*/pyproject.toml ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --package "${SERVICE}" --no-install-workspace
 
-COPY . .
-
-# Only the workspace packages are left to install; third-party wheels are
-# already in place, and the shared cache covers anything the lock added.
+COPY packages/ packages/
+COPY services/${SERVICE}/ services/${SERVICE}/
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --package "${SERVICE}"
+    uv sync --frozen --no-dev --package "${SERVICE}" --no-editable
 
-CMD ["sh", "-c", "exec uv run --frozen --no-dev --package \"$SERVICE\" python \"services/$SERVICE/main.py\""]
+RUN chgrp -R 0 /app && chmod -R g=u /app
+
+
+FROM python:3.14-slim
+
+ARG SERVICE
+ENV SERVICE=${SERVICE} \
+    HOME=/app \
+    PATH="/app/.venv/bin:${PATH}"
+
+WORKDIR /app
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/services/${SERVICE} /app/services/${SERVICE}
+
+USER 1001
+
+CMD ["sh", "-c", "exec python \"services/$SERVICE/main.py\""]

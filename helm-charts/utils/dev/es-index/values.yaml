@@ -59,7 +59,7 @@ volumeMounts:
 configFiles:
   index.json:
     aliases:
-      cargo-files:
+      cargo-lexical-files:
         is_write_index: true
     settings:
       index:
