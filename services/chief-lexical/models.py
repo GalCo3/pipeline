@@ -57,7 +57,6 @@ class ChiefMessage(BaseModel):
     mailing_list: list[str]
     directories: list[str]
     operational_directory: str | None = None
-    metro_insertion_ts_: int
 
     @field_validator(
         "create_date",

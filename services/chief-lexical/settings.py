@@ -1,7 +1,7 @@
 from hermes.connections import (
-    ConsumerConfig,
-    ElasticConfig,
-    MongoConfig,
+    BaseConsumerConfig,
+    BaseElasticConfig,
+    BaseMongoConfig,
 )
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,9 +14,9 @@ class ChiefConfig(BaseSettings):
 
 
 class ChiefLexicalSettings(BaseSettings):
-    consumer_config: ConsumerConfig
-    elastic_config: ElasticConfig
-    mongo_config: MongoConfig
+    consumer_config: BaseConsumerConfig
+    elastic_config: BaseElasticConfig
+    mongo_config: BaseMongoConfig
     chief_config: ChiefConfig
 
     index_name: str = "chief-lexical"
