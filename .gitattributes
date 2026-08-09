@@ -1,0 +1,8 @@
+# Shell scripts must keep LF endings: a CRLF shebang makes the interpreter
+# look for `/usr/bin/env bash\r`, which fails on WSL, Git Bash and in-container
+# runs alike. Same for anything else read by a Linux tool at runtime.
+*.sh    text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf

@@ -1,0 +1,33 @@
+# Keep the build context to the sources the image actually needs: anything
+# else that lands here invalidates the `uv sync` layer and forces a full
+# dependency re-download on the next build.
+.git
+.gitignore
+.gitlab-ci.yml
+
+# Local virtualenvs — rebuilt inside the image, 47M+ of pure cache noise.
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+**/.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Deployment and docs: never read at runtime, but change often.
+helm-charts
+demo-producer
+ci
+docker
+*.md
+**/*.md
+links.txt
+
+# Editor / OS noise
+.idea
+.vscode
+.DS_Store
+.claude

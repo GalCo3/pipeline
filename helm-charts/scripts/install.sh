@@ -15,8 +15,55 @@ docker build -f "$REPO_ROOT/Dockerfile" --build-arg SERVICE=cargo-lexical -t "ca
 docker build -t "demo-producer:$IMAGE_TAG" "$REPO_ROOT/demo-producer"
 
 echo "==> Resolving chart dependencies"
+
+# `helm dependency update` re-resolves and re-downloads every subchart on
+# every run. Chart.lock already pins them, so skip the fetch when each locked
+# dependency is present under charts/. Timestamps are useless for this: a
+# fresh clone stamps Chart.yaml and Chart.lock identically, so compare content.
+
+# Number of entries under a `dependencies:` block.
+count_deps() {
+    awk '/^dependencies:/ { inblock = 1; next }
+         /^[^ -]/         { inblock = 0 }
+         inblock && /^[[:space:]]*-?[[:space:]]*name:/ { n++ }
+         END              { print n + 0 }' "$1"
+}
+
+# True when every dependency in Chart.lock has its tarball on disk, and the
+# lock still covers everything Chart.yaml declares.
+deps_satisfied() {
+    local dir="$1" line name="" version=""
+
+    [[ -f "$dir/Chart.lock" ]] || return 1
+    [[ "$(count_deps "$dir/Chart.yaml")" == "$(count_deps "$dir/Chart.lock")" ]] || return 1
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%$'\r'}"
+        case "$line" in
+            *name:*)    name="${line#*name: }" ;;
+            *version:*) version="${line#*version: }"
+                        [[ -f "$dir/charts/$name-$version.tgz" ]] || return 1
+                        name="" ;;
+        esac
+    done < "$dir/Chart.lock"
+}
+
+resolve_deps() {
+    local dir="$1"
+
+    grep -q '^dependencies:' "$dir/Chart.yaml" || return 0
+    deps_satisfied "$dir" && return 0
+
+    # A lock exists but is unsatisfied: honour its pins rather than re-resolving.
+    if [[ -f "$dir/Chart.lock" ]]; then
+        helm dependency build "$dir" >/dev/null
+    else
+        helm dependency update "$dir" >/dev/null
+    fi
+}
+
 while IFS= read -r chart; do
-    helm dependency update "$(dirname "$chart")" >/dev/null
+    resolve_deps "$(dirname "$chart")"
 done < <(find "$CHARTS_DIR" -name Chart.yaml)
 
 kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$NAMESPACE"
