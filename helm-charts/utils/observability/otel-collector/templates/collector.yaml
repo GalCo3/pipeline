@@ -18,16 +18,6 @@ spec:
   serviceAccount: {{ .Values.collector.name }}
   resources:
     {{- toYaml .Values.collector.resources | nindent 4 }}
-  {{- if and .Values.backends.mimir.enabled .Values.backends.mimir.tls.enabled .Values.backends.mimir.tls.secretName }}
-  volumeMounts:
-    - name: mimir-tls
-      mountPath: /etc/otel/certs
-      readOnly: true
-  volumes:
-    - name: mimir-tls
-      secret:
-        secretName: {{ .Values.backends.mimir.tls.secretName }}
-  {{- end }}
   config:
     receivers:
       otlp:
@@ -96,34 +86,17 @@ spec:
       debug:
         verbosity: {{ .Values.collector.debugVerbosity }}
       {{- if .Values.backends.mimir.enabled }}
-      # Metrics are pushed to Mimir over the Prometheus remote-write protocol with TLS.
+      # Metrics are pushed to Mimir over the Prometheus remote-write protocol.
       prometheusremotewrite/mimir:
         endpoint: {{ .Values.backends.mimir.endpoint }}
-        {{- if .Values.backends.mimir.headers }}
-        headers:
-          {{- toYaml .Values.backends.mimir.headers | nindent 10 }}
-        {{- end }}
-        {{- if and .Values.backends.mimir.basicAuth .Values.backends.mimir.basicAuth.enabled }}
-        basic_auth:
-          username: {{ .Values.backends.mimir.basicAuth.username }}
-          password: {{ .Values.backends.mimir.basicAuth.password }}
-        {{- end }}
         tls:
-          {{- if .Values.backends.mimir.tls.enabled }}
-          ca_file: {{ .Values.backends.mimir.tls.caFile }}
-          {{- if .Values.backends.mimir.tls.certFile }}
-          cert_file: {{ .Values.backends.mimir.tls.certFile }}
-          key_file: {{ .Values.backends.mimir.tls.keyFile }}
-          {{- end }}
-          insecure: {{ .Values.backends.mimir.tls.insecure }}
-          insecure_skip_verify: {{ .Values.backends.mimir.tls.insecureSkipVerify }}
-          {{- else }}
           insecure: true
-          {{- end }}
         resource_to_telemetry_conversion:
           enabled: true
       {{- end }}
       {{- if .Values.backends.loki.enabled }}
+      # Loki 3.x ingests OTLP natively at /otlp/v1/logs — no loki exporter,
+      # which was removed from the collector.
       otlphttp/loki:
         endpoint: {{ .Values.backends.loki.endpoint }}
         tls:
