@@ -71,7 +71,7 @@ def main():
                     messages_processed.inc(labels={"status": "updated"})
                     continue
 
-                with message_duration.time(labels={"status": "success"}):
+                with message_duration.time(labels={"status": "indexed"}):
                     command_content = extract_chief_command_content(
                         id=chief_message.id,
                         doc_path_template=settings.chief_config.doc_path_template,
@@ -99,7 +99,7 @@ def main():
                         f"Failed to index chief-lexical document {chief_enriched_message.id}",
                     )
                 logger.info("Successfully indexed chief document", doc_id=chief_message.id)
-                messages_processed.inc(labels={"status": "success"})
+                messages_processed.inc(labels={"status": "indexed"})
         except ChiefAPIError as e:
             logger.warning(
                 "Chief API error, sending message to DLS",
