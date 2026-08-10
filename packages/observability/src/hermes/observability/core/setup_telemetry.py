@@ -25,7 +25,6 @@ from hermes.observability.tracing.circuit_breaker import (
     CircuitBreakerSpanProcessor,
 )
 from hermes.observability.utils import (
-    is_channel_insecure,
     is_production_environment,
     resolve_otlp_endpoint,
 )
@@ -115,12 +114,10 @@ def configure_telemetry(
     """
     try:
         resource = Resource.create({"service.name": service_name})
-        is_prod = is_production if is_production is not None else is_production_environment()
         endpoint = resolve_otlp_endpoint(otlp_endpoint)
-        insecure = is_channel_insecure(endpoint, is_prod)
 
-        _setup_tracer(resource, endpoint, insecure)
-        _setup_logger(resource, endpoint, insecure)
-        _setup_metrics(resource, endpoint, insecure)
+        _setup_tracer(resource, endpoint, True)
+        _setup_logger(resource, endpoint, True)
+        _setup_metrics(resource, endpoint, True)
     except Exception as exc:
         logging.getLogger(__name__).warning("Failed to bootstrap OpenTelemetry telemetry: %s", exc)
