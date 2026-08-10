@@ -1,9 +1,8 @@
-from exceptions import CargoFileNotFoundError
+from exceptions import ChiefAPIError
 from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
     BaseMongoHandler,
-    BaseS3Handler,
 )
 from hermes.observability import (
     TelemetryCounter,
@@ -13,18 +12,18 @@ from hermes.observability import (
     kafka_context,
 )
 from hermes.utils import send_to_dls, site_error
-from models import CargoEnrichedMessage, CargoMessage
+from models import ChiefEnrichedMessage, ChiefMessage
 from settings import get_settings
-from utils import extract_cargo_files_text
+from utils import convert_chief_command, extract_chief_command_content
 
-init_observability(service_name="cargo-lexical")
+init_observability(service_name="chief-lexical")
 logger = get_logger(__name__)
 messages_processed = TelemetryCounter(
-    "cargo_lexical_messages_processed_total", allowed_labels=["status"]
+    "chief_lexical_messages_processed_total", allowed_labels=["status"]
 )
-messages_sent_to_dls = TelemetryCounter("cargo_lexical_messages_dls_total")
+messages_sent_to_dls = TelemetryCounter("chief_lexical_messages_dls_total")
 message_duration = TelemetryHistogram(
-    "cargo_lexical_message_duration_seconds", unit="s", allowed_labels=["status"]
+    "chief_lexical_message_duration_seconds", unit="s", allowed_labels=["status"]
 )
 
 settings = get_settings()
@@ -34,76 +33,76 @@ def main():
     consumer_handler = BaseConsumerHandler(settings.consumer_config)
     elastic_handler = BaseElasticHandler(settings.elastic_config)
     dls_handler = BaseMongoHandler(settings.mongo_config)
-    cargo_client = BaseS3Handler(settings.cargo_config)
 
     for message in consumer_handler.start_consuming():
         try:
-            with kafka_context(message, name="process_cargo_message"):
-                cargo_message = CargoMessage(**message.value())
-                logger.info("Processing cargo message", doc_id=cargo_message.id)
+            with kafka_context(message, name="process_chief_message"):
+                chief_message = ChiefMessage(**message.value())
+                logger.info("Processing chief message", doc_id=chief_message.id)
 
-                if cargo_message.delete_date is not None:
+                if chief_message.is_deleted:
                     with message_duration.time(labels={"status": "deleted"}):
                         local_response, remote_response = elastic_handler.delete_by_id(
-                            settings.index_name, cargo_message.id, is_multisite=True
+                            settings.index_name, chief_message.id, is_multisite=True
                         )
                         site_error(
                             local_response,
                             remote_response,
-                            f"Failed to delete cargo-lexical document {cargo_message.id}",
+                            f"Failed to delete chief-lexical document {chief_message.id}",
                         )
-                    logger.info("Deleted cargo document", doc_id=cargo_message.id)
+                    logger.info("Deleted chief document", doc_id=chief_message.id)
                     messages_processed.inc(labels={"status": "deleted"})
                     continue
 
-                if cargo_message.last_modified > cargo_message.ver_last_modified:
+                if chief_message.metro_last_update_date > chief_message.content_last_update_date:
                     with message_duration.time(labels={"status": "updated"}):
                         local_response, remote_response = elastic_handler.update_by_id(
                             settings.index_name,
-                            cargo_message.id,
-                            {"doc": cargo_message.model_dump(mode="json")},
+                            chief_message.id,
+                            {"doc": chief_message.model_dump(mode="json")},
                             is_multisite=True,
                         )
                         site_error(
                             local_response,
                             remote_response,
-                            f"Failed to update cargo-lexical document {cargo_message.id}",
+                            f"Failed to update chief-lexical document {chief_message.id}",
                         )
-                    logger.info("Updated cargo document metadata", doc_id=cargo_message.id)
+                    logger.info("Updated chief document metadata", doc_id=chief_message.id)
                     messages_processed.inc(labels={"status": "updated"})
                     continue
 
-                with message_duration.time(labels={"status": "success"}):
-                    extraction_result = extract_cargo_files_text(
-                        cargo_client, cargo_message.s3_key, cargo_message.s3_bucket
+                with message_duration.time(labels={"status": "indexed"}):
+                    command_content = extract_chief_command_content(
+                        id=chief_message.id,
+                        doc_path_template=settings.chief_config.doc_path_template,
+                        api_key=settings.chief_config.api_key.get_secret_value(),
+                        timeout=settings.chief_config.timeout,
                     )
-                    if extraction_result is None:
-                        logger.warning("Skipped cargo text extraction", doc_id=cargo_message.id)
-                        messages_processed.inc(labels={"status": "skipped"})
-                        continue
+                    
+                    cleaned_text = convert_chief_command(chief_message.name, command_content)
 
-                    cargo_enriched_message = CargoEnrichedMessage(
-                        **cargo_message.model_dump(mode="json"),
-                        text_content=extraction_result.text,
-                        type=extraction_result.mime_type,
+                    chief_enriched_message = ChiefEnrichedMessage(
+                        **chief_message.model_dump(mode="json"),
+                        command_content=command_content,
+                        cleaned_text=cleaned_text,
                     )
 
                     local_response, remote_response = elastic_handler.index(
                         settings.index_name,
-                        cargo_enriched_message.id,
-                        cargo_enriched_message.model_dump(mode="json"),
+                        chief_enriched_message.id,
+                        chief_enriched_message.model_dump(mode="json"),
                         is_multisite=True,
                     )
                     site_error(
                         local_response,
                         remote_response,
-                        f"Failed to index cargo-lexical document {cargo_enriched_message.id}",
+                        f"Failed to index chief-lexical document {chief_enriched_message.id}",
                     )
-                logger.info("Successfully indexed cargo document", doc_id=cargo_message.id)
-                messages_processed.inc(labels={"status": "success"})
-        except CargoFileNotFoundError as e:
+                logger.info("Successfully indexed chief document", doc_id=chief_message.id)
+                messages_processed.inc(labels={"status": "indexed"})
+        except ChiefAPIError as e:
             logger.warning(
-                "Cargo file not found, sending message to DLS",
+                "Chief API error, sending message to DLS",
                 error=str(e),
                 topic=message.topic(),
             )
@@ -114,7 +113,7 @@ def main():
             )
         except Exception as e:
             logger.error(
-                "Failed to process cargo message, sending to DLS",
+                "Failed to process chief message, sending to DLS",
                 error=str(e),
                 exc_info=True,
             )
