@@ -39,7 +39,7 @@ def main():
                 chat_message = ChatMessage.model_validate(message.value())
                 logger.info("Processing chat message", doc_id=chat_message.id)
 
-                if chat_message.t is not None:
+                if chat_message.t:
                     with message_duration.time(labels={"status": "deleted"}):
                         local_response, remote_response = elastic_handler.delete_by_id(
                             settings.index_name, chat_message.id, is_multisite=True
