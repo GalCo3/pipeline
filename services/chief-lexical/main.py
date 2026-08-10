@@ -23,7 +23,7 @@ messages_processed = TelemetryCounter(
 )
 messages_sent_to_dls = TelemetryCounter("chief_lexical_messages_dls_total")
 message_duration = TelemetryHistogram(
-    "chief_lexical_message_duration_seconds", unit="s", allowed_labels=["status"]
+    "chief_lexical_message_duration", unit="s", allowed_labels=["status"]
 )
 
 settings = get_settings()

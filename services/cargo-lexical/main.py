@@ -24,7 +24,7 @@ messages_processed = TelemetryCounter(
 )
 messages_sent_to_dls = TelemetryCounter("cargo_lexical_messages_dls_total")
 message_duration = TelemetryHistogram(
-    "cargo_lexical_message_duration_seconds", unit="s", allowed_labels=["status"]
+    "cargo_lexical_message_duration", unit="s", allowed_labels=["status"]
 )
 
 settings = get_settings()
