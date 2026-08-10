@@ -22,7 +22,6 @@ def init_observability(
         configure_telemetry(
             service_name=service_name,
             otlp_endpoint=otlp_endpoint,
-            is_production=is_production,
         )
 
     return {

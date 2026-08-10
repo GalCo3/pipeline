@@ -45,7 +45,7 @@ def reset_telemetry() -> Generator[None]:
 def test_configure_telemetry_successful() -> None:
     service_name = "test-service"
     configure_telemetry(
-        service_name=service_name, is_production=False, otlp_endpoint="localhost:4317"
+        service_name=service_name, otlp_endpoint="localhost:4317"
     )
 
     # 1. Verify TracerProvider registration and Service Name Resource Attribute
@@ -62,7 +62,7 @@ def test_configure_telemetry_successful() -> None:
 def test_telemetry_captures_in_memory() -> None:
     service_name = "in-memory-service"
     configure_telemetry(
-        service_name=service_name, is_production=False, otlp_endpoint="localhost:4317"
+        service_name=service_name, otlp_endpoint="localhost:4317"
     )
 
     # Access current providers
@@ -103,7 +103,7 @@ def test_telemetry_captures_in_memory() -> None:
 
 def test_configure_telemetry_fail_safe() -> None:
     # Passing an invalid endpoint (or empty values) should not crash the call
-    configure_telemetry(service_name="", is_production=True, otlp_endpoint="")
+    configure_telemetry(service_name="", otlp_endpoint="")
     # It fails safely and doesn't raise exceptions
 
 
@@ -113,7 +113,7 @@ def test_log_trace_correlation(capsys: pytest.CaptureFixture[str]) -> None:
     from hermes.observability import configure_logging, get_logger
 
     # 1. Setup telemetry and logging in JSON production mode
-    configure_telemetry("trace-corr-test", is_production=False)
+    configure_telemetry("trace-corr-test")
     configure_logging(is_production=True)
     logger = get_logger("trace-corr-test")
 
@@ -158,7 +158,7 @@ def test_structured_telemetry_captures_in_memory() -> None:
     service_name = "structured-service"
     configure_logging(is_production=True)
     configure_telemetry(
-        service_name=service_name, is_production=False, otlp_endpoint="localhost:4317"
+        service_name=service_name, otlp_endpoint="localhost:4317"
     )
 
     logger_provider = get_logger_provider()

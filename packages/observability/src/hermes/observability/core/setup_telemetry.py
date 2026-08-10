@@ -104,7 +104,6 @@ def _setup_metrics(resource: Resource, endpoint: str, insecure: bool) -> None:
 
 def configure_telemetry(
     service_name: str,
-    is_production: bool | None = None,
     otlp_endpoint: str | None = None,
 ) -> None:
     """
