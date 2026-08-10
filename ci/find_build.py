@@ -34,7 +34,7 @@ def changed_files() -> set[Path] | None:
     diff = subprocess.run(
         ["git", "diff", "--name-only", f"{before}..{after}"],
         cwd=REPO_ROOT,
-        capture_output=True,
+        stdout=subprocess.PIPE,
         text=True,
         check=True,
     ).stdout
@@ -45,7 +45,7 @@ def uv_tree(*, package: str | None = None) -> dict:
     cmd = ["uv", "tree", "--format", "json", "--frozen"]
     if package:
         cmd += ["--package", package]
-    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=True)
+    result = subprocess.run(cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, text=True, check=True)
     return json.loads(result.stdout)
 
 
