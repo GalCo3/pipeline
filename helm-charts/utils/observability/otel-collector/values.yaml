@@ -12,10 +12,11 @@ collector:
   scrapeInterval: 30s
   # "basic" prints one summary line per batch; "detailed" prints every record.
   debugVerbosity: basic
+  # Measured at ~145Mi / ~9m for the whole namespace's telemetry.
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 192Mi
     limits:
       memory: 1Gi
 
@@ -34,11 +35,14 @@ backends:
     endpoint: tempo:4317
 
 # Injected into pods annotated with sidecar.opentelemetry.io/inject: "true".
+# The operator injects this as a native sidecar (an init container with
+# restartPolicy: Always), so its requests count towards the pod's — and towards
+# the node's, once per service. Measured at ~25Mi / ~0m each.
 sidecar:
   name: hermes-sidecar
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 25m
+      memory: 48Mi
     limits:
       memory: 256Mi

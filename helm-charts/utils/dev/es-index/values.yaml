@@ -1,5 +1,21 @@
-# Creates the cargo-lexical index and its write alias. Idempotent: an existing index is
-# left untouched, so a re-install never destroys data.
+# Creates one index per service, each with its write alias. Idempotent: an existing
+# index is left untouched, so a re-install never destroys data.
+#
+# One `configFiles` entry per physical index, named `<physical index>.json`. The
+# command below derives the index name from the file name and lets Elasticsearch
+# create the alias from the file's own `aliases` block, so adding a service means
+# adding one entry here and nothing else.
+#
+# Field lists mirror the enriched model each service indexes:
+#   cargo-lexical-files       services/cargo-lexical/models.py::CargoEnrichedMessage
+#   chat-lexical-messages     services/chat-lexical/models.py::ChatEnrichedMessage
+#   chat-rooms-lexical-rooms  services/chat-rooms-lexical/models.py::ChatRoomMessage
+#   chat-users-lexical-users  services/chat-users-lexical/models.py::ChatUserMessage
+#   chief-lexical             services/chief-lexical/models.py::ChiefEnrichedMessage
+# (each index is named `<logical name>-000001` and reached through a write alias
+# of the logical name, which is what every service's INDEX_NAME points at.)
+# `dynamic: strict` means a model field missing here fails the write, so keep them
+# in step with the models.
 fullnameOverride: es-index
 
 image:
@@ -17,11 +33,6 @@ ttlSecondsAfterFinished: 600
 
 env:
   ELASTIC_URL: http://elasticsearch:9200
-  # Logical name the service writes to (cargo-lexical `INDEX_NAME`); becomes an alias
-  # over the physical index, which is what BaseElasticHandler.get_mappings
-  # expects (logical alias → physical index).
-  ALIAS: cargo-lexical-files
-  INDEX: cargo-lexical-files-000001
 
 command:
   - /bin/sh
@@ -33,17 +44,22 @@ command:
         sleep 3
     done
 
-    if curl -sf -o /dev/null "$ELASTIC_URL/$INDEX"; then
-        echo "index $INDEX already exists, nothing to do"
-        exit 0
-    fi
+    for file in /config/*.json; do
+        index="$(basename "$file" .json)"
 
-    echo "creating index $INDEX with alias $ALIAS"
-    curl -sf -X PUT "$ELASTIC_URL/$INDEX" \
-        -H 'Content-Type: application/json' \
-        --data-binary @/config/index.json
-    echo
-    curl -sf "$ELASTIC_URL/$ALIAS/_mapping" >/dev/null && echo "alias $ALIAS ready"
+        if curl -sf -o /dev/null "$ELASTIC_URL/$index"; then
+            echo "index $index already exists, nothing to do"
+            continue
+        fi
+
+        echo "creating index $index"
+        curl -sf -X PUT "$ELASTIC_URL/$index" \
+            -H 'Content-Type: application/json' \
+            --data-binary "@$file"
+        echo
+    done
+
+    echo "all indices ready"
 
 volumes:
   - name: config
@@ -54,22 +70,23 @@ volumeMounts:
   - name: config
     mountPath: /config
 
-# Rendered into the ConfigMap as /config/index.json.
-# Field list mirrors services/cargo-lexical/config/models.py::CargoEnrichedMessage.
+# Shared by every index below: single-node dev cluster, so a replica would never
+# be allocated and the index would sit yellow forever.
 configFiles:
-  index.json:
+  cargo-lexical-files-000001.json:
     aliases:
       cargo-lexical-files:
         is_write_index: true
     settings:
       index:
         number_of_shards: 1
-        # Single-node dev cluster: a replica would never be allocated and the
-        # index would sit yellow forever.
         number_of_replicas: 0
     mappings:
       dynamic: strict
       properties:
+        # Stamped by every service at index/update time (hermes.utils.with_indexed_at).
+        indexed_at:
+          type: date
         id:
           type: keyword
         name:
@@ -126,6 +143,288 @@ configFiles:
           type: text
         type:
           type: keyword
+
+  chat-lexical-messages-000001.json:
+    aliases:
+      chat-lexical-messages:
+        is_write_index: true
+    settings:
+      index:
+        number_of_shards: 1
+        number_of_replicas: 0
+    mappings:
+      dynamic: strict
+      properties:
+        # Stamped by every service at index/update time (hermes.utils.with_indexed_at).
+        indexed_at:
+          type: date
+        id:
+          type: keyword
+        room_id:
+          type: keyword
+        msg:
+          type: text
+        sender:
+          type: keyword
+        created_at:
+          type: date
+        updated_at:
+          type: date
+        file:
+          properties:
+            id:
+              type: keyword
+            name:
+              type: text
+              fields:
+                keyword:
+                  type: keyword
+                  ignore_above: 256
+            type:
+              type: keyword
+        description:
+          type: text
+        user:
+          properties:
+            id:
+              type: keyword
+            username:
+              type: keyword
+            name:
+              type: text
+              fields:
+                keyword:
+                  type: keyword
+                  ignore_above: 256
+        mentions:
+          type: nested
+          properties:
+            id:
+              type: keyword
+            username:
+              type: keyword
+            name:
+              type: text
+              fields:
+                keyword:
+                  type: keyword
+                  ignore_above: 256
+        channels:
+          type: nested
+          properties:
+            id:
+              type: keyword
+            name:
+              type: keyword
+        # Rocket.Chat's system-message marker: its presence means "deleted".
+        t:
+          type: boolean
+        url_strings:
+          type: keyword
+        room_type:
+          type: keyword
+        room_name:
+          type: keyword
+        users_count:
+          type: long
+        # The midurim a message belongs to: its room, or both parties of a DM.
+        midur_ids:
+          type: keyword
+
+  chat-rooms-lexical-rooms-000001.json:
+    aliases:
+      chat-rooms-lexical-rooms:
+        is_write_index: true
+    settings:
+      index:
+        number_of_shards: 1
+        number_of_replicas: 0
+    mappings:
+      dynamic: strict
+      properties:
+        # Stamped by every service at index/update time (hermes.utils.with_indexed_at).
+        indexed_at:
+          type: date
+        id:
+          type: keyword
+        name:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
+        room_type:
+          type: keyword
+        classification_level:
+          type: long
+        classification_color:
+          type: keyword
+        created_at:
+          type: date
+        updated_at:
+          type: date
+        description:
+          type: text
+        topic:
+          type: text
+
+  chat-users-lexical-users-000001.json:
+    aliases:
+      chat-users-lexical-users:
+        is_write_index: true
+    settings:
+      index:
+        number_of_shards: 1
+        number_of_replicas: 0
+    mappings:
+      dynamic: strict
+      properties:
+        # Stamped by every service at index/update time (hermes.utils.with_indexed_at).
+        indexed_at:
+          type: date
+        id:
+          type: keyword
+        created_at:
+          type: date
+        updated_at:
+          type: date
+        name:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
+        email_address:
+          type: keyword
+        username:
+          type: keyword
+        roles:
+          type: keyword
+        hatzava_chail:
+          type: keyword
+        hatzava_pikud:
+          type: keyword
+        hatzava_yechida:
+          type: keyword
+        clean_name:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
+        classification_level:
+          type: long
+        classification_color:
+          type: keyword
+
+  chief-lexical-000001.json:
+    aliases:
+      chief-lexical:
+        is_write_index: true
+    settings:
+      index:
+        number_of_shards: 1
+        number_of_replicas: 0
+    mappings:
+      dynamic: strict
+      properties:
+        # Stamped by every service at index/update time (hermes.utils.with_indexed_at).
+        indexed_at:
+          type: date
+        id:
+          type: keyword
+        type:
+          type: keyword
+        template_id:
+          type: keyword
+        reference_id:
+          type: keyword
+        name:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
+        create_date:
+          type: date
+        last_update_date:
+          type: date
+        stage:
+          type: keyword
+        description:
+          type: text
+        mifkada:
+          type: keyword
+        version:
+          type: long
+        classification:
+          type: keyword
+        validity_start_date:
+          type: date
+        content_last_update_date:
+          type: date
+        validity_end_date:
+          type: date
+        reality_id:
+          type: long
+        michlol_id:
+          type: keyword
+        attachments_description:
+          type: text
+        doc_num:
+          type: long
+        distribution_date:
+          type: date
+        metro_last_update_date:
+          type: date
+        last_distribution_date:
+          type: date
+        type_display_name:
+          type: keyword
+        is_deleted:
+          type: boolean
+        mailing_list:
+          type: keyword
+        directories:
+          type: keyword
+        operational_directory:
+          type: keyword
+        command_content:
+          type: nested
+          properties:
+            id:
+              type: keyword
+            name:
+              type: text
+              fields:
+                keyword:
+                  type: keyword
+                  ignore_above: 256
+            full_name:
+              type: text
+              fields:
+                keyword:
+                  type: keyword
+                  ignore_above: 256
+            order:
+              type: long
+            user_id:
+              type: keyword
+            # ChiefCommandContent keeps a date it could not parse as the raw
+            # string, so an unparseable value must not fail the whole write.
+            create_date:
+              type: date
+              ignore_malformed: true
+            last_update_date:
+              type: date
+              ignore_malformed: true
+            note:
+              type: text
+            text:
+              type: text
+        # The command body, HTML stripped.
+        cleaned_text:
+          type: text
 
 resources:
   requests:

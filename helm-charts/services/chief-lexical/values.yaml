@@ -1,0 +1,93 @@
+fullnameOverride: chief-lexical
+replicaCount: 1
+
+image:
+  registry: ""
+  repository: chief-lexical
+  tag: local
+  # Image is built straight into the Docker Desktop engine, so never pull.
+  pullPolicy: IfNotPresent
+
+# The service is a pure consumer — no listening port.
+service:
+  enabled: false
+
+# Non-secret settings. Keys map onto services/chief-lexical/settings.py
+# (pydantic-settings, env_nested_delimiter="__").
+env:
+  CONSUMER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
+  CONSUMER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
+  CONSUMER_CONFIG__SOURCE_TOPICS: chief-lexical.commands
+  CONSUMER_CONFIG__GROUP_ID: chief-lexical-service
+  CONSUMER_CONFIG__AUTO_OFFSET_RESET: earliest
+  CONSUMER_CONFIG__LIVENESS_FILE_PATH: /tmp/heartbeat
+
+  ELASTIC_CONFIG__LOCAL_HOST: http://elasticsearch:9200
+
+  # Dead-letter store for messages the service cannot process.
+  MONGO_CONFIG__LOCAL_HOST: mongodb
+  MONGO_CONFIG__PORT: "27017"
+  MONGO_CONFIG__DATABASE: hermes
+
+  # Fetched per indexed command, formatted with the document id — the single
+  # `{}` is a str.format placeholder (see utils.extract_chief_command_content),
+  # not a helm one. Locally this is the chief-api mock under utils/dev.
+  CHIEF_CONFIG__DOC_PATH_TEMPLATE: http://chief-api:8080/documents/{}
+  CHIEF_CONFIG__TIMEOUT: "30"
+
+  INDEX_NAME: chief-lexical
+  DLS_COLLECTION: dls
+
+  # The injected sidecar, which forwards to the namespace collector.
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+
+# Rendered into a Secret and injected with envFrom.
+secretEnv:
+  ELASTIC_CONFIG__USERNAME: elastic
+  ELASTIC_CONFIG__PASSWORD: changeme
+  MONGO_CONFIG__AUTH__USERNAME: root
+  MONGO_CONFIG__AUTH__PASSWORD: mongoadmin
+  # Sent as the x-chief-key header. The mock ignores it.
+  CHIEF_CONFIG__API_KEY: chief-dev-key
+
+# The consumer touches this file on every poll (see BaseConsumerHandler).
+livenessProbe:
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - test $(( $(date +%s) - $(stat -c %Y /tmp/heartbeat) )) -lt 120
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe: {}
+
+# The sibling consumers sit at ~105Mi RSS and this one does no more than parse
+# HTML, so the request is sized to that rather than to their 256Mi. It matters
+# on a single-node dev cluster: the injected collector sidecar asks for another
+# 64Mi, and at 256Mi the pod no longer fits.
+# Sized from measured idle-consumer usage (~105Mi, ~3m) plus headroom; see
+# services/cargo-lexical/values.yaml for why the requests are kept tight.
+resources:
+  requests:
+    cpu: 50m
+    memory: 160Mi
+  limits:
+    memory: 512Mi
+
+# Empty here means the library defaults apply: runAsNonRoot + RuntimeDefault
+# seccomp, no UID pinning, so OpenShift assigns an arbitrary UID.
+podSecurityContext: {}
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+# The OpenTelemetry Operator injects a collector sidecar into this pod, which
+# is what listens on the OTLP endpoint the service exports to.
+podAnnotations:
+  sidecar.opentelemetry.io/inject: "true"

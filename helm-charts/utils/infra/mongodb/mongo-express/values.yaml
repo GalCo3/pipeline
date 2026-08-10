@@ -41,10 +41,11 @@ livenessProbe:
   initialDelaySeconds: 60
   periodSeconds: 30
 
+# Measured at ~54Mi / ~5m.
 resources:
   requests:
-    cpu: 50m
-    memory: 128Mi
+    cpu: 25m
+    memory: 96Mi
   limits:
     memory: 512Mi
 

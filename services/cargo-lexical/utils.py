@@ -1,23 +1,14 @@
-from datetime import datetime
 from http import HTTPStatus
 
-from dateutil import parser
+from botocore.exceptions import ClientError
 from exceptions import CargoFileNotFoundError
 
-from hermes.connections import BaseS3Handler
+from hermes.connections import BaseS3Handler, S3Error
 from hermes.observability import get_logger
 from hermes.text_extraction import ExtractionResult, UnsupportedFormatError, extract_text
 from hermes.text_extraction.config import AppSettings
 
 logger = get_logger(__name__)
-
-
-def parse_date_value(value: str) -> datetime:
-    val_clean = value.strip()
-    try:
-        return datetime.fromisoformat(val_clean)
-    except ValueError:
-        return parser.parse(val_clean)
 
 
 def extract_cargo_files_text(
@@ -26,7 +17,7 @@ def extract_cargo_files_text(
     response, _ = cargo_client.get_file(s3_key, s3_bucket)
 
     if response.is_success:
-        file = response.response["Body"]
+        file = (response.response or {})["Body"]
         try:
             return extract_text(file, AppSettings())
         except UnsupportedFormatError as e:
@@ -37,10 +28,15 @@ def extract_cargo_files_text(
             )
             return None
     else:
-        if response.error.response["Error"]["Code"] == "NoSuchKey":
+        # SiteResponse.error is loosely typed (Exception | str | None), so the
+        # botocore error code is only reachable through a real ClientError.
+        error = response.error
+        if isinstance(error, ClientError) and error.response["Error"]["Code"] == "NoSuchKey":
             logger.warning("Cargo file not found in S3", status=HTTPStatus.NOT_FOUND)
 
             raise CargoFileNotFoundError("Cargo file not found in S3")
 
-        raise response.error
+        if isinstance(error, Exception):
+            raise error
 
+        raise S3Error({"message": "Failed to fetch cargo file from S3", "error": str(error)})

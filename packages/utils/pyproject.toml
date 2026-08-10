@@ -6,6 +6,7 @@ requires-python = ">=3.14"
 dependencies = [
     "pydantic>=2.13.4",
     "confluent-kafka[schemaregistry]>=2.8.2",
+    "python-dateutil>=2.9",
     "connections",
     "observability",
 ]

@@ -31,7 +31,16 @@ runOnInstall: true
 
 env:
   BOOTSTRAP_SERVERS: kafka:9092
-  TOPIC: cargo-lexical.files
+  # Which example fixtures (demo-producer/examples/<name>.json) to produce.
+  # Empty/unset means all of them. chief-lexical needs the chief-api mock
+  # (utils/dev/chief-api) up, which install.sh deploys.
+  SOURCES: cargo-lexical,chat-lexical,chat-rooms-lexical,chat-users-lexical,chief-lexical
+  # Each fixture carries its own topic; these override it per source.
+  TOPIC_CARGO_LEXICAL: cargo-lexical.files
+  TOPIC_CHAT_LEXICAL: chat-lexical.messages
+  TOPIC_CHAT_ROOMS_LEXICAL: chat-rooms-lexical.rooms
+  TOPIC_CHAT_USERS_LEXICAL: chat-users-lexical.users
+  TOPIC_CHIEF_LEXICAL: chief-lexical.commands
   S3_ENDPOINT: http://minio:9000
   S3_BUCKET: cargo-lexical
   # >0 keeps the producer looping every N seconds instead of exiting.

@@ -37,9 +37,11 @@ livenessProbe:
   initialDelaySeconds: 90
   periodSeconds: 30
 
+# Measured at ~348Mi / ~7m — a JVM sitting near its heap, so the memory request
+# stays; only the CPU reservation comes down.
 resources:
   requests:
-    cpu: 100m
+    cpu: 50m
     memory: 384Mi
   limits:
     memory: 1Gi

@@ -1,0 +1,134 @@
+{
+  "topic": "chat-rooms-lexical.rooms",
+  "examples": [
+    {
+      "name": "public-channel-full",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": "ops-general",
+        "room_type": "c",
+        "classificationLevel": 1,
+        "classificationColor": "green",
+        "ts": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "description": "General operations channel.",
+        "topic": "Daily cargo coordination"
+      }
+    },
+    {
+      "name": "private-group-full",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": "ops-private",
+        "room_type": "p",
+        "classificationLevel": 3,
+        "classificationColor": "red",
+        "ts": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "description": "Restricted planning group.",
+        "topic": "Ashdod slot planning"
+      }
+    },
+    {
+      "name": "direct-room",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": "alice,bob",
+        "room_type": "d",
+        "ts": "{{past}}",
+        "updatedAt_": "{{past}}"
+      }
+    },
+    {
+      "name": "team-room",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": "logistics-team",
+        "room_type": "team",
+        "classificationLevel": 2,
+        "classificationColor": "yellow",
+        "ts": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "description": "Team parent room with child channels.",
+        "topic": "Fleet logistics"
+      }
+    },
+    {
+      "name": "livechat-room",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": "livechat-8821",
+        "room_type": "l",
+        "ts": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "topic": "Inbound carrier question"
+      }
+    },
+    {
+      "name": "minimal-id-only",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}"
+      }
+    },
+    {
+      "name": "classification-only",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "classificationLevel": 4,
+        "classificationColor": "black"
+      }
+    },
+    {
+      "name": "renamed-room-update",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": "ops-general-archive",
+        "room_type": "c",
+        "classificationLevel": 1,
+        "classificationColor": "green",
+        "ts": "{{past}}",
+        "updatedAt_": "{{future}}",
+        "description": "Archived after rename; the source re-emits the whole room on every change.",
+        "topic": "Archive"
+      }
+    },
+    {
+      "name": "explicit-nulls",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "name": null,
+        "room_type": null,
+        "classificationLevel": null,
+        "classificationColor": null,
+        "ts": null,
+        "updatedAt_": null,
+        "description": null,
+        "topic": null
+      }
+    },
+    {
+      "name": "int-id-hebrew-text-utc-suffix",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id_int}}",
+        "name": "חדר-מבצעים",
+        "room_type": "p",
+        "classificationLevel": 2,
+        "classificationColor": "yellow",
+        "ts": "{{past_z}}",
+        "updatedAt_": "{{now_z}}",
+        "description": "חדר תיאום מבצעי",
+        "topic": "תיאום יומי"
+      }
+    }
+  ]
+}

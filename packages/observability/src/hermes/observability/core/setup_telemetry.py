@@ -24,10 +24,7 @@ from hermes.observability.tracing.circuit_breaker import (
     CircuitBreakerSpanExporter,
     CircuitBreakerSpanProcessor,
 )
-from hermes.observability.utils import (
-    is_production_environment,
-    resolve_otlp_endpoint,
-)
+from hermes.observability.utils import resolve_otlp_endpoint
 
 
 class StructuredOTelLoggingHandler(LoggingHandler):

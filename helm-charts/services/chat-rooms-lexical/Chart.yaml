@@ -1,0 +1,10 @@
+apiVersion: v2
+name: chat-rooms-lexical
+description: Chat rooms enrichment service — consumes Kafka, indexes room records to Elasticsearch.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../utils/hermes-common

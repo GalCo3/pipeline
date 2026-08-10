@@ -27,10 +27,12 @@ readinessProbe:
   initialDelaySeconds: 10
   periodSeconds: 10
 
+# Measured at ~242Mi / ~6m idle. The limit stays wide: extraction memory scales
+# with the document being parsed, and this is the one component that sees them.
 resources:
   requests:
-    cpu: 100m
-    memory: 512Mi
+    cpu: 50m
+    memory: 320Mi
   limits:
     memory: 2Gi
 

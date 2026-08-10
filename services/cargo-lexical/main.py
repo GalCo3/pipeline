@@ -1,4 +1,8 @@
 from exceptions import CargoFileNotFoundError
+from models import CargoEnrichedMessage, CargoMessage
+from settings import get_settings
+from utils import extract_cargo_files_text
+
 from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
@@ -12,10 +16,7 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import send_to_dls, site_error
-from models import CargoEnrichedMessage, CargoMessage
-from settings import get_settings
-from utils import extract_cargo_files_text
+from hermes.utils import send_to_dls, site_error, with_indexed_at
 
 init_observability(service_name="cargo-lexical")
 logger = get_logger(__name__)
@@ -27,10 +28,9 @@ message_duration = TelemetryHistogram(
     "cargo_lexical_message_duration", unit="s", allowed_labels=["status"]
 )
 
-settings = get_settings()
-
 
 def main():
+    settings = get_settings()
     consumer_handler = BaseConsumerHandler(settings.consumer_config)
     elastic_handler = BaseElasticHandler(settings.elastic_config)
     dls_handler = BaseMongoHandler(settings.mongo_config)
@@ -39,7 +39,7 @@ def main():
     for message in consumer_handler.start_consuming():
         try:
             with kafka_context(message, name="process_cargo_message"):
-                cargo_message = CargoMessage(**message.value())
+                cargo_message = CargoMessage.model_validate(message.value())
                 logger.info("Processing cargo message", doc_id=cargo_message.id)
 
                 if cargo_message.delete_date is not None:
@@ -61,7 +61,7 @@ def main():
                         local_response, remote_response = elastic_handler.update_by_id(
                             settings.index_name,
                             cargo_message.id,
-                            {"doc": cargo_message.model_dump(mode="json")},
+                            {"doc": with_indexed_at(cargo_message.model_dump(mode="json"))},
                             is_multisite=True,
                         )
                         site_error(
@@ -91,7 +91,7 @@ def main():
                     local_response, remote_response = elastic_handler.index(
                         settings.index_name,
                         cargo_enriched_message.id,
-                        cargo_enriched_message.model_dump(mode="json"),
+                        with_indexed_at(cargo_enriched_message.model_dump(mode="json")),
                         is_multisite=True,
                     )
                     site_error(
@@ -127,4 +127,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

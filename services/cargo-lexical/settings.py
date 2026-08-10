@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     index_name: str
     dls_collection: str = "cargo_lexical_dls"
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
 
 @cache
 def get_settings() -> Settings:

@@ -130,10 +130,11 @@ livenessProbe:
   periodSeconds: 30
   failureThreshold: 6
 
+# Measured at ~229Mi / ~10m against this stack's metric volume.
 resources:
   requests:
-    cpu: 100m
-    memory: 512Mi
+    cpu: 50m
+    memory: 320Mi
   limits:
     memory: 2Gi
 

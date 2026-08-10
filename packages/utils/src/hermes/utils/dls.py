@@ -1,5 +1,6 @@
 import traceback
 from datetime import UTC, datetime
+from typing import cast
 
 from confluent_kafka import Message
 from pydantic import BaseModel
@@ -32,10 +33,11 @@ def send_to_dls(
     )
 
     record = DLSRecord(
-        original_message=message.value(),
-        source_topic=message.topic(),
-        partition=message.partition(),
-        offset=message.offset(),
+        # DeserializingConsumer hands back the decoded payload, not raw bytes.
+        original_message=cast("dict", message.value()),
+        source_topic=cast("str", message.topic()),
+        partition=cast("int", message.partition()),
+        offset=cast("int", message.offset()),
         error=str(error),
         error_stack=error_stack,
         failed_at=datetime.now(UTC),

@@ -54,10 +54,11 @@ configFiles:
         access: proxy
         url: http://loki:3100
         jsonData:
-          # A trace_id in a log line becomes a link into Tempo.
+          # A trace_id in a log line becomes a link into Tempo. Lines are JSON
+          # (structlog), so the id is a "trace_id": "<hex>" pair, not key=value.
           derivedFields:
             - name: TraceID
-              matcherRegex: "trace_id=(\\w+)"
+              matcherRegex: '"trace_id":\s*"(\w+)"'
               datasourceUid: tempo
               url: "${__value.raw}"
       - name: Tempo
@@ -86,39 +87,245 @@ configFiles:
         options:
           path: /var/lib/grafana/dashboards
 
+  # Every *-lexical service emits the same three instruments, named after
+  # itself: <svc>_messages_processed_total{status}, <svc>_messages_dls_total
+  # and <svc>_message_duration_seconds{status} (hermes.observability
+  # Telemetry{Counter,Histogram}). The dashboards below never name a service:
+  # they match the metric family by __name__ regex and group by the
+  # service_name resource attribute (the collector's
+  # resource_to_telemetry_conversion turns it into a label), so a new service
+  # shows up on its own the moment it pushes its first sample.
   hermes.json: |
     {
-      "title": "Hermes pipeline",
+      "title": "Hermes — overview",
       "uid": "hermes-pipeline",
       "tags": ["hermes"],
       "timezone": "browser",
       "time": { "from": "now-1h", "to": "now" },
       "refresh": "30s",
       "schemaVersion": 39,
+      "editable": true,
+      "templating": {
+        "list": [
+          {
+            "name": "service",
+            "label": "Service",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "mimir" },
+            "definition": "label_values({__name__=~\".+_messages_processed_total\"}, service_name)",
+            "query": {
+              "qryType": 1,
+              "query": "label_values({__name__=~\".+_messages_processed_total\"}, service_name)",
+              "refId": "services"
+            },
+            "includeAll": true,
+            "multi": true,
+            "allValue": ".+",
+            "refresh": 2,
+            "sort": 1,
+            "current": { "text": "All", "value": "$__all" }
+          },
+          {
+            "name": "level",
+            "label": "Log level",
+            "type": "custom",
+            "query": ".+,DEBUG,INFO,WARNING,ERROR,CRITICAL",
+            "includeAll": true,
+            "multi": true,
+            "allValue": ".+",
+            "current": { "text": "All", "value": "$__all" }
+          }
+        ]
+      },
       "panels": [
         {
-          "type": "timeseries",
-          "title": "Cargo lexical messages processed / s",
+          "type": "stat",
+          "title": "Messages processed / s",
           "datasource": { "type": "prometheus", "uid": "mimir" },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 }, "overrides": [] },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (status) (rate(cargo_lexical_messages_processed_total[5m]))",
-              "legendFormat": "{{status}}"
+              "expr": "sum(rate({__name__=~\".+_messages_processed_total\", service_name=~\"$service\"}[$__rate_interval]))"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Dead-lettered / s",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "decimals": 2,
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.0001 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({__name__=~\".+_messages_dls_total\", service_name=~\"$service\"}[$__rate_interval]))"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Failure ratio",
+          "description": "Dead-lettered messages as a share of everything the selected services took in.",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "decimals": 2,
+              "min": 0,
+              "max": 1,
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.01 }, { "color": "red", "value": 0.05 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({__name__=~\".+_messages_dls_total\", service_name=~\"$service\"}[$__rate_interval])) / clamp_min(sum(rate({__name__=~\".+_messages_dls_total\", service_name=~\"$service\"}[$__rate_interval])) + sum(rate({__name__=~\".+_messages_processed_total\", service_name=~\"$service\"}[$__rate_interval])), 0.000001)"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "p95 processing time",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "s", "decimals": 3 }, "overrides": [] },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=~\".+_message_duration_seconds_bucket\", service_name=~\"$service\"}[$__rate_interval])))"
             }
           ]
         },
         {
           "type": "timeseries",
-          "title": "Collector accepted spans / metrics / logs",
+          "title": "Throughput by service",
           "datasource": { "type": "prometheus", "uid": "mimir" },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] } },
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (__name__) (rate({__name__=~\"otelcol_receiver_accepted_(spans|metric_points|log_records)\"}[5m]))",
-              "legendFormat": "{{__name__}}"
+              "expr": "sum by (service_name) (rate({__name__=~\".+_messages_processed_total\", service_name=~\"$service\"}[$__rate_interval]))",
+              "legendFormat": "{{service_name}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Outcome by status",
+          "description": "status is whatever the service tagged the message with — success, deleted, unchanged, …",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 30, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (service_name, status) (rate({__name__=~\".+_messages_processed_total\", service_name=~\"$service\"}[$__rate_interval]))",
+              "legendFormat": "{{service_name}} · {{status}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Dead-letter rate by service",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (service_name) (rate({__name__=~\".+_messages_dls_total\", service_name=~\"$service\"}[$__rate_interval]))",
+              "legendFormat": "{{service_name}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "p95 processing time by service",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+          "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate({__name__=~\".+_message_duration_seconds_bucket\", service_name=~\"$service\"}[$__rate_interval])))",
+              "legendFormat": "{{service_name}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Log volume by level",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+          "fieldConfig": { "defaults": { "custom": { "fillOpacity": 40, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (level) (count_over_time({service_name=~\"$service\"} | json | level =~ \"$level\" [$__auto]))",
+              "legendFormat": "{{level}}"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Per-service summary (selected range)",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+          "fieldConfig": { "defaults": { "decimals": 2 }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "instant": true,
+              "format": "table",
+              "expr": "sum by (service_name) (increase({__name__=~\".+_messages_processed_total\", service_name=~\"$service\"}[$__range]))"
+            },
+            {
+              "refId": "B",
+              "instant": true,
+              "format": "table",
+              "expr": "sum by (service_name) (increase({__name__=~\".+_messages_dls_total\", service_name=~\"$service\"}[$__range]))"
+            },
+            {
+              "refId": "C",
+              "instant": true,
+              "format": "table",
+              "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate({__name__=~\".+_message_duration_seconds_bucket\", service_name=~\"$service\"}[$__range])))"
+            }
+          ],
+          "transformations": [
+            { "id": "joinByField", "options": { "byField": "service_name", "mode": "outer" } },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true },
+                "renameByName": {
+                  "service_name": "Service",
+                  "Value #A": "Processed",
+                  "Value #B": "Dead-lettered",
+                  "Value #C": "p95 (s)"
+                }
+              }
             }
           ]
         },
@@ -126,26 +333,263 @@ configFiles:
           "type": "logs",
           "title": "Logs",
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 8 },
-          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
+          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
           "targets": [
-            { "refId": "A", "expr": "{service_name=~\"$service\"}" }
+            { "refId": "A", "expr": "{service_name=~\"$service\"} | json | level =~ \"$level\"" }
           ]
         }
-      ],
+      ]
+    }
+
+  services.json: |
+    {
+      "title": "Hermes — service drill-down",
+      "uid": "hermes-services",
+      "tags": ["hermes"],
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "editable": true,
       "templating": {
         "list": [
           {
             "name": "service",
+            "label": "Service",
             "type": "query",
-            "datasource": { "type": "loki", "uid": "loki" },
-            "query": { "label": "service_name", "refId": "services" },
+            "datasource": { "type": "prometheus", "uid": "mimir" },
+            "definition": "label_values({__name__=~\".+_messages_processed_total\"}, service_name)",
+            "query": {
+              "qryType": 1,
+              "query": "label_values({__name__=~\".+_messages_processed_total\"}, service_name)",
+              "refId": "services"
+            },
             "includeAll": true,
             "multi": true,
+            "refresh": 2,
+            "sort": 1,
             "current": { "text": "All", "value": "$__all" }
           }
         ]
-      }
+      },
+      "panels": [
+        {
+          "type": "row",
+          "title": "$service",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "repeat": "service",
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "type": "timeseries",
+          "title": "$service — throughput by status",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 30, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (status) (rate({__name__=~\".+_messages_processed_total\", service_name=\"$service\"}[$__rate_interval]))",
+              "legendFormat": "{{status}}"
+            },
+            {
+              "refId": "B",
+              "expr": "sum(rate({__name__=~\".+_messages_dls_total\", service_name=\"$service\"}[$__rate_interval]))",
+              "legendFormat": "dead-lettered"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "$service — processing time quantiles",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.5, sum by (le) (rate({__name__=~\".+_message_duration_seconds_bucket\", service_name=\"$service\"}[$__rate_interval])))",
+              "legendFormat": "p50"
+            },
+            {
+              "refId": "B",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=~\".+_message_duration_seconds_bucket\", service_name=\"$service\"}[$__rate_interval])))",
+              "legendFormat": "p95"
+            },
+            {
+              "refId": "C",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate({__name__=~\".+_message_duration_seconds_bucket\", service_name=\"$service\"}[$__rate_interval])))",
+              "legendFormat": "p99"
+            },
+            {
+              "refId": "D",
+              "expr": "sum(rate({__name__=~\".+_message_duration_seconds_sum\", service_name=\"$service\"}[$__rate_interval])) / clamp_min(sum(rate({__name__=~\".+_message_duration_seconds_count\", service_name=\"$service\"}[$__rate_interval])), 0.000001)",
+              "legendFormat": "mean"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "$service — errors and warnings",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+          "fieldConfig": { "defaults": { "custom": { "fillOpacity": 40, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (level) (count_over_time({service_name=\"$service\"} | json | level =~ \"WARNING|ERROR|CRITICAL\" [$__auto]))",
+              "legendFormat": "{{level}}"
+            }
+          ]
+        },
+        {
+          "type": "logs",
+          "title": "$service — logs",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+          "targets": [
+            { "refId": "A", "expr": "{service_name=\"$service\"}" }
+          ]
+        }
+      ]
+    }
+
+  platform.json: |
+    {
+      "title": "Hermes — platform",
+      "uid": "hermes-platform",
+      "tags": ["hermes"],
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "editable": true,
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Scrape targets up",
+          "description": "Pods carrying prometheus.io/scrape that the collector currently reaches.",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "refId": "A", "expr": "sum(up)" }]
+        },
+        {
+          "type": "stat",
+          "title": "Export failures / s",
+          "description": "Spans, metric points and log records the collector could not hand to Tempo / Mimir / Loki.",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 2,
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.0001 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({__name__=~\"otelcol_exporter_send_failed_.+\"}[$__rate_interval]))"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Collector queue size",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "refId": "A", "expr": "sum(otelcol_exporter_queue_size)" }]
+        },
+        {
+          "type": "stat",
+          "title": "Collector memory",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "refId": "A", "expr": "sum(otelcol_process_memory_rss)" }]
+        },
+        {
+          "type": "timeseries",
+          "title": "Collector accepted spans / metrics / logs",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (__name__) (rate({__name__=~\"otelcol_receiver_accepted_(spans|metric_points|log_records)_total\"}[$__rate_interval]))",
+              "legendFormat": "{{__name__}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Collector refused / failed",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (__name__) (rate({__name__=~\"otelcol_(receiver_refused|receiver_failed|exporter_send_failed)_.+_total\"}[$__rate_interval]))",
+              "legendFormat": "{{__name__}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Backend ingest",
+          "description": "What each backend says it took in: Mimir samples, Loki lines, Tempo spans.",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+          "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(cortex_distributor_received_samples_total[$__rate_interval]))",
+              "legendFormat": "mimir samples/s"
+            },
+            {
+              "refId": "B",
+              "expr": "sum(rate(loki_distributor_lines_received_total[$__rate_interval]))",
+              "legendFormat": "loki lines/s"
+            },
+            {
+              "refId": "C",
+              "expr": "sum(rate(tempo_distributor_spans_received_total[$__rate_interval]))",
+              "legendFormat": "tempo spans/s"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Process memory by component",
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (service) (process_resident_memory_bytes)",
+              "legendFormat": "{{service}}"
+            }
+          ]
+        }
+      ]
     }
 
 volumes:
@@ -166,6 +610,12 @@ volumeMounts:
   - name: config
     mountPath: /var/lib/grafana/dashboards/hermes.json
     subPath: hermes.json
+  - name: config
+    mountPath: /var/lib/grafana/dashboards/services.json
+    subPath: services.json
+  - name: config
+    mountPath: /var/lib/grafana/dashboards/platform.json
+    subPath: platform.json
   - name: data
     mountPath: /var/lib/grafana
 
@@ -190,10 +640,11 @@ livenessProbe:
   periodSeconds: 30
   failureThreshold: 6
 
+# Measured at ~115Mi / ~8m with the dashboards open.
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
+    cpu: 50m
+    memory: 160Mi
   limits:
     memory: 1Gi
 

@@ -22,9 +22,10 @@ headlamp:
     inCluster: true
     unsafeUseServiceAccountToken: true
 
+  # Measured at ~29Mi / ~0m.
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 25m
+      memory: 64Mi
     limits:
       memory: 512Mi

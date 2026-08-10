@@ -119,11 +119,18 @@ exists to be run on demand:
   `kubectl -n hermes create job manual-1 --from=cronjob/demo-producer`
 
 Each run gets its own `RUN_SEED` (derived from the pod name), so every trigger
-adds four fresh documents instead of overwriting the previous batch. Messages
-follow `CargoMessage` exactly, including its strict `%Y-%m-%dT%H:%M:%S`
-timestamps and a null `delete_date` (a non-null one means "delete this
-document"). A one-shot
-Job also runs at install/upgrade time; set `runOnInstall: false` to skip it.
+adds fresh documents instead of overwriting the previous batch. A one-shot Job
+also runs at install/upgrade time; set `runOnInstall: false` to skip it.
+
+What it produces comes from `demo-producer/examples/<service>.json`: ten example
+messages per source, covering that source's legal payload shapes — the index,
+update and delete routes, source aliases vs model field names, optional fields
+present / absent / null, and for cargo every file type the extractor handles
+plus the missing-object (dead letter) and unsupported-format (skipped) paths.
+Records are produced **without a Kafka key**, like the real sources. `SOURCES`
+picks which fixtures to produce (default: everything except `chief-lexical`,
+whose indexing path calls the chief API); `TOPIC_<SOURCE>` overrides a fixture's
+topic.
 
 ## Telemetry
 

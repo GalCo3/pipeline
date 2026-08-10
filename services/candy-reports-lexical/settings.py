@@ -2,14 +2,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from hermes.connections import (
     BaseConsumerConfig,
-    BaseElasticConfig,
+    BaseElasticBasicConfig,
+    BaseElasticCertConfig,
     BaseMongoConfig,
 )
 
 
 class CandyReportsLexicalSettings(BaseSettings):
     consumer_config: BaseConsumerConfig
-    elastic_config: BaseElasticConfig
+    elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
 
     index_name: str = "candy-reports-lexical"
@@ -20,6 +21,9 @@ class CandyReportsLexicalSettings(BaseSettings):
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
     )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 def get_settings() -> CandyReportsLexicalSettings:

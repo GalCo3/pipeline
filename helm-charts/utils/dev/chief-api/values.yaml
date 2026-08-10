@@ -1,0 +1,275 @@
+# Dev-only stand-in for the real chief document API.
+#
+# chief-lexical enriches every indexed command by GETting
+# `<doc_path_template>.format(id)` and reading `documentContent` from the JSON
+# body (services/chief-lexical/utils.py::extract_chief_command_content). No such
+# API exists locally, so without this every index-path message would fail with
+# ChiefAPIError and land in the dead letter store.
+#
+# One document per demo id. demo-producer/produce.py::build_ids derives an id as
+# `RUN_SEED * 1_000_000 + run * 10_000 + source_ordinal * 100 + example_index`,
+# so the last two digits are the example's 1-based position in
+# demo-producer/examples/chief-lexical.json and nothing above them is
+# predictable. Serving off those two digits gives each fixture its own
+# document without pinning RUN_SEED.
+#
+# Only the six `index-*` examples ever reach here: the `deleted` ones return
+# before the API call, and the `metadata-update-*` ones have
+# metro_last_update_date > content_last_update_date, so the content is taken as
+# unchanged (services/chief-lexical/main.py). The other four examples borrow
+# their id from an index example via `id_of`, so 01/02/05/06/07/10 are the whole
+# set of ids that are ever fetched; anything else gets fallback.json.
+fullnameOverride: chief-api
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: nginxinc/nginx-unprivileged
+  tag: 1.27-alpine
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  portName: http
+
+livenessProbe:
+  httpGet:
+    path: /documents/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /documents/health
+    port: http
+  initialDelaySeconds: 2
+  periodSeconds: 10
+
+configFiles:
+  # A string value is written verbatim, so this stays nginx config rather than
+  # being rendered as JSON.
+  default.conf: |
+    server {
+        listen 8080;
+        server_name _;
+        root /usr/share/nginx/html;
+        default_type application/json;
+
+        # Probes only: no document involved, and /documents/health must not fall
+        # into the id route below.
+        location = /documents/health {
+            return 200 '{"status":"ok"}';
+        }
+
+        # Last two digits of the id select the document; see the header comment.
+        location ~ ^/documents/\d*(\d\d)$ {
+            try_files /documents/$1.json /documents/fallback.json =404;
+        }
+
+        location / {
+            try_files /documents/fallback.json =404;
+        }
+    }
+
+  # Shape of one entry: services/chief-lexical/models.py::ChiefCommandContent.
+  # `text` is HTML because the service strips it with BeautifulSoup into
+  # `cleaned_text` (utils.py::convert_chief_command joins `full_name` + text).
+
+  # index-full — פקודת מבצע חיפה. Richest body: headings, list, note.
+  01.json:
+    documentContent:
+      - id: "4001-section-1"
+        name: "כללי"
+        full_name: "פרק א׳ — כללי"
+        order: 1
+        user_id: "user-chief-001"
+        create_date: "2026-01-05T08:00:00"
+        last_update_date: "2026-02-01T09:30:00"
+        note: "Reviewed by the operations desk."
+        text: "<h1>כללי</h1><p>הפקודה נכנסת לתוקף עם פרסומה.</p><ul><li>סעיף ראשון</li><li>סעיף שני</li></ul>"
+      - id: "4001-section-2"
+        name: "ביצוע"
+        full_name: "פרק ב׳ — ביצוע"
+        order: 2
+        user_id: "user-chief-001"
+        create_date: "2026-01-05T08:05:00"
+        last_update_date: "2026-02-01T09:40:00"
+        text: "<h2>ביצוע</h2><p>אחריות מרחב חיפה על ביצוע הפקודה.</p>"
+      - id: "4001-section-3"
+        name: "נספחים"
+        full_name: "פרק ג׳ — נספחים"
+        order: 3
+        user_id: "user-chief-002"
+        create_date: "2026-01-06T07:00:00"
+        last_update_date: "2026-02-01T10:00:00"
+        note: "Two annexes attached."
+        text: "<p>נספח א׳ — מפות.</p><p>נספח ב׳ — לוחות זמנים.</p>"
+
+  # index-with-validity-end-date — פקודת מבצע אשדוד. Numeric id/user_id: the
+  # model accepts `str | int` for both, so the demo covers the int branch.
+  02.json:
+    documentContent:
+      - id: 40021
+        name: "כללי"
+        full_name: "פרק א׳ — כללי"
+        order: 1
+        user_id: 4711
+        create_date: "2026-01-08T09:00:00"
+        last_update_date: "2026-02-02T11:00:00"
+        text: "<p>הפקודה תקפה עד למועד הנקוב בה.</p>"
+      - id: 40022
+        name: "ביצוע"
+        full_name: "פרק ב׳ — ביצוע"
+        order: 2
+        user_id: 4711
+        create_date: "2026-01-08T09:20:00"
+        last_update_date: "2026-02-02T11:30:00"
+        text: "<p>Execution details for the operational annex.</p><table><tr><td>Unit</td><td>Task</td></tr><tr><td>מרחב דרום</td><td>אבטחת נמל</td></tr></table>"
+
+  # index-empty-lists — הוראת שעה. Single section, every optional field absent.
+  05.json:
+    documentContent:
+      - id: "4005-section-1"
+        name: "הוראה"
+        full_name: "הוראת שעה — גוף ההוראה"
+        order: 1
+        user_id: "user-chief-003"
+        create_date: "2026-01-12T06:30:00"
+        last_update_date: "2026-01-12T06:30:00"
+
+  # index-many-directories — פקודת מסגרת. Long body, nested markup.
+  06.json:
+    documentContent:
+      - id: "4006-section-1"
+        name: "מטרה"
+        full_name: "פרק א׳ — מטרה"
+        order: 1
+        user_id: "user-chief-001"
+        create_date: "2026-01-15T08:00:00"
+        last_update_date: "2026-02-05T09:00:00"
+        text: "<h1>מטרה</h1><p>קביעת מסגרת פעולה לכלל המרחבים.</p>"
+      - id: "4006-section-2"
+        name: "הגדרות"
+        full_name: "פרק ב׳ — הגדרות"
+        order: 2
+        user_id: "user-chief-001"
+        create_date: "2026-01-15T08:30:00"
+        last_update_date: "2026-02-05T09:15:00"
+        text: "<dl><dt>מרחב</dt><dd>יחידה גאוגרפית</dd><dt>מכלול</dt><dd>גוף מטה</dd></dl>"
+      - id: "4006-section-3"
+        name: "חלוקת אחריות"
+        full_name: "פרק ג׳ — חלוקת אחריות"
+        order: 3
+        user_id: "user-chief-002"
+        create_date: "2026-01-16T10:00:00"
+        last_update_date: "2026-02-05T10:00:00"
+        note: "Cross-filed under four directories."
+        text: "<table><tr><th>מרחב</th><th>אחריות</th></tr><tr><td>חיפה</td><td>ביצוע</td></tr><tr><td>עכו</td><td>סיוע</td></tr></table>"
+      - id: "4006-section-4"
+        name: "נספחים"
+        full_name: "פרק ד׳ — נספחים"
+        order: 4
+        user_id: "user-chief-002"
+        create_date: "2026-01-16T10:30:00"
+        last_update_date: "2026-02-05T10:30:00"
+        text: "<p>נספחים א׳-ה׳ וערכת מפות.</p>"
+
+  # index-utc-suffix — פקודה עם חתימת זמן UTC. Content dates carry the same Z
+  # suffix as the message, so both sides parse to aware datetimes.
+  07.json:
+    documentContent:
+      - id: "4007-section-1"
+        name: "כללי"
+        full_name: "פרק א׳ — כללי"
+        order: 1
+        user_id: "user-chief-004"
+        create_date: "2026-01-20T05:00:00Z"
+        last_update_date: "2026-02-06T07:45:00Z"
+        text: "<p>All timestamps in this document are UTC.</p>"
+      - id: "4007-section-2"
+        name: "ביצוע"
+        full_name: "פרק ב׳ — ביצוע"
+        order: 2
+        user_id: "user-chief-004"
+        create_date: "2026-01-20T05:30:00Z"
+        last_update_date: "2026-02-06T08:00:00Z"
+        note: "Timezone-aware throughout."
+        text: "<p>מרחב דרום מבצע בהתאם ללוח הזמנים.</p>"
+
+  # index-draft-no-distribution — טיוטת פקודה. A date the model cannot parse
+  # (kept as the raw string) and a section with no text at all: the reason the
+  # chief mapping sets ignore_malformed on the nested command_content dates, and
+  # the reason convert_chief_command guards `text` with `or ""`.
+  10.json:
+    documentContent:
+      - id: "4010-section-1"
+        name: "טיוטה"
+        full_name: "טיוטה — פרק א׳"
+        order: 1
+        user_id: "user-chief-005"
+        create_date: "not-a-date"
+        last_update_date: "2026-02-08T12:00:00"
+        text: "<p>טיוטה ראשונית, טרם הופצה.</p>"
+      - id: "4010-section-2"
+        name: "הערות"
+        full_name: "טיוטה — הערות"
+        order: 2
+        user_id: "user-chief-005"
+        create_date: "2026-02-08T12:00:00"
+        last_update_date: "2026-02-08T12:00:00"
+        note: "Body not written yet."
+
+  # Any id that is not one of the six above — a hand-rolled curl, or a fixture
+  # that gained an example and shifted the positions. Enrichment still succeeds.
+  fallback.json:
+    documentContent:
+      - id: "fallback-section-1"
+        name: "כללי"
+        full_name: "מסמך ברירת מחדל"
+        order: 1
+        user_id: "user-chief-000"
+        create_date: "2026-01-01T00:00:00"
+        last_update_date: "2026-01-01T00:00:00"
+        note: "Served for ids the mock has no document for."
+        text: "<p>No per-id document is configured for this id.</p>"
+
+volumes:
+  - name: config
+    configMap:
+      name: chief-api
+
+volumeMounts:
+  - name: config
+    mountPath: /etc/nginx/conf.d/default.conf
+    subPath: default.conf
+  # Whole-ConfigMap mount, so adding a document is a values-only change. It also
+  # lands default.conf in the docroot, which no route can reach.
+  - name: config
+    mountPath: /usr/share/nginx/html/documents
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+# The unprivileged nginx image ships a numeric USER (101) but kubelet cannot
+# verify that from the manifest alone, so state it.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+env: {}

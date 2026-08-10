@@ -10,6 +10,12 @@ PIDS=()
 
 forward() {
     local name="$1" svc="$2" local_port="$3" remote_port="$4"
+    # kubectl exits immediately when the local port is taken, and its error
+    # goes to /dev/null with everything else — so say so here instead.
+    if lsof -nP -iTCP:"$local_port" -sTCP:LISTEN >/dev/null 2>&1; then
+        printf '  %-16s SKIPPED — localhost:%s is already in use\n' "$name" "$local_port"
+        return
+    fi
     kubectl -n "$NAMESPACE" port-forward "svc/$svc" "$local_port:$remote_port" >/dev/null 2>&1 &
     PIDS+=("$!")
     printf '  %-16s http://localhost:%s\n' "$name" "$local_port"

@@ -1,0 +1,253 @@
+{
+  "topic": "cargo-lexical.files",
+  "examples": [
+    {
+      "name": "operational-txt-indexed",
+      "expect": "indexed",
+      "file": "txt",
+      "message": {
+        "id": "{{id}}",
+        "name": "manifest.txt",
+        "description": "Operational plain-text manifest, streamed extractor.",
+        "is_verified": true,
+        "file_labels": [
+          {
+            "label_id": 1,
+            "label_name": "demo",
+            "created": "{{past}}",
+            "group_id": 10,
+            "group_name": "demo-group"
+          }
+        ],
+        "path_id": "1/42/701",
+        "path": "/root/demo/cargo-lexical",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{past}}",
+        "ver_last_modified": "{{now}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "operational-docx-indexed",
+      "expect": "indexed",
+      "file": "docx",
+      "message": {
+        "id": "{{id}}",
+        "name": "shipment.docx",
+        "description": "Operational DOCX, buffered extractor.",
+        "is_verified": false,
+        "file_labels": [
+          {
+            "label_id": 2,
+            "label_name": "shipment",
+            "created": "{{past}}",
+            "group_id": 10,
+            "group_name": "demo-group"
+          },
+          {
+            "label_id": 3,
+            "label_name": "customs",
+            "created": "{{past}}",
+            "group_id": 11,
+            "group_name": "customs-group"
+          }
+        ],
+        "path_id": "1/42/702",
+        "path": "/root/demo/cargo-lexical/shipments",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{now}}",
+        "ver_last_modified": "{{now}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "non-operational-pdf-indexed-int-id-utc-suffix",
+      "expect": "indexed",
+      "file": "pdf",
+      "message": {
+        "id": "{{id_int}}",
+        "name": "bill-of-lading.pdf",
+        "holder": "demo-holder",
+        "description": "Non-operational PDF: holder + reality_type, no operational-only fields. Numeric id and Z-suffixed timestamps.",
+        "path_id": "2/17/703",
+        "path": "/root/demo/cargo-lexical/non-operational",
+        "reality_type": "non-operational",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past_z}}",
+        "last_modified": "{{past_z}}",
+        "ver_last_modified": "{{now_z}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "operational-xlsx-indexed-explicit-path-list",
+      "expect": "indexed",
+      "file": "xlsx",
+      "message": {
+        "id": "{{id}}",
+        "name": "weights.xlsx",
+        "description": "Operational XLSX with a deep path_id; path_list is always recomputed from path_id by the model.",
+        "is_verified": true,
+        "file_labels": [
+          {
+            "label_id": 4,
+            "label_name": "weights",
+            "created": "{{past}}",
+            "group_id": 12,
+            "group_name": "logistics"
+          }
+        ],
+        "path_id": "1/42/88/704",
+        "path": "/root/demo/cargo-lexical/logistics/weights",
+        "path_list": [
+          "ignored",
+          "recomputed-by-model"
+        ],
+        "reality_id": "reality-2",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{past}}",
+        "ver_last_modified": "{{now}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "operational-pptx-indexed",
+      "expect": "indexed",
+      "file": "pptx",
+      "message": {
+        "id": "{{id}}",
+        "name": "port-briefing.pptx",
+        "description": "Operational PPTX, buffered extractor.",
+        "is_verified": true,
+        "file_labels": [],
+        "path_id": "1/42/705",
+        "path": "/root/demo/cargo-lexical/briefings",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{past}}",
+        "ver_last_modified": "{{now}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "operational-png-indexed-via-tika",
+      "expect": "indexed (Tika returns empty text unless OCR is enabled there)",
+      "file": "png",
+      "message": {
+        "id": "{{id}}",
+        "name": "seal-photo.png",
+        "description": "Image goes through the remote Tika extractor rather than a local one.",
+        "is_verified": true,
+        "file_labels": null,
+        "path_id": "1/42/706",
+        "path": "/root/demo/cargo-lexical/photos",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{past}}",
+        "ver_last_modified": "{{now}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "deleted-by-delete-date",
+      "expect": "deleted",
+      "id_of": "operational-txt-indexed",
+      "file": "txt",
+      "message": {
+        "id": "{{id}}",
+        "name": "recalled-manifest.txt",
+        "description": "delete_date is set, so the service deletes the document by id and stops.",
+        "is_verified": true,
+        "path_id": "1/42/707",
+        "path": "/root/demo/cargo-lexical",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{now}}",
+        "ver_last_modified": "{{past}}",
+        "delete_date": "{{now}}"
+      }
+    },
+    {
+      "name": "metadata-update-only",
+      "expect": "updated",
+      "id_of": "operational-docx-indexed",
+      "file": "txt",
+      "message": {
+        "id": "{{id}}",
+        "name": "relabelled-manifest.txt",
+        "description": "last_modified > ver_last_modified: metadata changed but the file did not, so no text extraction.",
+        "is_verified": true,
+        "file_labels": [
+          {
+            "label_id": 5,
+            "label_name": "relabelled",
+            "created": "{{now}}",
+            "group_id": 10,
+            "group_name": "demo-group"
+          }
+        ],
+        "path_id": "1/42/708",
+        "path": "/root/demo/cargo-lexical",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{now}}",
+        "ver_last_modified": "{{past}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "missing-s3-object-to-dls",
+      "expect": "dls",
+      "file": "missing",
+      "message": {
+        "id": "{{id}}",
+        "name": "does-not-exist.pdf",
+        "description": "S3 object is absent, so CargoFileNotFoundError lands the message in the dead letter store.",
+        "is_verified": true,
+        "path_id": "1/42/709",
+        "path": "/root/demo/cargo-lexical",
+        "reality_id": "reality-1",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{past}}",
+        "ver_last_modified": "{{now}}",
+        "delete_date": null
+      }
+    },
+    {
+      "name": "unsupported-format-skipped-minimal-fields",
+      "expect": "skipped",
+      "file": "bin",
+      "message": {
+        "id": "{{id}}",
+        "name": "telemetry.bin",
+        "description": "Only the required fields, and an octet-stream body no extractor handles, so the message is skipped.",
+        "path_id": "3/710",
+        "path": "/root/demo/cargo-lexical/raw",
+        "s3_key": "{{s3_key}}",
+        "s3_bucket": "{{s3_bucket}}",
+        "created": "{{past}}",
+        "last_modified": "{{past}}",
+        "ver_last_modified": "{{now}}"
+      }
+    }
+  ]
+}

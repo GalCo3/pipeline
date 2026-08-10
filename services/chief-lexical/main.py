@@ -1,4 +1,8 @@
 from exceptions import ChiefAPIError
+from models import ChiefCommandContent, ChiefEnrichedMessage, ChiefMessage
+from settings import get_settings
+from utils import convert_chief_command, extract_chief_command_content
+
 from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
@@ -11,10 +15,7 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import send_to_dls, site_error
-from models import ChiefEnrichedMessage, ChiefMessage
-from settings import get_settings
-from utils import convert_chief_command, extract_chief_command_content
+from hermes.utils import send_to_dls, site_error, with_indexed_at
 
 init_observability(service_name="chief-lexical")
 logger = get_logger(__name__)
@@ -26,10 +27,9 @@ message_duration = TelemetryHistogram(
     "chief_lexical_message_duration", unit="s", allowed_labels=["status"]
 )
 
-settings = get_settings()
-
 
 def main():
+    settings = get_settings()
     consumer_handler = BaseConsumerHandler(settings.consumer_config)
     elastic_handler = BaseElasticHandler(settings.elastic_config)
     dls_handler = BaseMongoHandler(settings.mongo_config)
@@ -37,7 +37,7 @@ def main():
     for message in consumer_handler.start_consuming():
         try:
             with kafka_context(message, name="process_chief_message"):
-                chief_message = ChiefMessage(**message.value())
+                chief_message = ChiefMessage.model_validate(message.value())
                 logger.info("Processing chief message", doc_id=chief_message.id)
 
                 if chief_message.is_deleted:
@@ -59,7 +59,7 @@ def main():
                         local_response, remote_response = elastic_handler.update_by_id(
                             settings.index_name,
                             chief_message.id,
-                            {"doc": chief_message.model_dump(mode="json")},
+                            {"doc": with_indexed_at(chief_message.model_dump(mode="json"))},
                             is_multisite=True,
                         )
                         site_error(
@@ -78,19 +78,21 @@ def main():
                         api_key=settings.chief_config.api_key.get_secret_value(),
                         timeout=settings.chief_config.timeout,
                     )
-                    
+
                     cleaned_text = convert_chief_command(chief_message.name, command_content)
 
                     chief_enriched_message = ChiefEnrichedMessage(
                         **chief_message.model_dump(mode="json"),
-                        command_content=command_content,
+                        command_content=[
+                            ChiefCommandContent.model_validate(item) for item in command_content
+                        ],
                         cleaned_text=cleaned_text,
                     )
 
                     local_response, remote_response = elastic_handler.index(
                         settings.index_name,
                         chief_enriched_message.id,
-                        chief_enriched_message.model_dump(mode="json"),
+                        with_indexed_at(chief_enriched_message.model_dump(mode="json")),
                         is_multisite=True,
                     )
                     site_error(

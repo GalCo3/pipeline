@@ -28,9 +28,11 @@ elasticsearch:
       enabled: true
       size: 4Gi
     heapSize: 512m
+    # Measured at ~1171Mi — already above the request, which is the JVM heap
+    # (512m) plus off-heap. Leave the memory alone; only the CPU comes down.
     resources:
       requests:
-        cpu: 200m
+        cpu: 100m
         memory: 1Gi
       limits:
         memory: 2Gi

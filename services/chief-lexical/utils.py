@@ -1,21 +1,12 @@
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
-from dateutil import parser
 from http import HTTPStatus
 
+import requests
+from bs4 import BeautifulSoup
 from exceptions import ChiefAPIError
+
 from hermes.observability import get_logger
 
 logger = get_logger(__name__)
-
-
-def parse_date_value(value: str) -> datetime:
-    val_clean = value.strip()
-    try:
-        return datetime.fromisoformat(val_clean)
-    except ValueError:
-        return parser.parse(val_clean)
 
 
 def html_to_text(html_content: str) -> str:
@@ -52,7 +43,7 @@ def extract_chief_command_content(
             if response.status_code == HTTPStatus.NOT_FOUND:
                 logger.warning(f"Chief document {id} not found", status=HTTPStatus.NOT_FOUND)
                 raise ChiefAPIError(f"Chief document {id} not found")
-            
+
             response.raise_for_status()
             logger.info("Successfully got response from chief API")
 

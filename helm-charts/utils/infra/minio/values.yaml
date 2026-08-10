@@ -34,6 +34,14 @@ minio:
       registry: docker.io
       repository: bitnamilegacy/minio-object-browser
       tag: 2.0.2-debian-12-r3
+    # Without this the chart falls back to its "nano" resourcesPreset, which
+    # reserves 128Mi/100m for a browser UI measured at ~20Mi / ~0m.
+    resources:
+      requests:
+        cpu: 25m
+        memory: 48Mi
+      limits:
+        memory: 256Mi
 
   auth:
     rootUser: minioadmin
@@ -45,9 +53,10 @@ minio:
     enabled: true
     size: 2Gi
 
+  # Measured at ~81Mi / ~2m holding the cargo sample objects.
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 128Mi
     limits:
       memory: 1Gi

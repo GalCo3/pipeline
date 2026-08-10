@@ -2,16 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from dateutil import parser
 from pydantic import BaseModel, field_validator, model_validator
 
-
-def parse_date_value(value: str) -> datetime:
-    val_clean = value.strip()
-    try:
-        return datetime.fromisoformat(val_clean)
-    except ValueError:
-        return parser.parse(val_clean)
+from hermes.utils import parse_date_value
 
 
 class CandyReportsMessage(BaseModel):
@@ -47,7 +40,7 @@ class CandyReportsMessage(BaseModel):
         data["eventid"] = str(data["eventid"])
         data["cellid"] = str(data["cellid"])
         data["realityid"] = str(data["realityid"])
-        cell_hierarchy: str = data.get("cellhierarchy")
+        cell_hierarchy: str = data["cellhierarchy"]
         if cell_hierarchy:
             hierarchy = cell_hierarchy.split("/")
             data["frame"] = hierarchy[0]

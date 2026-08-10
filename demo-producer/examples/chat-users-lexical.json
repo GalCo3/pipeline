@@ -1,0 +1,144 @@
+{
+  "topic": "chat-users-lexical.users",
+  "examples": [
+    {
+      "name": "full-user",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "name": "Alice Cohen",
+        "email_address": "alice@example.test",
+        "username": "alice",
+        "roles": ["user", "admin"],
+        "hatzava_chail": "לוגיסטיקה",
+        "hatzava_pikud": "פיקוד המרכז",
+        "hatzava_yechida": "יחידה 101",
+        "cleanName": "alice cohen",
+        "classification_level": 2,
+        "classification_color": "yellow"
+      }
+    },
+    {
+      "name": "minimal-required-only",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}"
+      }
+    },
+    {
+      "name": "no-roles-null-coerced-to-empty",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "name": "Bob Levi",
+        "username": "bob",
+        "roles": null
+      }
+    },
+    {
+      "name": "bot-user",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{past}}",
+        "name": "Cargo Bot",
+        "username": "cargo.bot",
+        "email_address": null,
+        "roles": ["bot", "app"]
+      }
+    },
+    {
+      "name": "hatzava-fields-only",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "username": "dana",
+        "hatzava_chail": "מודיעין",
+        "hatzava_pikud": "פיקוד הצפון",
+        "hatzava_yechida": "יחידה 202"
+      }
+    },
+    {
+      "name": "classification-and-clean-name",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "name": "Dana Mizrahi",
+        "cleanName": "dana mizrahi",
+        "classification_level": 4,
+        "classification_color": "black",
+        "roles": ["user"]
+      }
+    },
+    {
+      "name": "email-without-username",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "email_address": "erez@example.test",
+        "username": null,
+        "name": "Erez Barak"
+      }
+    },
+    {
+      "name": "int-id-utc-suffix",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id_int}}",
+        "createdAt": "{{past_z}}",
+        "updatedAt_": "{{now_z}}",
+        "name": "Numeric Id User",
+        "username": "numeric.id",
+        "roles": ["user"]
+      }
+    },
+    {
+      "name": "hebrew-name-many-roles",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "name": "יעל אברהמי",
+        "cleanName": "יעל אברהמי",
+        "username": "yael",
+        "email_address": "yael@example.test",
+        "roles": ["user", "moderator", "owner", "auditor"],
+        "classification_level": 1,
+        "classification_color": "green"
+      }
+    },
+    {
+      "name": "all-optionals-null",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "createdAt": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "name": null,
+        "email_address": null,
+        "username": null,
+        "roles": [],
+        "hatzava_chail": null,
+        "hatzava_pikud": null,
+        "hatzava_yechida": null,
+        "cleanName": null,
+        "classification_level": null,
+        "classification_color": null
+      }
+    }
+  ]
+}

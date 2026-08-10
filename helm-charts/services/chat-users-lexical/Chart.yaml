@@ -1,0 +1,10 @@
+apiVersion: v2
+name: chat-users-lexical
+description: Chat users enrichment service — consumes Kafka, indexes user records to Elasticsearch.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../utils/hermes-common

@@ -31,6 +31,12 @@ persistence:
   size: 4Gi
   accessMode: ReadWriteOnce
 
+# ReadWriteOnce implies Recreate: under a rolling update both pods land on the
+# same node and mount the same volume, and the new mongod exits 100 because the
+# old one still holds the data directory lock.
+strategy:
+  type: Recreate
+
 volumes:
   - name: data
     persistentVolumeClaim:
@@ -61,9 +67,11 @@ livenessProbe:
   initialDelaySeconds: 60
   periodSeconds: 30
 
+# Measured at ~224Mi, so the memory request stays as-is — WiredTiger's cache
+# grows to fill what it is given and this is already the floor it settles at.
 resources:
   requests:
-    cpu: 100m
+    cpu: 50m
     memory: 256Mi
   limits:
     memory: 1Gi

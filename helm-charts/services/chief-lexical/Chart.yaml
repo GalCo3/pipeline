@@ -1,0 +1,10 @@
+apiVersion: v2
+name: chief-lexical
+description: Chief command enrichment service — consumes Kafka, fetches command content from the chief API, indexes to Elasticsearch.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../utils/hermes-common

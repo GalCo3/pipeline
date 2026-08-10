@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 
 from pydantic import BaseModel, field_validator
-from utils import parse_date_value
+
+from hermes.utils import parse_date_value
 
 
 class ChiefCommandContent(BaseModel):
@@ -26,7 +27,6 @@ class ChiefCommandContent(BaseModel):
             except Exception:
                 return value
         return value
-
 
 
 class ChiefMessage(BaseModel):

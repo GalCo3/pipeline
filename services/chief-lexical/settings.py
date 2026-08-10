@@ -1,10 +1,12 @@
-from hermes.connections import (
-    BaseConsumerConfig,
-    BaseElasticConfig,
-    BaseMongoConfig,
-)
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from hermes.connections import (
+    BaseConsumerConfig,
+    BaseElasticBasicConfig,
+    BaseElasticCertConfig,
+    BaseMongoConfig,
+)
 
 
 class ChiefConfig(BaseSettings):
@@ -15,7 +17,8 @@ class ChiefConfig(BaseSettings):
 
 class ChiefLexicalSettings(BaseSettings):
     consumer_config: BaseConsumerConfig
-    elastic_config: BaseElasticConfig
+    # Cert auth in real deployments; basic auth for local/compose runs.
+    elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
     chief_config: ChiefConfig
 
@@ -27,6 +30,9 @@ class ChiefLexicalSettings(BaseSettings):
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
     )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 def get_settings() -> ChiefLexicalSettings:

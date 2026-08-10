@@ -72,6 +72,10 @@ class WireFormatSerializer:
         except Exception as exc:
             raise SchemaFetchError(f"schema subject '{subject}': {exc}") from exc
         schema = registered.schema
+        if registered.schema_id is None or schema.schema_str is None:
+            raise SchemaFetchError(
+                f"schema subject '{subject}': registration is missing id or body"
+            )
         return registered.schema_id, (schema.schema_type or "AVRO"), schema.schema_str
 
     def serialize(self, subject: str, payload: object) -> bytes:

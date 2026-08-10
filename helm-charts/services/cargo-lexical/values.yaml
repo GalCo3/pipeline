@@ -61,10 +61,15 @@ livenessProbe:
 
 readinessProbe: {}
 
+# Requests are sized from measured idle-consumer usage (~135Mi, ~5m) plus
+# headroom, not guessed: the single dev node only has 8Gi and the sum of every
+# chart's requests is what decides whether the es-index and demo-producer job
+# pods can schedule at all. The limit stays generous — this service holds a
+# whole extracted document in memory, so it spikes far above its steady state.
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
+    cpu: 50m
+    memory: 192Mi
   limits:
     memory: 1Gi
 

@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 
 from pydantic import BaseModel, field_validator, model_validator
-from utils import parse_date_value
+
+from hermes.utils import parse_date_value
 
 
 class LabelItem(BaseModel):
@@ -68,4 +69,3 @@ class CargoMessage(BaseModel):
 class CargoEnrichedMessage(CargoMessage):
     text_content: str
     type: str
-

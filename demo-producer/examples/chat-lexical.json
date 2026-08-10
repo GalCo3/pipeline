@@ -1,0 +1,214 @@
+{
+  "topic": "chat-lexical.messages",
+  "examples": [
+    {
+      "name": "group-message-source-aliases",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "room-ops-001",
+        "msg": "Container HERMES-0001 cleared customs.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "u": {
+          "id_": "user-alice-001",
+          "username": "alice",
+          "name": "Alice Cohen"
+        },
+        "room_type": "c",
+        "room_name": "ops-general",
+        "usersCount": 42,
+        "urlStrings": []
+      }
+    },
+    {
+      "name": "group-message-field-names",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "room_id": "room-ops-001",
+        "msg": "Same payload written with model field names instead of source aliases.",
+        "sender": "bob",
+        "created_at": "{{past}}",
+        "user": {
+          "id": "user-bob-002",
+          "username": "bob",
+          "name": "Bob Levi"
+        },
+        "room_type": "c",
+        "room_name": "ops-general",
+        "users_count": 42,
+        "url_strings": []
+      }
+    },
+    {
+      "name": "message-with-file-attachment",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "room-ops-001",
+        "msg": "Manifest attached.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "u": {
+          "id_": "user-alice-001",
+          "username": "alice",
+          "name": "Alice Cohen"
+        },
+        "file": {
+          "id_": "file-901",
+          "name": "manifest.txt",
+          "type": "text/plain"
+        },
+        "description": "Manifest for the Haifa run.",
+        "room_type": "c",
+        "room_name": "ops-general",
+        "usersCount": 42
+      }
+    },
+    {
+      "name": "message-with-mentions-and-channels",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "room-ops-001",
+        "msg": "@bob please sync with #logistics on the Ashdod slot.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "updatedAt_": "{{now}}",
+        "u": {
+          "id_": "user-alice-001",
+          "username": "alice",
+          "name": "Alice Cohen"
+        },
+        "mentions": [
+          {
+            "id_": "user-bob-002",
+            "username": "bob",
+            "name": "Bob Levi"
+          },
+          {
+            "id_": "user-dana-003",
+            "username": "dana",
+            "name": "Dana Mizrahi"
+          }
+        ],
+        "channels": [
+          {
+            "id_": "room-logistics-002",
+            "name": "logistics"
+          }
+        ],
+        "room_type": "p",
+        "room_name": "ops-private",
+        "usersCount": 8
+      }
+    },
+    {
+      "name": "direct-message-two-participants",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "useralice001userbob002",
+        "msg": "Direct room: midur_ids resolves to both participants.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "u": {
+          "id_": "useralice001",
+          "username": "alice",
+          "name": "Alice Cohen"
+        },
+        "room_type": "direct",
+        "usersCount": 2
+      }
+    },
+    {
+      "name": "direct-message-self-room",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "useralice001",
+        "msg": "Self direct room: midur_ids is just this user.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "u": {
+          "id_": "useralice001",
+          "username": "alice",
+          "name": "Alice Cohen"
+        },
+        "room_type": "direct",
+        "usersCount": 1
+      }
+    },
+    {
+      "name": "message-with-urls",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "room-ops-001",
+        "msg": "Tracking pages: https://example.test/track/1 and https://example.test/track/2",
+        "from": "dana",
+        "ts": "{{past}}",
+        "u": {
+          "id_": "user-dana-003",
+          "username": "dana",
+          "name": "Dana Mizrahi"
+        },
+        "urlStrings": [
+          "https://example.test/track/1",
+          "https://example.test/track/2"
+        ],
+        "room_type": "c",
+        "room_name": "ops-general",
+        "usersCount": 42
+      }
+    },
+    {
+      "name": "deleted-by-t-flag",
+      "expect": "deleted",
+      "id_of": "group-message-source-aliases",
+      "message": {
+        "id_": "{{id}}",
+        "rid": "room-ops-001",
+        "msg": "t is set, so the service deletes this document by id and stops.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "u": {
+          "id_": "user-alice-001",
+          "username": "alice"
+        },
+        "t": true,
+        "room_type": "c",
+        "usersCount": 42
+      }
+    },
+    {
+      "name": "minimal-id-only",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id}}"
+      }
+    },
+    {
+      "name": "no-room-int-id-utc-suffix-nulls",
+      "expect": "indexed",
+      "message": {
+        "id_": "{{id_int}}",
+        "rid": null,
+        "msg": "No room id, so midur_ids stays absent. Numeric id, Z-suffixed timestamps, explicit nulls.",
+        "from": null,
+        "ts": "{{past_z}}",
+        "updatedAt_": "{{now_z}}",
+        "file": null,
+        "description": null,
+        "u": null,
+        "mentions": null,
+        "channels": null,
+        "urlStrings": null,
+        "room_type": null,
+        "room_name": null,
+        "usersCount": null
+      }
+    }
+  ]
+}

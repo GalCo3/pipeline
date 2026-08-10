@@ -44,9 +44,7 @@ def reset_telemetry() -> Generator[None]:
 
 def test_configure_telemetry_successful() -> None:
     service_name = "test-service"
-    configure_telemetry(
-        service_name=service_name, otlp_endpoint="localhost:4317"
-    )
+    configure_telemetry(service_name=service_name, otlp_endpoint="localhost:4317")
 
     # 1. Verify TracerProvider registration and Service Name Resource Attribute
     tracer_provider = trace.get_tracer_provider()
@@ -61,9 +59,7 @@ def test_configure_telemetry_successful() -> None:
 
 def test_telemetry_captures_in_memory() -> None:
     service_name = "in-memory-service"
-    configure_telemetry(
-        service_name=service_name, otlp_endpoint="localhost:4317"
-    )
+    configure_telemetry(service_name=service_name, otlp_endpoint="localhost:4317")
 
     # Access current providers
     tracer_provider = trace.get_tracer_provider()
@@ -157,9 +153,7 @@ def test_structured_telemetry_captures_in_memory() -> None:
 
     service_name = "structured-service"
     configure_logging(is_production=True)
-    configure_telemetry(
-        service_name=service_name, otlp_endpoint="localhost:4317"
-    )
+    configure_telemetry(service_name=service_name, otlp_endpoint="localhost:4317")
 
     logger_provider = get_logger_provider()
     log_exporter = InMemoryLogRecordExporter()

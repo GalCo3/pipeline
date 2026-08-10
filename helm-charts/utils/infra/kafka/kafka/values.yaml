@@ -28,9 +28,11 @@ kafka:
     persistence:
       enabled: true
       size: 2Gi
+    # Measured at ~586Mi / ~21m: a JVM sitting near its heap, so the memory
+    # request stays; only the CPU reservation comes down.
     resources:
       requests:
-        cpu: 200m
+        cpu: 100m
         memory: 768Mi
       limits:
         memory: 1536Mi
