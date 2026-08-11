@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Opposite of clean.sh: re-populates the pipeline with data. Recreates the
-# Elasticsearch index and alias (es-index job) and re-runs the demo producer,
-# which uploads the cargo sample documents to MinIO and produces ten example
-# messages per source — topics are auto-created on first produce.
+# Opposite of clean.sh: re-populates the pipeline with data. Re-applies the
+# index definitions and re-runs the demo producer, which uploads the cargo
+# sample documents to MinIO and produces ten example messages per source —
+# topics are auto-created on first produce.
 # Infrastructure must already be installed (tools/scripts/install.sh). This reuses the
 # already-built demo-producer image: after editing produce.py or its example
 # fixtures, re-run tools/scripts/install.sh so a fresh image tag is built.
@@ -46,8 +46,8 @@ rerun_job() {
     kubectl -n "$NAMESPACE" wait --for=condition=complete "job/$release" --timeout=300s
 }
 
-rerun_job es-index      local-infra/backing/elastic/es-index
-rerun_job demo-producer local-infra/tooling/demo-producer
+rerun_job index-definitions local-infra/tooling/index-definitions
+rerun_job demo-producer     local-infra/tooling/demo-producer
 
 echo "==> Starting consumers"
 for service in "${SERVICES[@]}"; do

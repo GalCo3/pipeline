@@ -1,0 +1,10 @@
+apiVersion: v2
+name: index-definitions
+description: Applies apps/jobs/index-definitions' layered index definitions to Elasticsearch.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../../library/hermes-common

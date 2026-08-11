@@ -12,13 +12,13 @@ Full usage, URLs and caveats: [README.md](./README.md).
 - `local-infra/` — everything the services run against, in three buckets:
   - `backing/` — what a service addresses by DNS name, each store with its UI
     in the same stack folder: `kafka/` (kafka + kafka-ui), `elastic/`
-    (elasticsearch + kibana + es-index), `mongodb/` (mongodb + mongo-express),
+    (elasticsearch + kibana), `mongodb/` (mongodb + mongo-express),
     plus `minio/`, `tika/` and the `chief-api/` mock.
   - `observability/` — `otel-operator`, `otel-collector`, and the Grafana
     stack (`mimir`, `loki`, `tempo`, `grafana`). Kept apart from `backing/`
     because no service names these; the collector finds them.
   - `tooling/` — operator-facing, nothing connects to them: `demo-producer`,
-    `headlamp`.
+    `index-definitions`, `headlamp`.
 - `links.txt` — every local URL, plain text.
 
 The scripts that drive these charts are **not** here — they build images from

@@ -21,7 +21,6 @@ helm-charts/
       elastic/
         elasticsearch/      Bitnami elasticsearch 22.1.6, single node, security off
         kibana/             Bitnami kibana 12.1.10, pointed at elasticsearch
-        es-index/           creates each service's index + mappings (idempotent)
       mongodb/
         mongodb/            Official mongo:8.0, standalone, database `hermes`
         mongo-express/      Mongo Express web UI
@@ -38,6 +37,8 @@ helm-charts/
     tooling/                operator-facing, nothing connects to these
       demo-producer/        suspended CronJob to trigger on demand, plus a
                             one-shot Job at install time
+      index-definitions/    suspended CronJob to trigger on demand; applies
+                            apps/jobs/index-definitions against real environments
       headlamp/             Kubernetes dashboard: pods, live logs, exec terminal
   links.txt                 every local URL, plain text
 ```
@@ -95,9 +96,9 @@ helm upgrade --install tempo          helm-charts/local-infra/observability/temp
 helm upgrade --install grafana        helm-charts/local-infra/observability/grafana       -n hermes --wait
 helm upgrade --install otel-operator  helm-charts/local-infra/observability/otel-operator -n hermes --wait
 helm upgrade --install otel-collector helm-charts/local-infra/observability/otel-collector -n hermes
-helm upgrade --install es-index       helm-charts/local-infra/backing/elastic/es-index                -n hermes
 helm upgrade --install cargo-lexical-lexical          helm-charts/services/cargo-lexical-lexical                    -n hermes
 helm upgrade --install demo-producer  helm-charts/local-infra/tooling/demo-producer           -n hermes
+helm upgrade --install index-definitions helm-charts/local-infra/tooling/index-definitions    -n hermes
 ```
 
 Check the result:
@@ -109,8 +110,8 @@ curl 'http://localhost:9200/cargo-files/_search?pretty'   # with port-forward ru
 ```
 
 Tear down:
-`helm -n hermes uninstall cargo demo-producer tika kafka minio elasticsearch \
-  mongodb kafka-ui kibana mongo-express headlamp es-index otel-collector otel-operator \
+`helm -n hermes uninstall cargo demo-producer index-definitions tika kafka minio elasticsearch \
+  mongodb kafka-ui kibana mongo-express headlamp otel-collector otel-operator \
   mimir loki tempo grafana`
 
 ## Triggering the demo producer
@@ -171,14 +172,12 @@ annotated pods    <--scrape-------------------------------- hermes-collector (pr
 
 ## Notes
 
-- **Index mappings.** `local-infra/backing/elastic/es-index` creates `cargo-files-000001` with an
-  explicit mapping for every `CargoEnrichedMessage` field and a write alias
-  `cargo-files` (the name cargo indexes to). The job is idempotent — an
-  existing index is left alone — so recreating the index means deleting it
-  first, then `helm upgrade --install es-index ...`. The mapping is
-  `dynamic: strict`: a field the mapping does not know about fails the write
-  instead of silently guessing a type, so model drift surfaces immediately (in
-  the DLS) rather than as a bad mapping.
+- **Index mappings.** Nothing in this stack creates an explicit mapping for the
+  local cluster's indices — a service's first write auto-creates its index
+  with Elasticsearch's own dynamic typing. `apps/jobs/index-definitions` (see
+  `local-infra/tooling/index-definitions`) applies explicit, `dynamic: strict`
+  mappings, but only against real environments (np/prep/prod); its definitions
+  don't match the local cluster's index names or aliasing.
 - **Dead-letter store.** Messages the service cannot process go to MongoDB,
   `hermes.dls` — browse them in Mongo Express.
 - **No OTLP collector.** `init_observability` exports to

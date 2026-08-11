@@ -1,0 +1,47 @@
+# Runs at install/upgrade time (see tools/scripts/install.sh), same as
+# demo-producer. Note the definitions under apps/jobs/index-definitions/definitions
+# are named for real environments (np/prep/prod) — e.g. a plain "cargo-lexical"
+# index, no alias — which does not match the aliased index name
+# (cargo-lexical-files) the cargo-lexical service itself reads and writes.
+fullnameOverride: index-definitions
+
+image:
+  registry: ""
+  repository: index-definitions
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: false
+
+# Runs to completion: applies every definition, then exits.
+restartPolicy: OnFailure
+backoffLimit: 3
+ttlSecondsAfterFinished: 600
+
+env:
+  ELASTIC_CONFIG__LOCAL_HOST: http://elasticsearch:9200
+  # np/prep/prod — closest match to a local cluster is np.
+  ENVIRONMENT: np
+
+secretEnv:
+  ELASTIC_CONFIG__USERNAME: elastic
+  ELASTIC_CONFIG__PASSWORD: changeme
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+podSecurityContext: {}
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+podAnnotations: {}

@@ -6,18 +6,100 @@ NAMESPACE="${NAMESPACE:-hermes}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CHARTS_DIR="$REPO_ROOT/helm-charts"
 
-# A fresh tag per build: Kubernetes caches images by tag, so rebuilding
-# :local would leave the old bits running.
-IMAGE_TAG="${IMAGE_TAG:-dev-$(date +%Y%m%d%H%M%S)}"
+# Docker Desktop's "kind" Kubernetes mode runs its own containerd, isolated
+# from the Docker Engine `docker build` uses — a locally built image is
+# invisible to the cluster (ImagePullBackOff, kubelet tries Docker Hub)
+# until it is explicitly imported. This throwaway, privileged pod chroots
+# into the node's filesystem so images can be piped straight into its
+# containerd via `ctr images import`, no registry involved. Best-effort: on
+# a setup where the cluster already shares the Docker image store (or this
+# isn't a single accessible local node), the pod just never comes up and we
+# fall back to the old behaviour instead of failing the whole install.
+LOADER_POD="kind-image-loader"
+LOAD_IMAGES=1
+
+ensure_image_loader() {
+    kubectl get pod "$LOADER_POD" >/dev/null 2>&1 && return 0
+
+    kubectl apply -f - >/dev/null <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: $LOADER_POD
+spec:
+  restartPolicy: Never
+  hostPID: true
+  tolerations:
+    - operator: Exists
+  containers:
+    - name: loader
+      image: alpine:3.20
+      command: ["sleep", "infinity"]
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /
+EOF
+    kubectl wait --for=condition=Ready "pod/$LOADER_POD" --timeout=60s >/dev/null
+}
+
+# Streams "$name:$tag" straight from the Docker Engine into the cluster
+# node's containerd. No-op (and non-fatal) once the loader can't be set up.
+load_image() {
+    [[ "$LOAD_IMAGES" == 1 ]] || return 0
+
+    if ! ensure_image_loader; then
+        echo "    (skipping cluster image load: could not set up loader pod)" >&2
+        LOAD_IMAGES=0
+        return 0
+    fi
+    docker save "$1:$2" | kubectl exec -i "$LOADER_POD" -- \
+        chroot /host ctr -n k8s.io images import - >/dev/null
+}
+
+# Builds "$name" (remaining args passed straight to `docker build`) into a
+# stable ":local" tag, then re-tags it by its own content-addressed image ID
+# and prints that ID. Docker's build cache already makes an unchanged build
+# a no-op; re-tagging by ID means the *tag* we hand to Helm also only changes
+# when the image's content actually does. A fresh timestamp tag every run
+# would force Kubernetes to restart every pod regardless of whether anything
+# changed — this way only the pods whose image actually changed get bounced.
+build_image() {
+    local name="$1"
+    shift
+    docker build -t "$name:local" "$@" >/dev/null
+    local id
+    id="$(docker image inspect --format '{{.Id}}' "$name:local")"
+    id="${id#sha256:}"
+    id="${id:0:12}"
+    docker tag "$name:local" "$name:$id"
+    load_image "$name" "$id"
+    echo "$id"
+}
 
 # Every service that has both a chart under services/ and a consumer image.
 SERVICES=(candy-reports-lexical cargo-lexical chat-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
-echo "==> Building images ($IMAGE_TAG)"
+echo "==> Building images"
+SERVICE_TAGS=()
 for service in "${SERVICES[@]}"; do
-    docker build -f "$REPO_ROOT/Dockerfile" --build-arg "SERVICE=$service" -t "$service:$IMAGE_TAG" "$REPO_ROOT"
+    tag="$(build_image "$service" -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=services \
+        --build-arg "NAME=$service" "$REPO_ROOT")"
+    echo "    $service -> $tag"
+    SERVICE_TAGS+=("$tag")
 done
-docker build -t "demo-producer:$IMAGE_TAG" "$REPO_ROOT/tools/demo-producer"
+DEMO_PRODUCER_TAG="$(build_image demo-producer "$REPO_ROOT/tools/demo-producer")"
+echo "    demo-producer -> $DEMO_PRODUCER_TAG"
+INDEX_DEFINITIONS_TAG="$(build_image index-definitions -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=jobs \
+    --build-arg NAME=index-definitions "$REPO_ROOT")"
+echo "    index-definitions -> $INDEX_DEFINITIONS_TAG"
+
+kubectl delete pod "$LOADER_POD" --ignore-not-found >/dev/null
 
 echo "==> Resolving chart dependencies"
 
@@ -88,15 +170,15 @@ install tika          local-infra/backing/tika                       --wait
 install kafka-ui      local-infra/backing/kafka/kafka-ui             --wait
 install kibana        local-infra/backing/elastic/kibana             --wait
 install mongo-express local-infra/backing/mongodb/mongo-express      --wait
-install headlamp      local-infra/tooling/headlamp                     --wait
 # chief-lexical enriches from this; see local-infra/backing/chief-api for what it stands in for.
-install chief-api     local-infra/backing/chief-api                    --wait
+install chief-api     local-infra/backing/chief-api                  --wait
+install headlamp      local-infra/tooling/headlamp                   --wait
 # Telemetry backends before the collector, which starts pushing as soon as it is up.
-install mimir         local-infra/observability/mimir              --wait
-install loki          local-infra/observability/loki               --wait
-install tempo         local-infra/observability/tempo              --wait
-install grafana       local-infra/observability/grafana            --wait
-install otel-operator local-infra/observability/otel-operator      --wait
+install mimir         local-infra/observability/mimir                --wait
+install loki          local-infra/observability/loki                 --wait
+install tempo         local-infra/observability/tempo                --wait
+install grafana       local-infra/observability/grafana              --wait
+install otel-operator local-infra/observability/otel-operator        --wait
 
 # The operator's webhook serving cert is regenerated by helm on every upgrade,
 # but nothing on the Deployment changes, so the running pod keeps serving the
@@ -129,10 +211,10 @@ done
 # exist yet dies on UNKNOWN_TOPIC_OR_PART — the topics are auto-created by the
 # producer. Every service reads with auto.offset.reset=earliest, so starting
 # after the produce still consumes the whole backlog.
-install es-index      local-infra/backing/elastic/es-index
-install demo-producer local-infra/tooling/demo-producer --set "image.tag=$IMAGE_TAG"
-for service in "${SERVICES[@]}"; do
-    install "$service" "services/$service" --set "image.tag=$IMAGE_TAG"
+install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
+install demo-producer     local-infra/tooling/demo-producer     --set "image.tag=$DEMO_PRODUCER_TAG"
+for i in "${!SERVICES[@]}"; do
+    install "${SERVICES[$i]}" "services/${SERVICES[$i]}" --set "image.tag=${SERVICE_TAGS[$i]}"
 done
 
 echo

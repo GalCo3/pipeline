@@ -106,9 +106,9 @@ in_pod minio sh -c '
 # process just gets them written straight back on the next restart.
 #
 # The wipe runs in a throwaway pod, which is the only way into the claim once
-# its owner is gone. It uses the image the es-index job already pins (so the
-# node has it cached) and the same UID as the charts, since the files it has to
-# unlink are owned by 10001.
+# its owner is gone. It uses curlimages/curl, already small and simple enough
+# to need no build of its own, and the same UID as the charts, since the files
+# it has to unlink are owned by 10001.
 wipe_telemetry() {
     local release="$1"
 
@@ -164,8 +164,8 @@ done
 # The consumers stay down. Their topics were just deleted, and a consumer
 # subscribed to a topic that no longer exists dies on UNKNOWN_TOPIC_OR_PART;
 # their memory requests would also leave the single dev node with no room for
-# the es-index and demo-producer job pods to schedule into. tools/scripts/populate.sh
-# recreates the indices, produces the examples, and starts them again.
+# the demo-producer job pod to schedule into. tools/scripts/populate.sh
+# produces the examples and starts them again.
 echo
-echo "Done. Consumers are stopped — run tools/scripts/populate.sh to recreate the"
-echo "indices, re-produce the examples, and start them."
+echo "Done. Consumers are stopped — run tools/scripts/populate.sh to re-produce"
+echo "the examples and start them."
