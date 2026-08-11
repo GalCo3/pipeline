@@ -1,5 +1,5 @@
 {
-  "topic": "cargo-lexical.files",
+  "topic": "raw.cargo-lexical",
   "examples": [
     {
       "name": "operational-txt-indexed",

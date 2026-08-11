@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from hermes.utils import parse_date_value
 
 
 class ChatUserMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     # Source payload mixes camelCase and snake_case, so every non-matching key
     # is aliased.
     id: str

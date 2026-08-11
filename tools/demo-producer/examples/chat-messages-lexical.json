@@ -1,5 +1,5 @@
 {
-  "topic": "chat-lexical.messages",
+  "topic": "raw.chat-messages-lexical",
   "examples": [
     {
       "name": "group-message-source-aliases",

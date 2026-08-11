@@ -83,7 +83,7 @@ build_image() {
 }
 
 # Every service that has both a chart under services/ and a consumer image.
-SERVICES=(candy-reports-lexical cargo-lexical chat-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+SERVICES=(candy-reports-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 echo "==> Building images"
 SERVICE_TAGS=()

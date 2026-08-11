@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from hermes.utils import parse_date_value
 
 
 class ChiefCommandContent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str | int
     name: str
     full_name: str
@@ -30,6 +32,8 @@ class ChiefCommandContent(BaseModel):
 
 
 class ChiefMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     type: str
     template_id: str

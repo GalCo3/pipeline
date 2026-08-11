@@ -6,7 +6,7 @@ requires-python = ">=3.14"
 members = [
     "candy-reports-lexical",
     "cargo-lexical",
-    "chat-lexical",
+    "chat-messages-lexical",
     "chat-rooms-lexical",
     "chat-users-lexical",
     "chief-lexical",
@@ -301,9 +301,9 @@ wheels = [
 ]
 
 [[package]]
-name = "chat-lexical"
+name = "chat-messages-lexical"
 version = "1.0.0"
-source = { virtual = "apps/services/chat-lexical" }
+source = { virtual = "apps/services/chat-messages-lexical" }
 dependencies = [
     { name = "connections" },
     { name = "observability" },

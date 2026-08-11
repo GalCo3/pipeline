@@ -43,7 +43,7 @@ S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://minio:9000")
 S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "minioadmin")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "minioadmin")
 S3_BUCKET = os.environ.get("S3_BUCKET", "cargo-lexical")
-# Comma-separated fixture names (`cargo-lexical,chat-lexical`); empty = all of them.
+# Comma-separated fixture names (`cargo-lexical,chat-messages-lexical`); empty = all of them.
 SOURCES = [name for name in os.environ.get("SOURCES", "").split(",") if name.strip()]
 # Every service parses timestamps with fromisoformat and falls back to dateutil,
 # so this format and its Z-suffixed variant are both accepted.

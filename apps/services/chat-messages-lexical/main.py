@@ -1,7 +1,3 @@
-from models import ChatEnrichedMessage, ChatMessage
-from settings import get_settings
-from utils import build_midur_ids
-
 from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
@@ -16,14 +12,18 @@ from hermes.observability import (
 )
 from hermes.utils import send_to_dls, site_error, with_indexed_at
 
-init_observability(service_name="chat-lexical")
+from models import ChatEnrichedMessage, ChatMessage
+from settings import get_settings
+from utils import build_midur_ids
+
+init_observability(service_name="chat-messages-lexical")
 logger = get_logger(__name__)
 messages_processed = TelemetryCounter(
-    "chat_lexical_messages_processed_total", allowed_labels=["status"]
+    "chat_messages_lexical_messages_processed_total", allowed_labels=["status"]
 )
-messages_sent_to_dls = TelemetryCounter("chat_lexical_messages_dls_total")
+messages_sent_to_dls = TelemetryCounter("chat_messages_lexical_messages_dls_total")
 message_duration = TelemetryHistogram(
-    "chat_lexical_message_duration", unit="s", allowed_labels=["status"]
+    "chat_messages_lexical_message_duration", unit="s", allowed_labels=["status"]
 )
 
 
@@ -47,7 +47,7 @@ def main():
                         site_error(
                             local_response,
                             remote_response,
-                            f"Failed to delete chat-lexical document {chat_message.id}",
+                            f"Failed to delete chat-messages-lexical document {chat_message.id}",
                         )
                     logger.info("Deleted chat message document", doc_id=chat_message.id)
                     messages_processed.inc(labels={"status": "deleted"})
@@ -68,9 +68,11 @@ def main():
                     site_error(
                         local_response,
                         remote_response,
-                        f"Failed to index chat-lexical document {chat_message.id}",
+                        f"Failed to index chat-messages-lexical document {chat_message.id}",
                     )
-                logger.info("Successfully indexed chat message document", doc_id=chat_message.id)
+                logger.info(
+                    "Successfully indexed chat message document", doc_id=chat_message.id
+                )
                 messages_processed.inc(labels={"status": "success"})
         except Exception as e:
             logger.error(
@@ -81,7 +83,11 @@ def main():
             messages_processed.inc(labels={"status": "error"})
             messages_sent_to_dls.inc()
             send_to_dls(
-                dls_handler, message, e, settings.mongo_config.database, settings.dls_collection
+                dls_handler,
+                message,
+                e,
+                settings.mongo_config.database,
+                settings.dls_collection,
             )
 
 

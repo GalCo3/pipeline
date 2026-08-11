@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from hermes.utils import parse_date_value
 
 
 class LabelItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     label_id: int
     label_name: str
     created: datetime
@@ -21,6 +23,8 @@ class LabelItem(BaseModel):
 
 
 class CargoMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     name: str
     holder: str | None = None  # only in non-operational

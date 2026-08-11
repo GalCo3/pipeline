@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from hermes.utils import parse_date_value
 
 
 class CandyReportsMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     creatingUserName: str
     actualUserName: str | None = None
@@ -48,21 +50,12 @@ class CandyReportsMessage(BaseModel):
             data["cell"] = hierarchy[2]
         return data
 
-    @field_validator(
-        "date",
-        "creationDate",
-        "lastUpdateTimeToTransfer",
-        mode="before",
-    )
+    @field_validator("date", "creationDate", "lastUpdateTimeToTransfer", mode="before")
     @classmethod
     def parse_mandatory_date(cls, value: str | int) -> datetime:
         return parse_date_value(value)
 
-    @field_validator(
-        "actualDate",
-        "lastDeletionDate",
-        mode="before",
-    )
+    @field_validator("actualDate", "lastDeletionDate", mode="before")
     @classmethod
     def parse_optional_date(cls, value: str | int | None) -> datetime | None:
         if value is None:

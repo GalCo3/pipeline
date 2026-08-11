@@ -14,7 +14,7 @@ class CandyReportsLexicalSettings(BaseSettings):
     mongo_config: BaseMongoConfig
 
     index_name: str = "candy-reports-lexical"
-    dls_collection: str = "candy_reports_lexical_dls"
+    dls_collection: str = "dead_letter_store"
 
     model_config = SettingsConfigDict(
         env_file=".env",

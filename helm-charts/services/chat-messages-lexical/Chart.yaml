@@ -1,5 +1,5 @@
 apiVersion: v2
-name: chat-lexical
+name: chat-messages-lexical
 description: Chat messages enrichment service — consumes Kafka, indexes chat messages to Elasticsearch.
 type: application
 version: 0.1.0
