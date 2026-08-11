@@ -4,7 +4,6 @@ workflow:
       changes:
         - "apps/**/*"
         - "libs/**/*"
-        - "Dockerfile"
     - if: '$CI_PIPELINE_SOURCE == "web"'
 
 stages:
@@ -34,25 +33,28 @@ build:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="${HOME}/.local/bin:${PATH}"
   script:
-    - python3 tools/ci/find_build.py > affected_services.txt
-    - cat affected_services.txt
+    - python3 tools/ci/find_build.py > affected_apps.txt
+    - cat affected_apps.txt
     - |
       buildah login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 
-      while read -r NAME; do
-        [ -z "${NAME}" ] && continue
+      while read -r ENTRY; do
+        [ -z "${ENTRY}" ] && continue
 
-        IMAGE_NAME="${NAME}"
-        SHA_DESTINATION="${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
-        LATEST_DESTINATION="${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:latest"
+        GROUP="${ENTRY%%/*}"
+        NAME="${ENTRY#*/}"
+
+        SHA_DESTINATION="${CI_REGISTRY_IMAGE}/${NAME}:${CI_COMMIT_SHORT_SHA}"
+        LATEST_DESTINATION="${CI_REGISTRY_IMAGE}/${NAME}:latest"
 
         buildah bud \
-          --file "${CI_PROJECT_DIR}/Dockerfile" \
-          --build-arg SERVICE="${NAME}" \
+          --file "${CI_PROJECT_DIR}/apps/Dockerfile" \
+          --build-arg GROUP="${GROUP}" \
+          --build-arg NAME="${NAME}" \
           --tag "${SHA_DESTINATION}" \
           "${CI_PROJECT_DIR}"
 
         buildah tag "${SHA_DESTINATION}" "${LATEST_DESTINATION}"
         buildah push "${SHA_DESTINATION}"
         buildah push "${LATEST_DESTINATION}"
-      done < affected_services.txt
+      done < affected_apps.txt

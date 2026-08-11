@@ -1,21 +1,22 @@
-"""Detect which services need a rebuild for the current commit range.
+"""Detect which apps need a rebuild for the current commit range.
 
 GitLab-runner-only: relies on CI_PROJECT_DIR/CI_COMMIT_BEFORE_SHA/CI_COMMIT_SHA,
 which are only set inside a GitLab CI job.
 
-A service is affected if either:
-  - a file changed inside the service's own directory, or
-  - a file changed inside a workspace package that the service depends on,
+An app is affected if either:
+  - a file changed inside the app's own directory, or
+  - a file changed inside a workspace package that the app depends on,
     directly or transitively (via `uv tree`, not by hand-parsing pyproject.toml,
-    so multi-hop package -> package -> service chains are caught too).
+    so multi-hop package -> package -> app chains are caught too).
 
 Changes that cannot alter what the image does at runtime are ignored, so a
-doc edit in a shared package does not fan out into a rebuild of every service
+doc edit in a shared package does not fan out into a rebuild of every app
 that depends on it.
 
-Writes one line per affected service name to stdout, e.g.:
+Writes one "<group>/<name>" line per affected app to stdout, e.g.:
 
-    cargo-lexical
+    services/cargo-lexical
+    jobs/index-definitions
 """
 
 import json
@@ -26,9 +27,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(os.environ["CI_PROJECT_DIR"])
 
+# Every app is built from the same shared Dockerfile.
+DOCKERFILE = Path("apps/Dockerfile")
+GROUPS = ("services", "jobs")
+
 # Files the image may well contain — the Dockerfile copies whole package
 # directories — but which nothing at runtime reads. Editing one of these in a
-# shared package would otherwise rebuild every service that depends on it.
+# shared package would otherwise rebuild every app that depends on it.
 IGNORED_SUFFIXES = {".md"}
 IGNORED_NAMES = {".gitignore", ".gitattributes"}
 
@@ -74,29 +79,34 @@ def main() -> None:
     members = {
         m["name"]: Path(m["path"]).resolve().relative_to(REPO_ROOT) for m in workspace["members"]
     }
-    services = {
-        name: path for name, path in members.items() if path.parts[:2] == ("apps", "services")
-    }
 
-    if changed is None or Path("Dockerfile") in changed:
-        # No prior commit to diff against, or the shared Dockerfile changed
-        # (every service is built from it): build everything.
-        affected = sorted(services)
-    elif not changed:
-        # Everything in the range was ignorable (docs and the like).
-        affected = []
-    else:
-        changed_members = {
-            name for name, path in members.items() if any(path in f.parents for f in changed)
+    affected: list[str] = []
+    for group in GROUPS:
+        group_members = {
+            name: path for name, path in members.items() if path.parts[:2] == ("apps", group)
         }
-        affected = [
-            name
-            for name in sorted(services)
-            if {m["name"] for m in uv_tree(package=name)["members"]} & changed_members
-        ]
 
-    for name in affected:
-        print(name)
+        if changed is None or DOCKERFILE in changed:
+            # No prior commit to diff against, or the shared Dockerfile
+            # changed (every app is built from it): build everything.
+            group_affected = sorted(group_members)
+        elif not changed:
+            # Everything in the range was ignorable (docs and the like).
+            group_affected = []
+        else:
+            changed_members = {
+                name for name, path in members.items() if any(path in f.parents for f in changed)
+            }
+            group_affected = [
+                name
+                for name in sorted(group_members)
+                if {m["name"] for m in uv_tree(package=name)["members"]} & changed_members
+            ]
+
+        affected.extend(f"{group}/{name}" for name in group_affected)
+
+    for entry in affected:
+        print(entry)
 
 
 if __name__ == "__main__":

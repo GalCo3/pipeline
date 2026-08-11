@@ -2,10 +2,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from settings import get_settings
-
 from hermes.connections import BaseElasticHandler
 from hermes.observability import get_logger, init_observability
+
+from settings import get_settings
 
 init_observability(service_name="index-definitions")
 logger = get_logger(__name__)

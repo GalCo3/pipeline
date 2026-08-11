@@ -2,9 +2,8 @@ from enum import StrEnum
 from functools import cache
 
 from dotenv import find_dotenv
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from hermes.connections import BaseElasticBasicConfig, BaseElasticCertConfig
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Environment(StrEnum):
