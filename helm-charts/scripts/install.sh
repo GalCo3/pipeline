@@ -11,7 +11,7 @@ REPO_ROOT="$(cd "$CHARTS_DIR/.." && pwd)"
 IMAGE_TAG="${IMAGE_TAG:-dev-$(date +%Y%m%d%H%M%S)}"
 
 # Every service that has both a chart under services/ and a consumer image.
-SERVICES=(cargo-lexical chat-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+SERVICES=(candy-reports-lexical cargo-lexical chat-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 echo "==> Building images ($IMAGE_TAG)"
 for service in "${SERVICES[@]}"; do

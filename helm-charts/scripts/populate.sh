@@ -11,7 +11,7 @@ set -euo pipefail
 NAMESPACE="${NAMESPACE:-hermes}"
 CHARTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-SERVICES=(cargo-lexical chat-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+SERVICES=(candy-reports-lexical cargo-lexical chat-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 # The consumers come up last, after the jobs, for two reasons: their memory
 # requests fill the single dev node, leaving nothing for the job pods to

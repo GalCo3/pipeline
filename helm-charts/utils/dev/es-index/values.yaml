@@ -7,6 +7,7 @@
 # adding one entry here and nothing else.
 #
 # Field lists mirror the enriched model each service indexes:
+#   candy-reports-lexical-reports  services/candy-reports-lexical/models.py::CandyReportsMessage
 #   cargo-lexical-files       services/cargo-lexical/models.py::CargoEnrichedMessage
 #   chat-lexical-messages     services/chat-lexical/models.py::ChatEnrichedMessage
 #   chat-rooms-lexical-rooms  services/chat-rooms-lexical/models.py::ChatRoomMessage
@@ -73,6 +74,67 @@ volumeMounts:
 # Shared by every index below: single-node dev cluster, so a replica would never
 # be allocated and the index would sit yellow forever.
 configFiles:
+  candy-reports-lexical-reports-000001.json:
+    aliases:
+      candy-reports-lexical-reports:
+        is_write_index: true
+    settings:
+      index:
+        number_of_shards: 1
+        number_of_replicas: 0
+    mappings:
+      dynamic: strict
+      properties:
+        # Stamped by every service at index/update time (hermes.utils.with_indexed_at).
+        indexed_at:
+          type: date
+        id:
+          type: keyword
+        creatingusername:
+          type: keyword
+        actualusername:
+          type: keyword
+        description:
+          type: text
+        type:
+          type: keyword
+        date:
+          type: date
+        actualdate:
+          type: date
+        isdeleted:
+          type: boolean
+        updatinguser:
+          type: keyword
+        lastdeletiondate:
+          type: date
+        eventid:
+          type: keyword
+        deleteauthor:
+          type: keyword
+        cellid:
+          type: keyword
+        realityid:
+          type: keyword
+        # The raw "frame/mclol/cell" string; the three segments are also split
+        # out into their own fields by the model's `transform` validator.
+        cellhierarchy:
+          type: keyword
+        creationdate:
+          type: date
+        lastupdatetimetotransfer:
+          type: date
+        frame:
+          type: keyword
+        mclol:
+          type: keyword
+        cell:
+          type: keyword
+        mirageaction:
+          type: keyword
+        militarydistrictid:
+          type: long
+
   cargo-lexical-files-000001.json:
     aliases:
       cargo-lexical-files:
