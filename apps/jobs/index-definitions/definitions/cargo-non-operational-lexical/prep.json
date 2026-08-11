@@ -5,13 +5,13 @@
       "source_link": {
         "type": "keyword",
         "script": {
-          "source": "emit('https://cargo.np.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
+          "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
           "lang": "painless"
         }
       }
     }
   },
   "settings": {
-    "number_of_shards": 1
+    "number_of_shards": 2
   }
 }

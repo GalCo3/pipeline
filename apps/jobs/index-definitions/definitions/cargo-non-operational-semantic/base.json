@@ -1,65 +1,60 @@
 {
-  "cargo_files_vector_v2": {
+  "cargo_non_operational_files_vector_v2": {
     "aliases": {
-      "cargo_files_vector": {},
-      "cargo_vector": {}
+      "cargo_non_operational_files_vector": {}
     },
     "mappings": {
       "dynamic": "false",
       "runtime": {
-        "_captions_line": {
+        "captions_line": {
           "type": "keyword",
           "script": {
-            "source": "emit(\"מזהה~שם קובץ~תיאור~בעלים\")",
+            "source": "emit('נ\"צ-שם\"' + params[\"_source\"][\"name\"] + ' ' + params[\"_source\"][\"path\"])",
             "lang": "painless"
           }
         },
-        "_source_link": {
+        "source_link": {
           "type": "keyword",
           "script": {
             "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
             "lang": "painless"
           }
         },
-        "_title_line": {
+        "title_line": {
           "type": "keyword",
           "script": {
-            "source": "emit(params[\"_source\"][\"id\"]+\"~\"+params[\"_source\"][\"name\"]+\"~\"+params[\"_source\"][\"description\"]+\"~\"+params[\"_source\"][\"holder\"])",
+            "source": "emit(params[\"_source\"][\"id\"]+'-'+params[\"_source\"][\"name\"]+'-'+params[\"_source\"][\"description\"]+'-'+'var_emit(params[\"_source\"][\"holder\"])')",
             "lang": "painless"
           }
         }
       },
       "properties": {
-        "__chunking_version": {
+        "_chunking_version": {
           "type": "keyword"
         },
-        "__embedding_version": {
+        "_embedding_version": {
           "type": "keyword"
         },
-        "__empty__": {
+        "_empty__": {
           "type": "text",
           "term_vector": "with_positions_offsets"
         },
-        "__high__0": {
+        "_high__": {
           "type": "alias",
           "path": "name"
         },
-        "__low__0": {
+        "_low_0": {
           "type": "alias",
           "path": "chunk_content"
         },
-        "__low__1": {
+        "_low_1": {
           "type": "alias",
           "path": "path"
         },
-        "__medium__0": {
-          "type": "alias",
-          "path": "__empty__"
-        },
-        "__metadata_fields": {
+        "_metadata_fields": {
           "type": "keyword"
         },
-        "__semantic_field": {
+        "_semantic_field": {
           "type": "keyword"
         },
         "_enrichment_tracking": {
@@ -80,15 +75,8 @@
         "chunk_order": {
           "type": "integer"
         },
-        "containing_folder": {
-          "type": "keyword"
-        },
         "created": {
           "type": "date"
-        },
-        "date": {
-          "type": "alias",
-          "path": "last_modified"
         },
         "delete_date": {
           "type": "date"
@@ -104,31 +92,10 @@
         "embedding": {
           "type": "dense_vector",
           "dims": 1024,
-          "index": true,
+          "index": "true",
           "similarity": "cosine",
           "index_options": {
-            "type": "int8_hnsw",
-            "m": 16,
-            "ef_construction": 100
-          }
-        },
-        "file_labels": {
-          "properties": {
-            "created": {
-              "type": "date"
-            },
-            "group_id": {
-              "type": "integer"
-            },
-            "group_name": {
-              "type": "keyword"
-            },
-            "label_id": {
-              "type": "integer"
-            },
-            "label_name": {
-              "type": "keyword"
-            }
+            "type": "int8_hnsw"
           }
         },
         "highlighted_field": {
@@ -138,14 +105,8 @@
         "holder": {
           "type": "keyword"
         },
-        "id": {
+        "size": {
           "type": "integer"
-        },
-        "is_verified": {
-          "type": "boolean"
-        },
-        "labels": {
-          "type": "keyword"
         },
         "last_modified": {
           "type": "date"
@@ -162,18 +123,10 @@
           "term_vector": "with_positions_offsets"
         },
         "path_id": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "path_list": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "reality": {
           "type": "keyword"
         },
-        "reality_id": {
-          "type": "integer"
+        "path_list": {
+          "type": "keyword"
         },
         "s3_bucket": {
           "type": "text",
@@ -200,9 +153,9 @@
             }
           }
         },
-        "number_of_shards": "43",
-        "provided_name": "cargo_files_vector_v2",
-        "creation_date": "1778135548825",
+        "number_of_shards": "20",
+        "provided_name": "cargo_non_operational_files_vector_v2",
+        "creation_date": "1778867326917",
         "analysis": {
           "filter": {
             "idf_acronyms_filter": {
@@ -212,16 +165,6 @@
             }
           },
           "analyzer": {
-            "dot_split_analyzer": {
-              "filter": [
-                "lowercase"
-              ],
-              "char_filter": [
-                "dot_to_space"
-              ],
-              "type": "custom",
-              "tokenizer": "whitespace"
-            },
             "default": {
               "filter": [
                 "lowercase"
@@ -246,14 +189,14 @@
           },
           "char_filter": {
             "dot_to_space": {
-              "pattern": "\\.",
+              "pattern": "[}{.,!?;:\\u005b-\\u0060]",
               "type": "pattern_replace",
               "replacement": " "
             }
           }
         },
         "number_of_replicas": "2",
-        "uuid": "V0AfH5UjT_mnXpHa4akSDw",
+        "uuid": "LQ8Y7beITtqKqy31i0n4",
         "version": {
           "created": "8536000"
         }

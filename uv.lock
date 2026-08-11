@@ -309,6 +309,7 @@ dependencies = [
     { name = "observability" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dateutil" },
     { name = "utils" },
 ]
 
@@ -318,6 +319,7 @@ requires-dist = [
     { name = "observability", editable = "libs/observability" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "utils", editable = "libs/utils" },
 ]
 
@@ -330,6 +332,7 @@ dependencies = [
     { name = "observability" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dateutil" },
     { name = "utils" },
 ]
 
@@ -339,6 +342,7 @@ requires-dist = [
     { name = "observability", editable = "libs/observability" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "utils", editable = "libs/utils" },
 ]
 
@@ -351,6 +355,7 @@ dependencies = [
     { name = "observability" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dateutil" },
     { name = "utils" },
 ]
 
@@ -360,6 +365,7 @@ requires-dist = [
     { name = "observability", editable = "libs/observability" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "utils", editable = "libs/utils" },
 ]
 

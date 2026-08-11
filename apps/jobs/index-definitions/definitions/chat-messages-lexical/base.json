@@ -1,0 +1,305 @@
+{
+  "aliases": {
+    "chat_messages": {}
+  },
+  "mappings": {
+    "dynamic": "false",
+    "runtime": {
+      "_source_link": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('https://chat.idf.cts/' + params[\"_source\"][\"room_type\"] + '/' + params[\"_source\"][\"room_name\"] + '?msg=' + params[\"_source\"][\"id\"])",
+          "lang": "painless"
+        }
+      }
+    },
+    "properties": {
+      "__empty__": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "__low__0": {
+        "type": "alias",
+        "path": "msg"
+      },
+      "__low__1": {
+        "type": "alias",
+        "path": "file.name"
+      },
+      "_enrichment_tracking": {
+        "type": "keyword"
+      },
+      "_index_name": {
+        "type": "keyword"
+      },
+      "_index_time": {
+        "type": "date"
+      },
+      "_updatedat": {
+        "type": "date"
+      },
+      "channels": {
+        "properties": {
+          "_id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "term_vector": "with_positions_offsets",
+            "analyzer": "default",
+            "search_analyzer": "idf_acronyms_search_analyzer"
+          }
+        }
+      },
+      "doc_date_field": {
+        "type": "alias",
+        "path": "ts"
+      },
+      "file": {
+        "properties": {
+          "_id": {
+            "type": "keyword"
+          },
+          "channels": {
+            "properties": {
+              "name": {
+                "type": "text",
+                "term_vector": "with_positions_offsets",
+                "analyzer": "default",
+                "search_analyzer": "idf_acronyms_search_analyzer"
+              }
+            }
+          },
+          "name": {
+            "type": "text",
+            "term_vector": "with_positions_offsets",
+            "analyzer": "default",
+            "search_analyzer": "idf_acronyms_search_analyzer"
+          },
+          "type": {
+            "type": "keyword"
+          }
+        }
+      },
+      "from": {
+        "type": "keyword"
+      },
+      "highlighted_field": {
+        "type": "alias",
+        "path": "msg"
+      },
+      "id": {
+        "type": "keyword"
+      },
+      "mentions": {
+        "properties": {
+          "_id": {
+            "type": "keyword"
+          },
+          "channels": {
+            "properties": {
+              "name": {
+                "type": "text",
+                "term_vector": "with_positions_offsets",
+                "analyzer": "default",
+                "search_analyzer": "idf_acronyms_search_analyzer"
+              }
+            }
+          },
+          "file": {
+            "properties": {
+              "channels": {
+                "properties": {
+                  "name": {
+                    "type": "text",
+                    "term_vector": "with_positions_offsets",
+                    "analyzer": "default",
+                    "search_analyzer": "idf_acronyms_search_analyzer"
+                  }
+                }
+              },
+              "name": {
+                "type": "text",
+                "term_vector": "with_positions_offsets",
+                "analyzer": "default",
+                "search_analyzer": "idf_acronyms_search_analyzer"
+              }
+            }
+          },
+          "name": {
+            "type": "text",
+            "term_vector": "with_positions_offsets",
+            "analyzer": "default",
+            "search_analyzer": "idf_acronyms_search_analyzer"
+          },
+          "username": {
+            "type": "keyword"
+          }
+        }
+      },
+      "midur_ids": {
+        "type": "keyword"
+      },
+      "msg": {
+        "type": "text",
+        "term_vector": "with_positions_offsets",
+        "analyzer": "default",
+        "search_analyzer": "idf_acronyms_search_analyzer"
+      },
+      "rid": {
+        "type": "keyword"
+      },
+      "room_name": {
+        "type": "keyword"
+      },
+      "room_type": {
+        "type": "keyword"
+      },
+      "t": {
+        "type": "boolean"
+      },
+      "ts": {
+        "type": "date"
+      },
+      "u": {
+        "properties": {
+          "_id": {
+            "type": "keyword"
+          },
+          "channels": {
+            "properties": {
+              "name": {
+                "type": "text",
+                "term_vector": "with_positions_offsets",
+                "analyzer": "default",
+                "search_analyzer": "idf_acronyms_search_analyzer"
+              }
+            }
+          },
+          "file": {
+            "properties": {
+              "channels": {
+                "properties": {
+                  "name": {
+                    "type": "text",
+                    "term_vector": "with_positions_offsets",
+                    "analyzer": "default",
+                    "search_analyzer": "idf_acronyms_search_analyzer"
+                  }
+                }
+              },
+              "name": {
+                "type": "text",
+                "term_vector": "with_positions_offsets",
+                "analyzer": "default",
+                "search_analyzer": "idf_acronyms_search_analyzer"
+              }
+            }
+          },
+          "mentions": {
+            "properties": {
+              "channels": {
+                "properties": {
+                  "name": {
+                    "type": "text",
+                    "term_vector": "with_positions_offsets",
+                    "analyzer": "default",
+                    "search_analyzer": "idf_acronyms_search_analyzer"
+                  }
+                }
+              },
+              "file": {
+                "properties": {
+                  "channels": {
+                    "properties": {
+                      "name": {
+                        "type": "text",
+                        "term_vector": "with_positions_offsets",
+                        "analyzer": "default",
+                        "search_analyzer": "idf_acronyms_search_analyzer"
+                      }
+                    }
+                  },
+                  "name": {
+                    "type": "text",
+                    "term_vector": "with_positions_offsets",
+                    "analyzer": "default",
+                    "search_analyzer": "idf_acronyms_search_analyzer"
+                  }
+                }
+              },
+              "name": {
+                "type": "text",
+                "term_vector": "with_positions_offsets",
+                "analyzer": "default",
+                "search_analyzer": "idf_acronyms_search_analyzer"
+              },
+              "username": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "urlstrings": {
+        "type": "keyword"
+      }
+    }
+  },
+  "settings": {
+    "index": {
+      "routing": {
+        "allocation": {
+          "include": {
+            "_tier_preference": "data_content"
+          }
+        }
+      },
+      "number_of_shards": "18",
+      "provided_name": "chat_messages_v2",
+      "creation_date": "1778073800709",
+      "analysis": {
+        "filter": {
+          "idf_acronyms_filter": {
+            "type": "synonym_graph",
+            "updateable": "true",
+            "synonyms_set": "idf_acronyms"
+          }
+        },
+        "analyzer": {
+          "default": {
+            "filter": [
+              "lowercase"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
+          },
+          "idf_acronyms_search_analyzer": {
+            "filter": [
+              "lowercase",
+              "idf_acronyms_filter"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
+          }
+        },
+        "char_filter": {
+          "dot_to_space": {
+            "pattern": "[}{.,!?;:\\u005b-\\u0060]",
+            "type": "pattern_replace",
+            "replacement": " "
+          }
+        }
+      },
+      "number_of_replicas": "2",
+      "uuid": "PGeFnYZ1RTOigh32-Od4SA",
+      "version": {
+        "created": "8536000"
+      }
+    }
+  }
+}
+

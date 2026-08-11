@@ -2,10 +2,10 @@
   "aliases": {},
   "mappings": {
     "runtime": {
-      "source_link": {
+      "_source_link": {
         "type": "keyword",
         "script": {
-          "source": "emit('https://cargo.np.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
+          "source": "emit('https://pkuda.np.idf.cts/document/' + params[\"_source\"][\"id\"])",
           "lang": "painless"
         }
       }
