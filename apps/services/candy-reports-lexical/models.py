@@ -9,27 +9,27 @@ from hermes.utils import parse_date_value
 
 class CandyReportsMessage(BaseModel):
     id: str
-    creatingusername: str
-    actualusername: str | None = None
+    creatingUserName: str
+    actualUserName: str | None = None
     description: str
     type: str
     date: datetime
-    actualdate: datetime | None = None
-    isdeleted: bool
-    updatinguser: str | None = None
-    lastdeletiondate: datetime | None = None
-    eventid: str
-    deleteauthor: str | None = None
-    cellid: str
-    realityid: str
-    cellhierarchy: str
-    creationdate: datetime
-    lastupdatetimetotransfer: datetime
+    actualDate: datetime | None = None
+    isDeleted: bool
+    updatingUser: str | None = None
+    lastDeletionDate: datetime | None = None
+    eventId: str
+    deleteAuthor: str | None = None
+    cellId: str
+    realityId: str
+    cellHierarchy: str
+    creationDate: datetime
+    lastUpdateTimeToTransfer: datetime
     frame: str | None = None
     mclol: str | None = None
     cell: str | None = None
-    mirageaction: str | None = None
-    militarydistrictid: int
+    mirageAction: str | None = None
+    militaryDistrictId: int
 
     @model_validator(mode="before")
     @classmethod
@@ -37,10 +37,10 @@ class CandyReportsMessage(BaseModel):
         if not data:
             return {}
         data["id"] = str(data["id"])
-        data["eventid"] = str(data["eventid"])
-        data["cellid"] = str(data["cellid"])
-        data["realityid"] = str(data["realityid"])
-        cell_hierarchy: str = data["cellhierarchy"]
+        data["eventId"] = str(data["eventId"])
+        data["cellId"] = str(data["cellId"])
+        data["realityId"] = str(data["realityId"])
+        cell_hierarchy: str = data["cellHierarchy"]
         if cell_hierarchy:
             hierarchy = cell_hierarchy.split("/")
             data["frame"] = hierarchy[0]
@@ -50,8 +50,8 @@ class CandyReportsMessage(BaseModel):
 
     @field_validator(
         "date",
-        "creationdate",
-        "lastupdatetimetotransfer",
+        "creationDate",
+        "lastUpdateTimeToTransfer",
         mode="before",
     )
     @classmethod
@@ -59,8 +59,8 @@ class CandyReportsMessage(BaseModel):
         return parse_date_value(value)
 
     @field_validator(
-        "actualdate",
-        "lastdeletiondate",
+        "actualDate",
+        "lastDeletionDate",
         mode="before",
     )
     @classmethod
