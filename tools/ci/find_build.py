@@ -9,6 +9,10 @@ A service is affected if either:
     directly or transitively (via `uv tree`, not by hand-parsing pyproject.toml,
     so multi-hop package -> package -> service chains are caught too).
 
+Changes that cannot alter what the image does at runtime are ignored, so a
+doc edit in a shared package does not fan out into a rebuild of every service
+that depends on it.
+
 Writes one line per affected service name to stdout, e.g.:
 
     cargo-lexical
@@ -22,9 +26,23 @@ from pathlib import Path
 
 REPO_ROOT = Path(os.environ["CI_PROJECT_DIR"])
 
+# Files the image may well contain — the Dockerfile copies whole package
+# directories — but which nothing at runtime reads. Editing one of these in a
+# shared package would otherwise rebuild every service that depends on it.
+IGNORED_SUFFIXES = {".md"}
+IGNORED_NAMES = {".gitignore", ".gitattributes"}
+
+
+def is_ignored(path: Path) -> bool:
+    return path.suffix in IGNORED_SUFFIXES or path.name in IGNORED_NAMES
+
 
 def changed_files() -> set[Path] | None:
-    """Returns None if there's no prior commit to diff against (first push to the repo)."""
+    """Returns None if there's no prior commit to diff against (first push to the repo).
+
+    An empty set means every changed file was ignorable, which is not the same
+    thing: nothing needs building.
+    """
     before = os.environ["CI_COMMIT_BEFORE_SHA"]
     after = os.environ["CI_COMMIT_SHA"]
 
@@ -38,7 +56,7 @@ def changed_files() -> set[Path] | None:
         text=True,
         check=True,
     ).stdout
-    return {Path(f) for f in diff.splitlines()}
+    return {path for f in diff.splitlines() if not is_ignored(path := Path(f))}
 
 
 def uv_tree(*, package: str | None = None) -> dict:
@@ -62,6 +80,9 @@ def main() -> None:
         # No prior commit to diff against, or the shared Dockerfile changed
         # (every service is built from it): build everything.
         affected = sorted(services)
+    elif not changed:
+        # Everything in the range was ignorable (docs and the like).
+        affected = []
     else:
         changed_members = {
             name for name, path in members.items() if any(path in f.parents for f in changed)
