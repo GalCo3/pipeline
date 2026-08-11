@@ -55,7 +55,7 @@ class CandyReportsMessage(BaseModel):
         mode="before",
     )
     @classmethod
-    def parse_mandatory_date(cls, value: str) -> datetime:
+    def parse_mandatory_date(cls, value: str | int) -> datetime:
         return parse_date_value(value)
 
     @field_validator(
@@ -64,7 +64,7 @@ class CandyReportsMessage(BaseModel):
         mode="before",
     )
     @classmethod
-    def parse_optional_date(cls, value: str | None) -> datetime | None:
+    def parse_optional_date(cls, value: str | int | None) -> datetime | None:
         if value is None:
             return None
         return parse_date_value(value)
