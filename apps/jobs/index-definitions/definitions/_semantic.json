@@ -1,0 +1,40 @@
+{
+  "mappings": {
+    "properties": {
+      "__chunking_version": {
+        "type": "keyword"
+      },
+      "__embedding_version": {
+        "type": "keyword"
+      },
+      "__metadata_fields": {
+        "type": "keyword"
+      },
+      "__semantic_field": {
+        "type": "keyword"
+      },
+      "chunk_content": {
+        "type": "text",
+        "search_analyzer": "idf_acronyms_search_analyzer",
+        "term_vector": "with_positions_offsets"
+      },
+      "chunk_order": {
+        "type": "integer"
+      },
+      "embedding": {
+        "type": "dense_vector",
+        "dims": 1024,
+        "index": true,
+        "similarity": "cosine",
+        "index_options": {
+          "type": "int8_hnsw",
+          "m": 16,
+          "ef_construction": 100
+        }
+      },
+      "parent_id": {
+        "type": "keyword"
+      }
+    }
+  }
+}

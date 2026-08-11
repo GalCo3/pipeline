@@ -2,7 +2,7 @@
 #
 # chief-lexical enriches every indexed command by GETting
 # `<doc_path_template>.format(id)` and reading `documentContent` from the JSON
-# body (services/chief-lexical/utils.py::extract_chief_command_content). No such
+# body (apps/services/chief-lexical/utils.py::extract_chief_command_content). No such
 # API exists locally, so without this every index-path message would fail with
 # ChiefAPIError and land in the dead letter store.
 #
@@ -16,7 +16,7 @@
 # Only the six `index-*` examples ever reach here: the `deleted` ones return
 # before the API call, and the `metadata-update-*` ones have
 # metro_last_update_date > content_last_update_date, so the content is taken as
-# unchanged (services/chief-lexical/main.py). The other four examples borrow
+# unchanged (apps/services/chief-lexical/main.py). The other four examples borrow
 # their id from an index example via `id_of`, so 01/02/05/06/07/10 are the whole
 # set of ids that are ever fetched; anything else gets fallback.json.
 fullnameOverride: chief-api
@@ -74,7 +74,7 @@ configFiles:
         }
     }
 
-  # Shape of one entry: services/chief-lexical/models.py::ChiefCommandContent.
+  # Shape of one entry: apps/services/chief-lexical/models.py::ChiefCommandContent.
   # `text` is HTML because the service strips it with BeautifulSoup into
   # `cleaned_text` (utils.py::convert_chief_command joins `full_name` + text).
 

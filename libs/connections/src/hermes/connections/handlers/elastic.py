@@ -2,7 +2,7 @@ import logging
 from collections.abc import Generator
 from typing import Any
 
-from elasticsearch import Elasticsearch, helpers
+from elasticsearch import BadRequestError, Elasticsearch, helpers
 
 from ..config_models.elastic import (
     BaseElasticBasicConfig,
@@ -350,22 +350,49 @@ class BaseElasticHandler:
         self,
         name: str,
         *,
-        properties: dict[str, Any],
-        runtime: dict[str, Any],
+        mapping: dict[str, Any],
         is_multisite: bool = False,
     ) -> None:
-        body: dict[str, Any] = {"properties": properties}
-
-        if runtime:
-            body["runtime"] = runtime
-
-        self.local_client.indices.put_mapping(index=name, **body)
+        self.local_client.indices.put_mapping(index=name, **mapping)
 
         if is_multisite and self.remote_client:
-            self.remote_client.indices.put_mapping(index=name, **body)
+            self.remote_client.indices.put_mapping(index=name, **mapping)
 
     def delete_index(self, name: str, is_multisite: bool = False) -> None:
         self.local_client.indices.delete(index=name)
 
         if is_multisite and self.remote_client:
             self.remote_client.indices.delete(index=name)
+
+    def index_exists(self, name: str) -> bool:
+        return bool(self.local_client.indices.exists(index=name))
+
+    def put_aliases(
+        self, name: str, *, aliases: dict[str, Any], is_multisite: bool = False
+    ) -> None:
+        for alias_name, alias_body in aliases.items():
+            self.local_client.indices.put_alias(index=name, name=alias_name, **alias_body)
+
+            if is_multisite and self.remote_client:
+                self.remote_client.indices.put_alias(index=name, name=alias_name, **alias_body)
+
+    def put_settings(
+        self, name: str, *, settings: dict[str, Any], is_multisite: bool = False
+    ) -> None:
+        def _apply(client: Elasticsearch) -> None:
+            try:
+                client.indices.put_settings(index=name, settings=settings)
+            except BadRequestError as e:
+                # Static settings (e.g. analysis) can only be changed while closed.
+                if "open ind" not in str(e).lower():
+                    raise
+                client.indices.close(index=name)
+                try:
+                    client.indices.put_settings(index=name, settings=settings)
+                finally:
+                    client.indices.open(index=name)
+
+        _apply(self.local_client)
+
+        if is_multisite and self.remote_client:
+            _apply(self.remote_client)

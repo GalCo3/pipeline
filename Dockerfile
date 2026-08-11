@@ -8,12 +8,12 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-COPY --parents packages/*/pyproject.toml services/*/pyproject.toml ./
+COPY --parents libs/*/pyproject.toml apps/services/*/pyproject.toml ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --package "${SERVICE}" --no-install-workspace
 
-COPY packages/ packages/
-COPY services/${SERVICE}/ services/${SERVICE}/
+COPY libs/ libs/
+COPY apps/services/${SERVICE}/ apps/services/${SERVICE}/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --package "${SERVICE}" --no-editable
 
@@ -29,8 +29,8 @@ ENV SERVICE=${SERVICE} \
 
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/services/${SERVICE} /app/services/${SERVICE}
+COPY --from=builder /app/apps/services/${SERVICE} /app/apps/services/${SERVICE}
 
 USER 1001
 
-CMD ["sh", "-c", "exec python \"services/$SERVICE/main.py\""]
+CMD ["sh", "-c", "exec python \"apps/services/$SERVICE/main.py\""]

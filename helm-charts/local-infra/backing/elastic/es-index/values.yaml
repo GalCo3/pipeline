@@ -7,12 +7,12 @@
 # adding one entry here and nothing else.
 #
 # Field lists mirror the enriched model each service indexes:
-#   candy-reports-lexical-reports  services/candy-reports-lexical/models.py::CandyReportsMessage
-#   cargo-lexical-files       services/cargo-lexical/models.py::CargoEnrichedMessage
-#   chat-lexical-messages     services/chat-lexical/models.py::ChatEnrichedMessage
-#   chat-rooms-lexical-rooms  services/chat-rooms-lexical/models.py::ChatRoomMessage
-#   chat-users-lexical-users  services/chat-users-lexical/models.py::ChatUserMessage
-#   chief-lexical             services/chief-lexical/models.py::ChiefEnrichedMessage
+#   candy-reports-lexical-reports  apps/services/candy-reports-lexical/models.py::CandyReportsMessage
+#   cargo-lexical-files       apps/services/cargo-lexical/models.py::CargoEnrichedMessage
+#   chat-lexical-messages     apps/services/chat-lexical/models.py::ChatEnrichedMessage
+#   chat-rooms-lexical-rooms  apps/services/chat-rooms-lexical/models.py::ChatRoomMessage
+#   chat-users-lexical-users  apps/services/chat-users-lexical/models.py::ChatUserMessage
+#   chief-lexical             apps/services/chief-lexical/models.py::ChiefEnrichedMessage
 # (each index is named `<logical name>-000001` and reached through a write alias
 # of the logical name, which is what every service's INDEX_NAME points at.)
 # `dynamic: strict` means a model field missing here fails the write, so keep them

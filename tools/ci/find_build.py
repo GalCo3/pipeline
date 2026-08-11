@@ -74,7 +74,9 @@ def main() -> None:
     members = {
         m["name"]: Path(m["path"]).resolve().relative_to(REPO_ROOT) for m in workspace["members"]
     }
-    services = {name: path for name, path in members.items() if path.parts[:1] == ("services",)}
+    services = {
+        name: path for name, path in members.items() if path.parts[:2] == ("apps", "services")
+    }
 
     if changed is None or Path("Dockerfile") in changed:
         # No prior commit to diff against, or the shared Dockerfile changed

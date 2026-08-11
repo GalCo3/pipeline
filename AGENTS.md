@@ -5,12 +5,14 @@ the shared dev tooling config (`ruff`, `ty`); member packages do not repeat it.
 
 ## Layout
 
-- `packages/` — Python libraries, published under the `hermes` namespace (`hermes.<package>`).
+- `libs/` — Python libraries, published under the `hermes` namespace (`hermes.<package>`).
   - `connections/` — client factories/handlers for external services (Kafka, Mongo, Postgres, Elasticsearch, S3).
   - `text-extraction/` — functional-core/imperative-shell pipeline for extracting text from document streams.
   - `observability/` — structured logging, tracing, and metrics library.
-- `services/` — deployable applications that consume the `packages/` libraries.
+- `apps/services/` — deployable applications that consume the `libs/` libraries.
   - `cargo-lexical/` — placeholder service skeleton, not yet implemented.
+- `apps/jobs/` — one-off/batch applications that consume the `libs/` libraries.
+  - `index-definitions/` — Elasticsearch index definition management.
 - `helm-charts/` — Kubernetes deployment charts (`library/`, `services/`, `local-infra/`).
 - `tools/` — things you run, not things you ship:
   - `scripts/` — the local stack: `install.sh`, `populate.sh`, `clean.sh`,
@@ -44,5 +46,6 @@ since test config (`pythonpath`, fixtures) is package-specific.
 
 - Package/service source lives under `<dir>/src/hermes/<name>/`; tests under `<dir>/tests/`.
 - New packages must be added to `[tool.uv.workspace].members` in the root
-  `pyproject.toml` (already globbed via `packages/*` and `services/*`, so a
-  package just needs its own `pyproject.toml` to be picked up).
+  `pyproject.toml` (already globbed via `libs/*`, `apps/services/*`, and
+  `apps/jobs/*`, so a package just needs its own `pyproject.toml` to be
+  picked up).
