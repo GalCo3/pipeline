@@ -82,17 +82,22 @@ build_image() {
     echo "$id"
 }
 
-# Every service that has both a chart under services/ and a consumer image.
-SERVICES=(candy-reports-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+# Every service with a consumer image. cargo-lexical no longer has a chart of
+# its own — cargo-operational-lexical and cargo-my-storage-lexical are the
+# deployed consumers, both running this same image under their own topic/index.
+IMAGE_SOURCES=(candy-reports-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+# Services that have a chart under services/, one release each below.
+SERVICES=(candy-reports-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 echo "==> Building images"
-SERVICE_TAGS=()
-for service in "${SERVICES[@]}"; do
+declare -A IMAGE_TAGS
+for service in "${IMAGE_SOURCES[@]}"; do
     tag="$(build_image "$service" -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=services \
         --build-arg "NAME=$service" "$REPO_ROOT")"
     echo "    $service -> $tag"
-    SERVICE_TAGS+=("$tag")
+    IMAGE_TAGS["$service"]="$tag"
 done
+CARGO_LEXICAL_TAG="${IMAGE_TAGS[cargo-lexical]}"
 DEMO_PRODUCER_TAG="$(build_image demo-producer "$REPO_ROOT/tools/demo-producer")"
 echo "    demo-producer -> $DEMO_PRODUCER_TAG"
 INDEX_DEFINITIONS_TAG="$(build_image index-definitions -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=jobs \
@@ -213,9 +218,12 @@ done
 # after the produce still consumes the whole backlog.
 install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
 install demo-producer     local-infra/tooling/demo-producer     --set "image.tag=$DEMO_PRODUCER_TAG"
-for i in "${!SERVICES[@]}"; do
-    install "${SERVICES[$i]}" "services/${SERVICES[$i]}" --set "image.tag=${SERVICE_TAGS[$i]}"
+for service in "${SERVICES[@]}"; do
+    install "$service" "services/$service" --set "image.tag=${IMAGE_TAGS[$service]}"
 done
+# Same cargo-lexical image, different topic/index — no image of their own to build.
+install cargo-operational-lexical services/cargo-operational-lexical --set "image.tag=$CARGO_LEXICAL_TAG"
+install cargo-my-storage-lexical  services/cargo-my-storage-lexical  --set "image.tag=$CARGO_LEXICAL_TAG"
 
 echo
 echo "Done. UI access: tools/scripts/port-forward.sh"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from hermes.utils import parse_date_value
 
@@ -11,27 +11,27 @@ class CandyReportsMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    creatingUserName: str
-    actualUserName: str | None = None
+    creating_user_name: str = Field(alias="creatingUserName")
+    actual_user_name: str | None = Field(default=None, alias="actualUserName")
     description: str
     type: str
     date: datetime
-    actualDate: datetime | None = None
-    isDeleted: bool
-    updatingUser: str | None = None
-    lastDeletionDate: datetime | None = None
-    eventId: str
-    deleteAuthor: str | None = None
-    cellId: str
-    realityId: str
-    cellHierarchy: str
-    creationDate: datetime
-    lastUpdateTimeToTransfer: datetime
+    actual_date: datetime | None = Field(default=None, alias="actualDate")
+    is_deleted: bool = Field(alias="isDeleted")
+    updating_user: str | None = Field(default=None, alias="updatingUser")
+    last_deletion_date: datetime | None = Field(default=None, alias="lastDeletionDate")
+    event_id: str = Field(alias="eventId")
+    delete_author: str | None = Field(default=None, alias="deleteAuthor")
+    cell_id: str = Field(alias="cellId")
+    reality_id: str = Field(alias="realityId")
+    cell_hierarchy: str = Field(alias="cellHierarchy")
+    creation_date: datetime = Field(alias="creationDate")
+    last_update_time_to_transfer: datetime = Field(alias="lastUpdateTimeToTransfer")
     frame: str | None = None
     mclol: str | None = None
     cell: str | None = None
-    mirageAction: str | None = None
-    militaryDistrictId: int
+    mirage_action: str | None = Field(default=None, alias="mirageAction")
+    military_district_id: int = Field(alias="militaryDistrictId")
 
     @model_validator(mode="before")
     @classmethod
@@ -50,12 +50,12 @@ class CandyReportsMessage(BaseModel):
             data["cell"] = hierarchy[2]
         return data
 
-    @field_validator("date", "creationDate", "lastUpdateTimeToTransfer", mode="before")
+    @field_validator("date", "creation_date", "last_update_time_to_transfer", mode="before")
     @classmethod
     def parse_mandatory_date(cls, value: str | int) -> datetime:
         return parse_date_value(value)
 
-    @field_validator("actualDate", "lastDeletionDate", mode="before")
+    @field_validator("actual_date", "last_deletion_date", mode="before")
     @classmethod
     def parse_optional_date(cls, value: str | int | None) -> datetime | None:
         if value is None:

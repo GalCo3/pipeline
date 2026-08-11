@@ -36,7 +36,7 @@ in_pod() {
 
 # Every consumer deployment: a live member keeps its consumer group non-empty,
 # which makes the group deletion below fail.
-CONSUMERS=(cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+CONSUMERS=(cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 echo "==> Stopping consumers"
 for consumer in "${CONSUMERS[@]}"; do

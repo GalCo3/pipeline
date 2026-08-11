@@ -1,8 +1,10 @@
-fullnameOverride: cargo-lexical
+fullnameOverride: cargo-operational-lexical
 replicaCount: 1
 
 image:
   registry: ""
+  # Reuses the cargo-lexical image verbatim — same service code, only the
+  # topic/index it's pointed at differs. Not built under its own name.
   repository: cargo-lexical
   tag: local
   # Image is built straight into the Docker Desktop engine, so never pull.
@@ -17,8 +19,8 @@ service:
 env:
   CONSUMER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
   CONSUMER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
-  CONSUMER_CONFIG__SOURCE_TOPICS: raw.cargo-lexical
-  CONSUMER_CONFIG__GROUP_ID: cargo-lexical-service
+  CONSUMER_CONFIG__SOURCE_TOPICS: raw.cargo_operational
+  CONSUMER_CONFIG__GROUP_ID: cargo-operational-lexical-service
   CONSUMER_CONFIG__AUTO_OFFSET_RESET: earliest
   CONSUMER_CONFIG__LIVENESS_FILE_PATH: /tmp/heartbeat
 
@@ -31,7 +33,7 @@ env:
   MONGO_CONFIG__PORT: "27017"
   MONGO_CONFIG__DATABASE: hermes
 
-  INDEX_NAME: cargo-lexical-files
+  INDEX_NAME: cargo-operational-lexical
   DLS_COLLECTION: dls
 
   # The injected sidecar, which forwards to the namespace collector.

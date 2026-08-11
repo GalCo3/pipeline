@@ -12,6 +12,9 @@ logger = get_logger(__name__)
 
 DEFINITIONS_DIR = Path(__file__).parent / "definitions"
 SEMANTIC_SUFFIX = "-semantic"
+# Fixed at index creation and rejected by Elasticsearch on every later
+# `put_settings` call, closed or not, so an update must never resend it.
+CREATION_ONLY_SETTINGS = {"number_of_shards"}
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -61,10 +64,14 @@ def _apply_definition(
     if elastic_handler.index_exists(index):
         logger.info("Updating existing index", index=index)
 
+        updatable_settings = {
+            key: value for key, value in settings.items() if key not in CREATION_ONLY_SETTINGS
+        }
+
         if mappings:
             elastic_handler.put_mapping(index, mapping=mappings, is_multisite=True)
-        if settings:
-            elastic_handler.put_settings(index, settings=settings, is_multisite=True)
+        if updatable_settings:
+            elastic_handler.put_settings(index, settings=updatable_settings, is_multisite=True)
         if aliases:
             elastic_handler.put_aliases(index, aliases=aliases, is_multisite=True)
     else:

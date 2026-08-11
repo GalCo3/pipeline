@@ -34,9 +34,11 @@ env:
   # Which example fixtures (tools/demo-producer/examples/<name>.json) to produce.
   # Empty/unset means all of them. chief-lexical needs the chief-api mock
   # (local-infra/backing/chief-api) up, which install.sh deploys.
-  SOURCES: cargo-lexical,chat-messages-lexical,chat-rooms-lexical,chat-users-lexical,chief-lexical
+  SOURCES: chat-messages-lexical,chat-rooms-lexical,chat-users-lexical,chief-lexical
   # Each fixture carries its own topic; these override it per source.
-  TOPIC_CARGO_LEXICAL: raw.cargo-lexical
+  # cargo-lexical retired: no chart consumes raw.cargo-lexical anymore, and
+  # cargo-operational-lexical / cargo-my-storage-lexical don't have their own
+  # example fixtures yet.
   TOPIC_CHAT_MESSAGES_LEXICAL: raw.chat-messages-lexical
   TOPIC_CHAT_ROOMS_LEXICAL: raw.chat-rooms-lexical
   TOPIC_CHAT_USERS_LEXICAL: raw.chat-users-lexical
