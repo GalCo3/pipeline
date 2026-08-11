@@ -6,23 +6,28 @@ repeating manifests.
 
 ```
 helm-charts/
-  services/                 the pipeline itself
-    cargo/                  the service (Deployment, no listening port)
-  utils/                    everything it runs against
+  library/
     hermes-common/          library chart: Deployment / Job / CronJob /
                             Service / Secret / ConfigMap / PVC
-    infra/                  backing stores, each with its UI alongside
+  services/                 the pipeline itself — one chart per service in
+                            the monorepo's services/, and nothing else
+    cargo-lexical/          a service (Deployment, no listening port)
+  local-infra/              everything the services run against
+    backing/                what a service addresses by DNS name, each store
+                            with its UI alongside
       kafka/
         kafka/              Bitnami kafka 32.4.3, KRaft single node, PLAINTEXT
         kafka-ui/           Kafbat UI (topics, messages, consumer groups)
       elastic/
         elasticsearch/      Bitnami elasticsearch 22.1.6, single node, security off
         kibana/             Bitnami kibana 12.1.10, pointed at elasticsearch
+        es-index/           creates each service's index + mappings (idempotent)
       mongodb/
         mongodb/            Official mongo:8.0, standalone, database `hermes`
         mongo-express/      Mongo Express web UI
       minio/                Bitnami minio 17.0.21, standalone, bucket `cargo`
       tika/                 Apache Tika server for legacy/image formats
+      chief-api/            local mock of the chief document API
     observability/          where telemetry goes and what shows it
       otel-operator/        OpenTelemetry Operator: CRDs + sidecar injection
       otel-collector/       namespace collector + injected sidecar (CRs)
@@ -30,16 +35,16 @@ helm-charts/
       loki/                 logs backend (-target=all)
       tempo/                traces backend (monolithic, OTLP ingest)
       grafana/              UI, with all three provisioned as datasources
-    dev/                    local-only helpers, no production counterpart
+    tooling/                operator-facing, nothing connects to these
       demo-producer/        suspended CronJob to trigger on demand, plus a
                             one-shot Job at install time
-      es-index/             creates the cargo index + mappings (idempotent)
       headlamp/             Kubernetes dashboard: pods, live logs, exec terminal
-  scripts/
-    install.sh              build images, resolve deps, install everything
-    port-forward.sh         expose every UI/API on localhost
   links.txt                 every local URL, plain text
 ```
+
+The scripts that drive these charts live outside the chart tree, in
+[`tools/scripts/`](../tools/scripts): `install.sh` (build images, resolve deps,
+install everything), `populate.sh`, `clean.sh`, `port-forward.sh`.
 
 In-cluster DNS names are pinned via `fullnameOverride`, so the addresses in
 `services/cargo-lexical/values.yaml` hold regardless of release name: `kafka:9092`,
@@ -50,8 +55,8 @@ In-cluster DNS names are pinned via `fullnameOverride`, so the addresses in
 Enable Kubernetes in Docker Desktop → Settings → Kubernetes, then:
 
 ```bash
-./helm-charts/scripts/install.sh      # ~10 min on a cold cluster
-./helm-charts/scripts/port-forward.sh # UI access, Ctrl-C to stop
+./tools/scripts/install.sh      # ~10 min on a cold cluster
+./tools/scripts/port-forward.sh # UI access, Ctrl-C to stop
 ```
 
 Plain URL list: [links.txt](./links.txt).
@@ -75,24 +80,24 @@ Manual install, if you prefer step by step:
 
 ```bash
 kubectl create namespace hermes
-helm upgrade --install kafka          helm-charts/utils/infra/kafka/kafka           -n hermes --wait
-helm upgrade --install minio          helm-charts/utils/infra/minio                 -n hermes --wait
-helm upgrade --install elasticsearch  helm-charts/utils/infra/elastic/elasticsearch -n hermes --wait
-helm upgrade --install tika           helm-charts/utils/infra/tika                  -n hermes --wait
-helm upgrade --install mongodb        helm-charts/utils/infra/mongodb/mongodb       -n hermes --wait
-helm upgrade --install kafka-ui       helm-charts/utils/infra/kafka/kafka-ui        -n hermes --wait
-helm upgrade --install mongo-express  helm-charts/utils/infra/mongodb/mongo-express -n hermes --wait
-helm upgrade --install kibana         helm-charts/utils/infra/elastic/kibana        -n hermes --wait
-helm upgrade --install headlamp       helm-charts/utils/dev/headlamp                -n hermes --wait
-helm upgrade --install mimir          helm-charts/utils/observability/mimir         -n hermes --wait
-helm upgrade --install loki           helm-charts/utils/observability/loki          -n hermes --wait
-helm upgrade --install tempo          helm-charts/utils/observability/tempo         -n hermes --wait
-helm upgrade --install grafana        helm-charts/utils/observability/grafana       -n hermes --wait
-helm upgrade --install otel-operator  helm-charts/utils/observability/otel-operator -n hermes --wait
-helm upgrade --install otel-collector helm-charts/utils/observability/otel-collector -n hermes
-helm upgrade --install es-index       helm-charts/utils/dev/es-index                -n hermes
+helm upgrade --install kafka          helm-charts/local-infra/backing/kafka/kafka           -n hermes --wait
+helm upgrade --install minio          helm-charts/local-infra/backing/minio                 -n hermes --wait
+helm upgrade --install elasticsearch  helm-charts/local-infra/backing/elastic/elasticsearch -n hermes --wait
+helm upgrade --install tika           helm-charts/local-infra/backing/tika                  -n hermes --wait
+helm upgrade --install mongodb        helm-charts/local-infra/backing/mongodb/mongodb       -n hermes --wait
+helm upgrade --install kafka-ui       helm-charts/local-infra/backing/kafka/kafka-ui        -n hermes --wait
+helm upgrade --install mongo-express  helm-charts/local-infra/backing/mongodb/mongo-express -n hermes --wait
+helm upgrade --install kibana         helm-charts/local-infra/backing/elastic/kibana        -n hermes --wait
+helm upgrade --install headlamp       helm-charts/local-infra/tooling/headlamp                -n hermes --wait
+helm upgrade --install mimir          helm-charts/local-infra/observability/mimir         -n hermes --wait
+helm upgrade --install loki           helm-charts/local-infra/observability/loki          -n hermes --wait
+helm upgrade --install tempo          helm-charts/local-infra/observability/tempo         -n hermes --wait
+helm upgrade --install grafana        helm-charts/local-infra/observability/grafana       -n hermes --wait
+helm upgrade --install otel-operator  helm-charts/local-infra/observability/otel-operator -n hermes --wait
+helm upgrade --install otel-collector helm-charts/local-infra/observability/otel-collector -n hermes
+helm upgrade --install es-index       helm-charts/local-infra/backing/elastic/es-index                -n hermes
 helm upgrade --install cargo-lexical-lexical          helm-charts/services/cargo-lexical-lexical                    -n hermes
-helm upgrade --install demo-producer  helm-charts/utils/dev/demo-producer           -n hermes
+helm upgrade --install demo-producer  helm-charts/local-infra/tooling/demo-producer           -n hermes
 ```
 
 Check the result:
@@ -122,7 +127,7 @@ Each run gets its own `RUN_SEED` (derived from the pod name), so every trigger
 adds fresh documents instead of overwriting the previous batch. A one-shot Job
 also runs at install/upgrade time; set `runOnInstall: false` to skip it.
 
-What it produces comes from `demo-producer/examples/<service>.json`: ten example
+What it produces comes from `tools/demo-producer/examples/<service>.json`: ten example
 messages per source, covering that source's legal payload shapes — the index,
 update and delete routes, source aliases vs model field names, optional fields
 present / absent / null, and for cargo every file type the extractor handles
@@ -155,7 +160,7 @@ annotated pods    <--scrape-------------------------------- hermes-collector (pr
 - The collector fans out to the three backends: `prometheusremotewrite` →
   Mimir, `otlphttp` → Loki's native OTLP endpoint (the `loki` exporter was
   removed from the collector), `otlp` → Tempo. Each is toggleable under
-  `backends` in `utils/observability/otel-collector/values.yaml`.
+  `backends` in `local-infra/observability/otel-collector/values.yaml`.
 - Grafana ships with all three provisioned as datasources and one dashboard
   (**Hermes / Hermes pipeline**); nothing has to be wired up in the UI.
 - **Pointing at Grafana Cloud instead** means changing the `backends`
@@ -166,7 +171,7 @@ annotated pods    <--scrape-------------------------------- hermes-collector (pr
 
 ## Notes
 
-- **Index mappings.** `utils/dev/es-index` creates `cargo-files-000001` with an
+- **Index mappings.** `local-infra/backing/elastic/es-index` creates `cargo-files-000001` with an
   explicit mapping for every `CargoEnrichedMessage` field and a write alias
   `cargo-files` (the name cargo indexes to). The job is idempotent — an
   existing index is left alone — so recreating the index means deleting it

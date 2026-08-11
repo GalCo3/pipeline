@@ -5,31 +5,39 @@ Full usage, URLs and caveats: [README.md](./README.md).
 
 ## Layout
 
-- `services/` — **this repo's own services, and nothing else.** Today that is
-  `cargo`. A service from the monorepo's `services/` gets a chart here;
-  anything it merely runs against does not.
-- `utils/` — everything the services depend on, in four buckets:
-  - `hermes-common/` — the library chart every application chart depends on.
-  - `infra/` — backing stores, each with its UI in the same stack folder:
-    `kafka/` (kafka + kafka-ui), `elastic/` (elasticsearch + kibana),
-    `mongodb/` (mongodb + mongo-express), plus `minio/` and `tika/`.
+- `library/hermes-common/` — the library chart every application chart depends on.
+- `services/` — **this repo's own services, and nothing else.** A service from
+  the monorepo's `services/` gets a chart here; anything it merely runs against
+  does not.
+- `local-infra/` — everything the services run against, in three buckets:
+  - `backing/` — what a service addresses by DNS name, each store with its UI
+    in the same stack folder: `kafka/` (kafka + kafka-ui), `elastic/`
+    (elasticsearch + kibana + es-index), `mongodb/` (mongodb + mongo-express),
+    plus `minio/`, `tika/` and the `chief-api/` mock.
   - `observability/` — `otel-operator`, `otel-collector`, and the Grafana
-    stack (`mimir`, `loki`, `tempo`, `grafana`).
-  - `dev/` — local-only, no production counterpart: `demo-producer`,
-    `es-index`, `headlamp`.
-- `scripts/` — `install.sh` (build + install everything), `port-forward.sh` (UIs).
+    stack (`mimir`, `loki`, `tempo`, `grafana`). Kept apart from `backing/`
+    because no service names these; the collector finds them.
+  - `tooling/` — operator-facing, nothing connects to them: `demo-producer`,
+    `headlamp`.
 - `links.txt` — every local URL, plain text.
 
+The scripts that drive these charts are **not** here — they build images from
+the repo root as well as installing charts, so they live in
+[`../tools/scripts/`](../tools/scripts): `install.sh` (build + install
+everything), `populate.sh`, `clean.sh`, `port-forward.sh`.
+
 Moving a chart means fixing three things: the depth-relative `file://` path to
-`hermes-common` in its `Chart.yaml`, the paths in both scripts, and the
-vendored `charts/*.tgz` (`helm dependency update` rebuilds those).
+`hermes-common` in its `Chart.yaml`, the paths in `tools/scripts/*.sh`, and the
+vendored `charts/*.tgz` (`helm dependency update` rebuilds those, and rewrites
+the `Chart.lock` digest — which also changes when only the `repository:` path
+does).
 
 ## Conventions
 
 - **Reuse the library chart.** Application charts carry no manifests of their
   own: `templates/*.yaml` is a one-line `{{ include "hermes-common.<kind>" . }}`
   and everything is expressed in `values.yaml`. Add a new `define` to
-  `utils/hermes-common/templates/` rather than hand-writing a manifest in a
+  `library/hermes-common/templates/` rather than hand-writing a manifest in a
   component chart.
 - **Values contract** consumed by the library: `image.{registry,repository,tag,pullPolicy}`,
   `replicaCount`, `env` (map), `secretEnv` (map → Secret + envFrom), `envFrom`,
@@ -42,7 +50,7 @@ vendored `charts/*.tgz` (`helm dependency update` rebuilds those).
   `cronJob.{schedule,suspend,concurrencyPolicy,...}` for CronJobs.
 - **On-demand work is a suspended CronJob**, not a bare Job — that is what
   gives Headlamp (and `kubectl create job --from=cronjob/...`) something to
-  trigger. See `utils/dev/demo-producer`.
+  trigger. See `local-infra/tooling/demo-producer`.
 - **Third-party charts get a wrapper chart**, never a raw `helm install`: a
   `Chart.yaml` dependency plus a `values.yaml` with everything pinned. Bitnami
   images must come from `bitnamilegacy/*` with

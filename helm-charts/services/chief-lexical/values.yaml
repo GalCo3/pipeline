@@ -31,7 +31,7 @@ env:
 
   # Fetched per indexed command, formatted with the document id — the single
   # `{}` is a str.format placeholder (see utils.extract_chief_command_content),
-  # not a helm one. Locally this is the chief-api mock under utils/dev.
+  # not a helm one. Locally this is the chief-api mock under local-infra/backing.
   CHIEF_CONFIG__DOC_PATH_TEMPLATE: http://chief-api:8080/documents/{}
   CHIEF_CONFIG__TIMEOUT: "30"
 

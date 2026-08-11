@@ -1,6 +1,6 @@
 dependencies:
 - name: hermes-common
-  repository: file://../../utils/hermes-common
+  repository: file://../../library/hermes-common
   version: 0.1.0
-digest: sha256:79c8b230ee9421a2a3d0c0aff8944991d57aa46473878c21c3792422787bbe22
-generated: "2026-08-05T17:12:07.22237+03:00"
+digest: sha256:d5b20e96be0aa10f219e3ce11c7804403fa900c34495996c52a342c9248d4de0
+generated: "2026-08-11T10:15:56.345283+03:00"

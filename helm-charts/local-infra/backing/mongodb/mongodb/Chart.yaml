@@ -1,0 +1,10 @@
+apiVersion: v2
+name: mongodb
+description: Local-dev MongoDB (standalone, official image) built on the hermes-common library chart.
+type: application
+version: 0.1.0
+appVersion: "8.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../../../library/hermes-common

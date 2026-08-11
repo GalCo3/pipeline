@@ -11,7 +11,14 @@ the shared dev tooling config (`ruff`, `ty`); member packages do not repeat it.
   - `observability/` — structured logging, tracing, and metrics library.
 - `services/` — deployable applications that consume the `packages/` libraries.
   - `cargo-lexical/` — placeholder service skeleton, not yet implemented.
-- `helm-charts/` — Kubernetes deployment charts.
+- `helm-charts/` — Kubernetes deployment charts (`library/`, `services/`, `local-infra/`).
+- `tools/` — things you run, not things you ship:
+  - `scripts/` — the local stack: `install.sh`, `populate.sh`, `clean.sh`,
+    `port-forward.sh`. They build images from the repo root and install every
+    chart, which is why they sit here rather than under `helm-charts/`.
+  - `demo-producer/` — dev-only Kafka/MinIO seeder image; its chart is
+    `helm-charts/local-infra/tooling/demo-producer`.
+  - `ci/` — CI helpers (`find_build.py`, called from `.gitlab-ci.yml`).
 
 Each subdirectory with its own concerns has an `AGENTS.md`; read the nearest one
 in the tree before making changes there. `CLAUDE.md` files are pointers only —

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: kafka-ui
+description: Kafbat UI for browsing Kafka topics, messages and consumer groups.
+type: application
+version: 0.1.0
+appVersion: "v1.3.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../../../library/hermes-common

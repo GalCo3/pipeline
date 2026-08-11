@@ -12,7 +12,7 @@ See the workspace-level [AGENTS.md](../../AGENTS.md) for shared tooling commands
   pair (see `connections` `AGENTS.md`) if either side failed.
 - `indexing.py` — `with_indexed_at`, stamps a document with the time the pipeline handed
   it to Elasticsearch. Every service wraps its `index`/`update_by_id` body with it; the
-  field is declared in the `helm-charts/utils/dev/es-index` mappings, which are
+  field is declared in the `helm-charts/local-infra/backing/elastic/es-index` mappings, which are
   `dynamic: strict`, so any further stamped field has to be added there too.
 
 ## Conventions

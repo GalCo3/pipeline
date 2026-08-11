@@ -34,7 +34,7 @@ build:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="${HOME}/.local/bin:${PATH}"
   script:
-    - python3 ci/find_build.py > affected_services.txt
+    - python3 tools/ci/find_build.py > affected_services.txt
     - cat affected_services.txt
     - |
       buildah login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
