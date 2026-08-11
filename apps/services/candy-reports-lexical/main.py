@@ -39,7 +39,7 @@ def main():
                 doc_id = candy_reports_message.id
                 logger.info("Processing candy reports message", doc_id=doc_id)
 
-                if candy_reports_message.isdeleted:
+                if candy_reports_message.isDeleted:
                     with message_duration.time(labels={"status": "deleted"}):
                         local_response, remote_response = elastic_handler.delete_by_id(
                             settings.index_name, doc_id, is_multisite=True
