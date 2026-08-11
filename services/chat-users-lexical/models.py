@@ -15,7 +15,7 @@ class ChatUserMessage(BaseModel):
     name: str | None = None
     email_address: str | None = None
     username: str | None = None
-    updated_at: datetime = Field(alias="updatedAt_")
+    updated_at: datetime = Field(alias="_updatedAt")
     roles: list[str] = []
     hatzava_chail: str | None = None
     hatzava_pikud: str | None = None
