@@ -141,7 +141,7 @@ done
 # exist yet dies on UNKNOWN_TOPIC_OR_PART — the topics are auto-created by the
 # producer. Every service reads with auto.offset.reset=earliest, so starting
 # after the produce still consumes the whole backlog.
-#install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
+install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
 install demo-producer     local-infra/tooling/demo-producer     --set "image.tag=$DEMO_PRODUCER_TAG"
 for service in "${SERVICES[@]}"; do
     install "$service" "services/$service" --set "image.tag=${IMAGE_TAGS[$service]}"
