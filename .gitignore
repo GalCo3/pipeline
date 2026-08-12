@@ -35,7 +35,7 @@ Thumbs.db
 helm-charts/**/charts/*.tgz
 
 # Local build state
-tools/scripts/.image-tags
+tools/scripts/sandbox/.image-tags
 
 # Claude
 .claude
