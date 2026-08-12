@@ -1,5 +1,5 @@
 apiVersion: v2
-name: candy-reports-lexical
+name: candy-lexical
 description: Candy reports enrichment service — consumes Kafka, indexes reports to Elasticsearch.
 type: application
 version: 0.1.0

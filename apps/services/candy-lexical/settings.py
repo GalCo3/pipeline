@@ -8,12 +8,12 @@ from hermes.connections import (
 )
 
 
-class CandyReportsLexicalSettings(BaseSettings):
+class CandyLexicalSettings(BaseSettings):
     consumer_config: BaseConsumerConfig
     elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
 
-    index_name: str = "candy-reports-lexical"
+    index_name: str = "candy-lexical"
     dls_collection: str = "dls"
 
     model_config = SettingsConfigDict(
@@ -26,5 +26,5 @@ class CandyReportsLexicalSettings(BaseSettings):
         super().__init__(**kwargs)
 
 
-def get_settings() -> CandyReportsLexicalSettings:
-    return CandyReportsLexicalSettings()
+def get_settings() -> CandyLexicalSettings:
+    return CandyLexicalSettings()

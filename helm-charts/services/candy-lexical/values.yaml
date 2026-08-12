@@ -1,9 +1,9 @@
-fullnameOverride: candy-reports-lexical
+fullnameOverride: candy-lexical
 replicaCount: 1
 
 image:
   registry: ""
-  repository: candy-reports-lexical
+  repository: candy-lexical
   tag: local
   # Image is built straight into the Docker Desktop engine, so never pull.
   pullPolicy: IfNotPresent
@@ -12,13 +12,13 @@ image:
 service:
   enabled: false
 
-# Non-secret settings. Keys map onto services/candy-reports-lexical/settings.py
+# Non-secret settings. Keys map onto services/candy-lexical/settings.py
 # (pydantic-settings, env_nested_delimiter="__").
 env:
   CONSUMER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
   CONSUMER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
   CONSUMER_CONFIG__SOURCE_TOPICS: raw.candy-reports
-  CONSUMER_CONFIG__GROUP_ID: candy-reports-lexical
+  CONSUMER_CONFIG__GROUP_ID: candy-lexical
   CONSUMER_CONFIG__AUTO_OFFSET_RESET: earliest
   CONSUMER_CONFIG__LIVENESS_FILE_PATH: /tmp/heartbeat
 
@@ -29,7 +29,7 @@ env:
   MONGO_CONFIG__PORT: "27017"
   MONGO_CONFIG__DATABASE: hermes
 
-  INDEX_NAME: candy-reports-lexical-reports
+  INDEX_NAME: candy-lexical
   DLS_COLLECTION: dls
 
   # The injected sidecar, which forwards to the namespace collector.

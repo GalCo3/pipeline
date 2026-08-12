@@ -12,7 +12,7 @@ NAMESPACE="${NAMESPACE:-hermes}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 CHARTS_DIR="$REPO_ROOT/helm-charts"
 
-SERVICES=(candy-reports-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+SERVICES=(candy-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 # The consumers come up last, after the jobs, for two reasons: their memory
 # requests fill the single dev node, leaving nothing for the job pods to

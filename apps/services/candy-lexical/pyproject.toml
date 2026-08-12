@@ -1,5 +1,5 @@
 [project]
-name = "candy-reports-lexical"
+name = "candy-lexical"
 version = "1.0.0"
 requires-python = ">=3.14"
 

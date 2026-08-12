@@ -90,7 +90,7 @@ build_image() {
 # Every service with a consumer image. cargo-lexical no longer has a chart of
 # its own — cargo-operational-lexical and cargo-my-storage-lexical are the
 # deployed consumers, both running this same image under their own topic/index.
-IMAGE_SOURCES=(candy-reports-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+IMAGE_SOURCES=(candy-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 # Node apps: one image, one chart named after the directory. dls-portal serves
 # both its UI and its API, so it is a single image like any consumer.

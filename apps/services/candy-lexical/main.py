@@ -15,14 +15,14 @@ from hermes.observability import (
 )
 from hermes.utils import send_to_dls, site_error, with_indexed_at
 
-init_observability(service_name="candy-reports-lexical")
+init_observability(service_name="candy-lexical")
 logger = get_logger(__name__)
 messages_processed = TelemetryCounter(
-    "candy_reports_lexical_messages_processed_total", allowed_labels=["status"]
+    "candy_lexical_messages_processed_total", allowed_labels=["status"]
 )
-messages_sent_to_dls = TelemetryCounter("candy_reports_lexical_messages_dls_total")
+messages_sent_to_dls = TelemetryCounter("candy_lexical_messages_dls_total")
 message_duration = TelemetryHistogram(
-    "candy_reports_lexical_message_duration", unit="s", allowed_labels=["status"]
+    "candy_lexical_message_duration", unit="s", allowed_labels=["status"]
 )
 
 
@@ -47,7 +47,7 @@ def main():
                         site_error(
                             local_response,
                             remote_response,
-                            f"Failed to delete candy-reports-lexical document {doc_id}",
+                            f"Failed to delete candy-lexical document {doc_id}",
                         )
                     logger.info("Deleted candy reports document", doc_id=doc_id)
                     messages_processed.inc(labels={"status": "deleted"})
@@ -63,7 +63,7 @@ def main():
                     site_error(
                         local_response,
                         remote_response,
-                        f"Failed to index candy-reports-lexical document {doc_id}",
+                        f"Failed to index candy-lexical document {doc_id}",
                     )
                 logger.info("Successfully indexed candy reports document", doc_id=doc_id)
                 messages_processed.inc(labels={"status": "indexed"})

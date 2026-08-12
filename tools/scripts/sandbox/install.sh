@@ -50,7 +50,7 @@ INDEX_DEFINITIONS_TAG="$(tag_of index-definitions)"
 NODE_APPS=(dls-portal)
 
 # Services that have a chart under services/, one release each below.
-SERVICES=(candy-reports-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+SERVICES=(candy-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
 echo "==> Resolving chart dependencies"
 

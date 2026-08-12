@@ -4,7 +4,7 @@ requires-python = ">=3.14"
 
 [manifest]
 members = [
-    "candy-reports-lexical",
+    "candy-lexical",
     "cargo-lexical",
     "chat-messages-lexical",
     "chat-rooms-lexical",
@@ -152,9 +152,9 @@ wheels = [
 ]
 
 [[package]]
-name = "candy-reports-lexical"
+name = "candy-lexical"
 version = "1.0.0"
-source = { virtual = "apps/services/candy-reports-lexical" }
+source = { virtual = "apps/services/candy-lexical" }
 dependencies = [
     { name = "connections" },
     { name = "observability" },
