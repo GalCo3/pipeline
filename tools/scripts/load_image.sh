@@ -18,4 +18,4 @@ echo "image loaded sucessfully. pushing to marganit..."
 
 docker push $REGISTRY_URL/$REGISTRY_ORGANIZATION/$IMAGE_NAME:$IMAGE_TAG
 
-echo "pushed successfully! go to metzuda and sync!"
+echo "pushed successfully! go to the repo and make it public, and then go to metzuda and sync!"
