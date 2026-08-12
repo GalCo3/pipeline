@@ -5,13 +5,13 @@
       "name": "group-message-source-aliases",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "room-ops-001",
         "msg": "Container HERMES-0001 cleared customs.",
         "from": "alice",
         "ts": "{{past}}",
         "u": {
-          "id_": "user-alice-001",
+          "_id": "user-alice-001",
           "username": "alice",
           "name": "Alice Cohen"
         },
@@ -45,18 +45,18 @@
       "name": "message-with-file-attachment",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "room-ops-001",
         "msg": "Manifest attached.",
         "from": "alice",
         "ts": "{{past}}",
         "u": {
-          "id_": "user-alice-001",
+          "_id": "user-alice-001",
           "username": "alice",
           "name": "Alice Cohen"
         },
         "file": {
-          "id_": "file-901",
+          "_id": "file-901",
           "name": "manifest.txt",
           "type": "text/plain"
         },
@@ -70,32 +70,32 @@
       "name": "message-with-mentions-and-channels",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "room-ops-001",
         "msg": "@bob please sync with #logistics on the Ashdod slot.",
         "from": "alice",
         "ts": "{{past}}",
         "updatedAt_": "{{now}}",
         "u": {
-          "id_": "user-alice-001",
+          "_id": "user-alice-001",
           "username": "alice",
           "name": "Alice Cohen"
         },
         "mentions": [
           {
-            "id_": "user-bob-002",
+            "_id": "user-bob-002",
             "username": "bob",
             "name": "Bob Levi"
           },
           {
-            "id_": "user-dana-003",
+            "_id": "user-dana-003",
             "username": "dana",
             "name": "Dana Mizrahi"
           }
         ],
         "channels": [
           {
-            "id_": "room-logistics-002",
+            "_id": "room-logistics-002",
             "name": "logistics"
           }
         ],
@@ -108,13 +108,13 @@
       "name": "direct-message-two-participants",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "useralice001userbob002",
         "msg": "Direct room: midur_ids resolves to both participants.",
         "from": "alice",
         "ts": "{{past}}",
         "u": {
-          "id_": "useralice001",
+          "_id": "useralice001",
           "username": "alice",
           "name": "Alice Cohen"
         },
@@ -126,13 +126,13 @@
       "name": "direct-message-self-room",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "useralice001",
         "msg": "Self direct room: midur_ids is just this user.",
         "from": "alice",
         "ts": "{{past}}",
         "u": {
-          "id_": "useralice001",
+          "_id": "useralice001",
           "username": "alice",
           "name": "Alice Cohen"
         },
@@ -144,13 +144,13 @@
       "name": "message-with-urls",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "room-ops-001",
         "msg": "Tracking pages: https://example.test/track/1 and https://example.test/track/2",
         "from": "dana",
         "ts": "{{past}}",
         "u": {
-          "id_": "user-dana-003",
+          "_id": "user-dana-003",
           "username": "dana",
           "name": "Dana Mizrahi"
         },
@@ -168,13 +168,13 @@
       "expect": "deleted",
       "id_of": "group-message-source-aliases",
       "message": {
-        "id_": "{{id}}",
+        "_id": "{{id}}",
         "rid": "room-ops-001",
         "msg": "t is set, so the service deletes this document by id and stops.",
         "from": "alice",
         "ts": "{{past}}",
         "u": {
-          "id_": "user-alice-001",
+          "_id": "user-alice-001",
           "username": "alice"
         },
         "t": true,
@@ -186,14 +186,14 @@
       "name": "minimal-id-only",
       "expect": "indexed",
       "message": {
-        "id_": "{{id}}"
+        "_id": "{{id}}"
       }
     },
     {
       "name": "no-room-int-id-utc-suffix-nulls",
       "expect": "indexed",
       "message": {
-        "id_": "{{id_int}}",
+        "_id": "{{id_int}}",
         "rid": null,
         "msg": "No room id, so midur_ids stays absent. Numeric id, Z-suffixed timestamps, explicit nulls.",
         "from": null,
@@ -208,6 +208,34 @@
         "room_type": null,
         "room_name": null,
         "usersCount": null
+      }
+    },
+    {
+      "name": "message-with-classification",
+      "expect": "indexed",
+      "message": {
+        "_id": "{{id}}",
+        "rid": "room-ops-001",
+        "msg": "Classified operational update.",
+        "from": "alice",
+        "ts": "{{past}}",
+        "u": {
+          "_id": "user-alice-001",
+          "username": "alice",
+          "name": "Alice Cohen"
+        },
+        "classification": {
+          "triangles": {
+            "triangle_1": {
+              "_id": "tr-001",
+              "name": "Northern Sector",
+              "clearance": 3
+            }
+          }
+        },
+        "room_type": "c",
+        "room_name": "ops-general",
+        "usersCount": 42
       }
     }
   ]

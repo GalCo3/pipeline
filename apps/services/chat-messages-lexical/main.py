@@ -1,3 +1,7 @@
+from models import ChatEnrichedMessage, ChatMessage
+from settings import get_settings
+from utils import build_midur_ids
+
 from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
@@ -11,10 +15,6 @@ from hermes.observability import (
     kafka_context,
 )
 from hermes.utils import send_to_dls, site_error, with_indexed_at
-
-from models import ChatEnrichedMessage, ChatMessage
-from settings import get_settings
-from utils import build_midur_ids
 
 init_observability(service_name="chat-messages-lexical")
 logger = get_logger(__name__)
@@ -70,9 +70,7 @@ def main():
                         remote_response,
                         f"Failed to index chat-messages-lexical document {chat_message.id}",
                     )
-                logger.info(
-                    "Successfully indexed chat message document", doc_id=chat_message.id
-                )
+                logger.info("Successfully indexed chat message document", doc_id=chat_message.id)
                 messages_processed.inc(labels={"status": "success"})
         except Exception as e:
             logger.error(

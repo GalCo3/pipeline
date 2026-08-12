@@ -10,7 +10,6 @@ from hermes.utils import parse_date_value
 class ChatUserMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-
     id: str
     created_at: datetime = Field(alias="createdAt")
     name: str | None = None

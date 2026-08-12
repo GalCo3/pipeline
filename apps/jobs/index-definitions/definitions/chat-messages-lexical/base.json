@@ -51,6 +51,23 @@
           }
         }
       },
+      "classification": {
+        "properties": {
+          "triangles": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword"
+              },
+              "clearance": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
       "doc_date_field": {
         "type": "alias",
         "path": "ts"
