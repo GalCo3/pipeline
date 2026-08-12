@@ -58,6 +58,7 @@ class CandyReportsMessage(BaseModel):
     @field_validator("actual_date", "last_deletion_date", mode="before")
     @classmethod
     def parse_optional_date(cls, value: str | int | None) -> datetime | None:
-        if value is None:
+        if value is None or value == "null":
             return None
+
         return parse_date_value(value)
