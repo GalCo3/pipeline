@@ -14,7 +14,7 @@ class Environment(StrEnum):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=find_dotenv("../.env", usecwd=True),
+        env_file=find_dotenv(".env", usecwd=True),
         env_nested_delimiter="__",
         extra="allow",
     )

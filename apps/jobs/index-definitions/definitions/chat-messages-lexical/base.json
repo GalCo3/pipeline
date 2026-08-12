@@ -256,8 +256,6 @@
         }
       },
       "number_of_shards": "18",
-      "provided_name": "chat_messages_v2",
-      "creation_date": "1778073800709",
       "analysis": {
         "filter": {
           "idf_acronyms_filter": {
@@ -294,11 +292,7 @@
           }
         }
       },
-      "number_of_replicas": "2",
-      "uuid": "PGeFnYZ1RTOigh32-Od4SA",
-      "version": {
-        "created": "8536000"
-      }
+      "number_of_replicas": "2"
     }
   }
 }

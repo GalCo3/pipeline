@@ -1,185 +1,177 @@
 {
-  "cargo_non_operational_files_v2": {
-    "aliases": {
-      "cargo_non_operational_files": {}
+  "aliases": {
+    "cargo_non_operational_files": {}
+  },
+  "mappings": {
+    "dynamic": "false",
+    "runtime": {
+      "_captions_line": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('נ\"צ-שם\"' + params[\"_source\"][\"name\"] + ' ' + params[\"_source\"][\"path\"])",
+          "lang": "painless"
+        }
+      },
+      "_source_link": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
+          "lang": "painless"
+        }
+      },
+      "_title_line": {
+        "type": "keyword",
+        "script": {
+          "source": "emit(params[\"_source\"][\"id\"]+'-'+params[\"_source\"][\"name\"]+'-'+params[\"_source\"][\"description\"]+'-'+'var_emit(params[\"_source\"][\"holder\"])')",
+          "lang": "painless"
+        }
+      }
     },
-    "mappings": {
-      "dynamic": "false",
-      "runtime": {
-        "_captions_line": {
-          "type": "keyword",
-          "script": {
-            "source": "emit('נ\"צ-שם\"' + params[\"_source\"][\"name\"] + ' ' + params[\"_source\"][\"path\"])",
-            "lang": "painless"
-          }
-        },
-        "_source_link": {
-          "type": "keyword",
-          "script": {
-            "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
-            "lang": "painless"
-          }
-        },
-        "_title_line": {
-          "type": "keyword",
-          "script": {
-            "source": "emit(params[\"_source\"][\"id\"]+'-'+params[\"_source\"][\"name\"]+'-'+params[\"_source\"][\"description\"]+'-'+'var_emit(params[\"_source\"][\"holder\"])')",
-            "lang": "painless"
+    "properties": {
+      "_empty__": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "_high__": {
+        "type": "alias",
+        "path": "name"
+      },
+      "_low_0": {
+        "type": "alias",
+        "path": "text_content"
+      },
+      "_low_1": {
+        "type": "alias",
+        "path": "path"
+      },
+      "_enrichment_tracking": {
+        "type": "keyword"
+      },
+      "_index_name": {
+        "type": "keyword"
+      },
+      "_index_time": {
+        "type": "date"
+      },
+      "created": {
+        "type": "date"
+      },
+      "delete_date": {
+        "type": "date"
+      },
+      "description": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "doc_date_field": {
+        "type": "alias",
+        "path": "ver_last_modified"
+      },
+      "highlighted_field": {
+        "type": "alias",
+        "path": "text_content"
+      },
+      "holder": {
+        "type": "keyword"
+      },
+      "id": {
+        "type": "keyword"
+      },
+      "lit": {
+        "type": "integer"
+      },
+      "last_modified": {
+        "type": "date"
+      },
+      "name": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "path": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "path_id": {
+        "type": "keyword"
+      },
+      "path_list": {
+        "type": "keyword"
+      },
+      "s3_bucket": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "s3_key": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "text_content": {
+        "type": "text",
+        "term_vector": "with_positions_offsets",
+        "analyzer": "default",
+        "search_analyzer": "idf_acronyms_search_analyzer"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "user_last_modified": {
+        "type": "date"
+      },
+      "ver_last_modified": {
+        "type": "date"
+      }
+    }
+  },
+  "settings": {
+    "index": {
+      "routing": {
+        "allocation": {
+          "include": {
+            "_tier_preference": "data_content"
           }
         }
       },
-      "properties": {
-        "_empty__": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "_high__": {
-          "type": "alias",
-          "path": "name"
-        },
-        "_low_0": {
-          "type": "alias",
-          "path": "text_content"
-        },
-        "_low_1": {
-          "type": "alias",
-          "path": "path"
-        },
-        "_enrichment_tracking": {
-          "type": "keyword"
-        },
-        "_index_name": {
-          "type": "keyword"
-        },
-        "_index_time": {
-          "type": "date"
-        },
-        "created": {
-          "type": "date"
-        },
-        "delete_date": {
-          "type": "date"
-        },
-        "description": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "doc_date_field": {
-          "type": "alias",
-          "path": "ver_last_modified"
-        },
-        "highlighted_field": {
-          "type": "alias",
-          "path": "text_content"
-        },
-        "holder": {
-          "type": "keyword"
-        },
-        "id": {
-          "type": "keyword"
-        },
-        "lit": {
-          "type": "integer"
-        },
-        "last_modified": {
-          "type": "date"
-        },
-        "name": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "path": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "path_id": {
-          "type": "keyword"
-        },
-        "path_list": {
-          "type": "keyword"
-        },
-        "s3_bucket": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "s3_key": {
-          "type": "text",
-          "term_vector": "with_positions_offsets"
-        },
-        "text_content": {
-          "type": "text",
-          "term_vector": "with_positions_offsets",
-          "analyzer": "default",
-          "search_analyzer": "idf_acronyms_search_analyzer"
-        },
-        "type": {
-          "type": "keyword"
-        },
-        "user_last_modified": {
-          "type": "date"
-        },
-        "ver_last_modified": {
-          "type": "date"
-        }
-      }
-    },
-    "settings": {
-      "index": {
-        "routing": {
-          "allocation": {
-            "include": {
-              "_tier_preference": "data_content"
-            }
+      "number_of_shards": "5",
+      "analysis": {
+        "filter": {
+          "idf_acronyms_filter": {
+            "type": "synonym_graph",
+            "updateable": "true",
+            "synonyms_set": "idf_acronyms"
           }
         },
-        "number_of_shards": "5",
-        "provided_name": "cargo_non_operational_files_v2",
-        "creation_date": "1778804605016",
-        "analysis": {
-          "filter": {
-            "idf_acronyms_filter": {
-              "type": "synonym_graph",
-              "updateable": "true",
-              "synonyms_set": "idf_acronyms"
-            }
+        "analyzer": {
+          "default": {
+            "filter": [
+              "lowercase"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
           },
-          "analyzer": {
-            "default": {
-              "filter": [
-                "lowercase"
-              ],
-              "char_filter": [
-                "dot_to_space"
-              ],
-              "type": "custom",
-              "tokenizer": "whitespace"
-            },
-            "idf_acronyms_search_analyzer": {
-              "filter": [
-                "lowercase",
-                "idf_acronyms_filter"
-              ],
-              "char_filter": [
-                "dot_to_space"
-              ],
-              "type": "custom",
-              "tokenizer": "whitespace"
-            }
-          },
-          "char_filter": {
-            "dot_to_space": {
-              "pattern": "[}{.,!?;:\\u005b-\\u0060]",
-              "type": "pattern_replace",
-              "replacement": " "
-            }
+          "idf_acronyms_search_analyzer": {
+            "filter": [
+              "lowercase",
+              "idf_acronyms_filter"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
           }
         },
-        "number_of_replicas": "2",
-        "uuid": "aN5_aeiK6Yc3-09L0u0w",
-        "version": {
-          "created": "8536000"
+        "char_filter": {
+          "dot_to_space": {
+            "pattern": "[}{.,!?;:\\u005b-\\u0060]",
+            "type": "pattern_replace",
+            "replacement": " "
+          }
         }
-      }
+      },
+      "number_of_replicas": "2"
     }
   }
 }

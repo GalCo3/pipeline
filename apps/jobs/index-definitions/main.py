@@ -68,10 +68,10 @@ def _apply_definition(
             key: value for key, value in settings.items() if key not in CREATION_ONLY_SETTINGS
         }
 
-        if mappings:
-            elastic_handler.put_mapping(index, mapping=mappings, is_multisite=True)
         if updatable_settings:
             elastic_handler.put_settings(index, settings=updatable_settings, is_multisite=True)
+        if mappings:
+            elastic_handler.put_mapping(index, mapping=mappings, is_multisite=True)
         if aliases:
             elastic_handler.put_aliases(index, aliases=aliases, is_multisite=True)
     else:
