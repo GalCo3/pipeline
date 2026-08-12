@@ -1,0 +1,192 @@
+{
+  "aliases": {
+    "cargo-non-operational-semantic": {}
+  },
+  "mappings": {
+    "dynamic": "false",
+    "runtime": {
+      "captions_line": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('נ\"צ-שם\"' + params[\"_source\"][\"name\"] + ' ' + params[\"_source\"][\"path\"])",
+          "lang": "painless"
+        }
+      },
+      "source_link": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
+          "lang": "painless"
+        }
+      },
+      "title_line": {
+        "type": "keyword",
+        "script": {
+          "source": "emit(params[\"_source\"][\"id\"]+'-'+params[\"_source\"][\"name\"]+'-'+params[\"_source\"][\"description\"]+'-'+'var_emit(params[\"_source\"][\"holder\"])')",
+          "lang": "painless"
+        }
+      }
+    },
+    "properties": {
+      "_chunking_version": {
+        "type": "keyword"
+      },
+      "_embedding_version": {
+        "type": "keyword"
+      },
+      "_empty__": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "_high__": {
+        "type": "alias",
+        "path": "name"
+      },
+      "_low_0": {
+        "type": "alias",
+        "path": "chunk_content"
+      },
+      "_low_1": {
+        "type": "alias",
+        "path": "path"
+      },
+      "_metadata_fields": {
+        "type": "keyword"
+      },
+      "_semantic_field": {
+        "type": "keyword"
+      },
+      "chunk_content": {
+        "type": "text",
+        "term_vector": "with_positions_offsets",
+        "analyzer": "default",
+        "search_analyzer": "idf_acronyms_search_analyzer"
+      },
+      "chunk_order": {
+        "type": "integer"
+      },
+      "created": {
+        "type": "date"
+      },
+      "delete_date": {
+        "type": "date"
+      },
+      "description": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "doc_date_field": {
+        "type": "alias",
+        "path": "ver_last_modified"
+      },
+      "embedding": {
+        "type": "dense_vector",
+        "dims": 1024,
+        "index": "true",
+        "similarity": "cosine",
+        "index_options": {
+          "type": "int8_hnsw"
+        }
+      },
+      "highlighted_field": {
+        "type": "alias",
+        "path": "chunk_content"
+      },
+      "holder": {
+        "type": "keyword"
+      },
+      "last_modified": {
+        "type": "date"
+      },
+      "name": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "parent_id": {
+        "type": "keyword"
+      },
+      "path": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "path_id": {
+        "type": "keyword"
+      },
+      "path_list": {
+        "type": "keyword"
+      },
+      "s3_bucket": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "s3_key": {
+        "type": "text",
+        "term_vector": "with_positions_offsets"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "ver_last_modified": {
+        "type": "date"
+      },
+      "reality_type": {
+        "type": "keyword"
+      },
+      "id": {
+        "type": "integer"
+      }
+    }
+  },
+  "settings": {
+    "index": {
+      "routing": {
+        "allocation": {
+          "include": {
+            "_tier_preference": "data_content"
+          }
+        }
+      },
+      "number_of_shards": "20",
+      "analysis": {
+        "filter": {
+          "idf_acronyms_filter": {
+            "type": "synonym_graph",
+            "updateable": "true",
+            "synonyms_set": "idf_acronyms"
+          }
+        },
+        "analyzer": {
+          "default": {
+            "filter": [
+              "lowercase"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
+          },
+          "idf_acronyms_search_analyzer": {
+            "filter": [
+              "lowercase",
+              "idf_acronyms_filter"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
+          }
+        },
+        "char_filter": {
+          "dot_to_space": {
+            "pattern": "[}{.,!?;:\\u005b-\\u0060]",
+            "type": "pattern_replace",
+            "replacement": " "
+          }
+        }
+      },
+      "number_of_replicas": "2"
+    }
+  }
+}

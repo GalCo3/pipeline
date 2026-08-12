@@ -1,13 +1,7 @@
 {
   "mappings": {
     "properties": {
-      "_enrichment_tracking": {
-        "type": "keyword"
-      },
-      "_index_name": {
-        "type": "keyword"
-      },
-      "_index_time": {
+      "indexed_at": {
         "type": "date"
       },
       "__empty__": {

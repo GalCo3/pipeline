@@ -11,7 +11,7 @@ from hermes.observability import get_logger, init_observability
 logger = get_logger(__name__)
 
 DEFINITIONS_DIR = Path(__file__).parent / "definitions"
-SEMANTIC_SUFFIX = "-semantic"
+SEMANTIC_SUFFIX = "-semantic-v1"
 # Fixed at index creation and rejected by Elasticsearch on every later
 # `put_settings` call, closed or not, so an update must never resend it.
 CREATION_ONLY_SETTINGS = {"number_of_shards"}

@@ -1,0 +1,17 @@
+{
+  "aliases": {},
+  "mappings": {
+    "runtime": {
+      "_source_link": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('https://candy.np.idf.cts/#/' + params[\"_source\"][\"reality_id\"])",
+          "lang": "painless"
+        }
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1
+  }
+}

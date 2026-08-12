@@ -1,0 +1,153 @@
+{
+  "aliases": {
+    "cargo-operational-lexical": {}
+  },
+  "mappings": {
+    "dynamic": false,
+    "runtime": {
+      "_captions_line": {
+        "type": "keyword",
+        "script": {
+          "source": "emit(\"מזהה~שם קובץ~תיאור~בעלים\")",
+          "lang": "painless"
+        }
+      },
+      "_title_line": {
+        "type": "keyword",
+        "script": {
+          "source": "emit(params[\"_source\"][\"id\"] + '~' + params[\"_source\"][\"name\"]+ '~' + params[\"_source\"][\"description\"] + '~' + params[\"_source\"][\"holder\"])",
+          "lang": "painless"
+        }
+      }
+    },
+    "properties": {
+      "created": {
+        "type": "date"
+      },
+      "is_verified": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "path_id": {
+        "type": "text"
+      },
+      "path_list": {
+        "type": "text"
+      },
+      "text_content": {
+        "type": "text",
+        "search_analyzer": "idf_acronyms_search_analyzer",
+        "term_vector": "with_positions_offsets"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "path": {
+        "type": "text"
+      },
+      "name": {
+        "type": "text"
+      },
+      "reality_id": {
+        "type": "keyword"
+      },
+      "description": {
+        "type": "text"
+      },
+      "delete_date": {
+        "type": "date"
+      },
+      "holder": {
+        "type": "keyword"
+      },
+      "ver_last_modified": {
+        "type": "date"
+      },
+      "doc_date_field": {
+        "type": "alias",
+        "path": "ver_last_modified"
+      },
+      "last_modified": {
+        "type": "date"
+      },
+      "file_labels": {
+        "properties": {
+          "created": {
+            "type": "date"
+          },
+          "group_id": {
+            "type": "integer"
+          },
+          "group_name": {
+            "type": "keyword"
+          },
+          "label_id": {
+            "type": "integer"
+          },
+          "label_name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "s3_key": {
+        "type": "keyword"
+      },
+      "s3_bucket": {
+        "type": "keyword"
+      }
+    }
+  },
+  "settings": {
+    "analysis": {
+      "filter": {
+        "idf_acronyms_filter": {
+          "type": "synonym_graph",
+          "updateable": true,
+          "synonyms_set": "idf_acronyms"
+        }
+      },
+      "analyzer": {
+        "default": {
+          "filter": [
+            "lowercase"
+          ],
+          "char_filter": [
+            "dot_to_space"
+          ],
+          "type": "custom",
+          "tokenizer": "whitespace"
+        },
+        "dot_split_analyzer": {
+          "filter": [
+            "lowercase"
+          ],
+          "char_filter": [
+            "dot_to_space"
+          ],
+          "type": "custom",
+          "tokenizer": "whitespace"
+        },
+        "idf_acronyms_search_analyzer": {
+          "filter": [
+            "lowercase",
+            "idf_acronyms_filter"
+          ],
+          "char_filter": [
+            "dot_to_space"
+          ],
+          "type": "custom",
+          "tokenizer": "whitespace"
+        }
+      },
+      "char_filter": {
+        "dot_to_space": {
+          "pattern": "\\\\.",
+          "type": "pattern_replace",
+          "replacement": " "
+        }
+      }
+    }
+  }
+}

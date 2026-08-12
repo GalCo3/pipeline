@@ -1,0 +1,17 @@
+{
+  "aliases": {},
+  "mappings": {
+    "runtime": {
+      "_source_link": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('https://pkuda.np.idf.cts/document/' + params[\"_source\"][\"id\"])",
+          "lang": "painless"
+        }
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1
+  }
+}

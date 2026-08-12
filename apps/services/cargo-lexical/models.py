@@ -25,7 +25,7 @@ class LabelItem(BaseModel):
 class CargoMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: int
     name: str
     holder: str | None = None  # only in non-operational
     description: str
@@ -47,10 +47,6 @@ class CargoMessage(BaseModel):
     ver_last_modified: datetime
     delete_date: datetime | None = None
 
-    @field_validator("id", mode="before")
-    @classmethod
-    def coerce_id_to_str(cls, v: object) -> str:
-        return str(v)
 
     @field_validator("created", "last_modified", "ver_last_modified", mode="before")
     @classmethod

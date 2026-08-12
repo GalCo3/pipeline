@@ -1,0 +1,17 @@
+{
+  "aliases": {},
+  "mappings": {
+    "runtime": {
+      "_source_link": {
+        "type": "keyword",
+        "script": {
+          "source": "emit('https://chat.np.idf.cts/' + params[\"_source\"][\"room_type\"] + '/' + params[\"_source\"][\"name\"])",
+          "lang": "painless"
+        }
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1
+  }
+}
