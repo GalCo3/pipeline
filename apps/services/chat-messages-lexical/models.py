@@ -23,7 +23,7 @@ class ChatMessageUser(BaseModel):
     id: str | None = Field(default=None, alias="_id")
     username: str | None = None
     name: str | None = None
-    cleanName: str | None = None
+    clean_name: str | None = Field(default=None, alias="cleanName")
 
 
 class ChatMessageChannel(BaseModel):

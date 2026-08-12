@@ -28,10 +28,6 @@
       }
     },
     "properties": {
-      "_empty__": {
-        "type": "text",
-        "term_vector": "with_positions_offsets"
-      },
       "_high__": {
         "type": "alias",
         "path": "name"
@@ -157,8 +153,7 @@
             "replacement": " "
           }
         }
-      },
-      "number_of_replicas": "2"
+      }
     }
   }
 }

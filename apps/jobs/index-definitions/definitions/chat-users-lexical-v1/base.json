@@ -5,12 +5,6 @@
   "mappings": {
     "dynamic": false,
     "properties": {
-      "__empty__": {
-        "type": "text",
-        "term_vector": "with_positions_offsets",
-        "analyzer": "default",
-        "search_analyzer": "idf_acronyms_search_analyzer"
-      },
       "__low_0": {
         "type": "alias",
         "path": "name"

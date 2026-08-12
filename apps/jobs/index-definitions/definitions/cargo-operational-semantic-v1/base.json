@@ -34,10 +34,6 @@
       "__embedding_version": {
         "type": "keyword"
       },
-      "__empty__": {
-        "type": "text",
-        "term_vector": "with_positions_offsets"
-      },
       "__high__0": {
         "type": "alias",
         "path": "name"
@@ -228,8 +224,7 @@
             "replacement": " "
           }
         }
-      },
-      "number_of_replicas": "2"
+      }
     }
   }
 }

@@ -14,10 +14,6 @@
       }
     },
     "properties": {
-      "__empty__": {
-        "type": "text",
-        "term_vector": "with_positions_offsets"
-      },
       "__low__0": {
         "type": "alias",
         "path": "msg"
@@ -79,6 +75,12 @@
           },
           "id": {
             "type": "keyword"
+          },
+          "clean_name": {
+            "type": "text",
+            "term_vector": "with_positions_offsets",
+            "analyzer": "default",
+            "search_analyzer": "idf_acronyms_search_analyzer"
           }
         }
       },
@@ -119,6 +121,12 @@
             "term_vector": "with_positions_offsets",
             "analyzer": "default",
             "search_analyzer": "idf_acronyms_search_analyzer"
+          },
+          "clean_name": {
+            "type": "text",
+            "term_vector": "with_positions_offsets",
+            "analyzer": "default",
+            "search_analyzer": "idf_acronyms_search_analyzer"
           }
         }
       },
@@ -139,6 +147,14 @@
         "term_vector": "with_positions_offsets",
         "analyzer": "default",
         "search_analyzer": "idf_acronyms_search_analyzer"
+      },
+      "classification": {
+        "properties": {
+          "triangles": {
+            "type": "object",
+            "dynamic": true
+          }
+        }
       }
     }
   },
@@ -186,8 +202,7 @@
             "replacement": " "
           }
         }
-      },
-      "number_of_replicas": "2"
+      }
     }
   }
 }
