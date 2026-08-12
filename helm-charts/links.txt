@@ -7,7 +7,10 @@ it actually used. Trust the script's output over this file in that case.
 
 Keycloak is the exception: its issuer URL is baked into the token, so it has to
 be on 8083. If the script reports it on 18083, free 8083 rather than using the
-fallback — the login will fail on an issuer mismatch.
+fallback — the login will fail on an issuer mismatch. dls-console is the same
+kind of exception for the other half of the handshake: the realm registers
+exactly `http://localhost:8086/api/auth/callback/keycloak`, so on the fallback
+port the login fails with `invalid_redirect_uri`.
 
 UIs
 http://localhost:3000    grafana          (anonymous, or admin / grafana)
@@ -16,7 +19,8 @@ http://localhost:5601    kibana
 http://localhost:8084    headlamp         (8081 is mongo-express's Service port)
 http://localhost:8082    mongo-express
 http://localhost:9001    minio console    (minioadmin / minioadmin)
-http://localhost:8083    keycloak         (admin / admin; realm dls-portal, user dev / dev)
+http://localhost:8083    keycloak         (admin / admin; realm dls-console, user dev / dev)
+http://localhost:8086    dls-console      (log in through keycloak; 8086 is fixed, see below)
 
 Grafana
 http://localhost:3000/d/hermes-pipeline          dashboard

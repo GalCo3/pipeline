@@ -46,8 +46,8 @@ DEMO_PRODUCER_TAG="$(tag_of demo-producer)"
 INDEX_DEFINITIONS_TAG="$(tag_of index-definitions)"
 
 # Node apps that are a single image and a single chart named after the
-# directory. dls-portal serves both its UI and its API, so it is one release.
-NODE_APPS=(dls-portal)
+# directory. dls-console serves both its UI and its API, so it is one release.
+NODE_APPS=(dls-console)
 
 # Services that have a chart under services/, one release each below.
 SERVICES=(candy-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
@@ -118,7 +118,7 @@ install minio         local-infra/backing/minio                      --wait
 install elasticsearch local-infra/backing/elastic/elasticsearch      --wait
 install mongodb       local-infra/backing/mongodb/mongodb            --wait
 install tika          local-infra/backing/tika                       --wait
-# OIDC issuer for dls-portal; nothing else in the stack provides one.
+# OIDC issuer for dls-console; nothing else in the stack provides one.
 install keycloak      local-infra/backing/keycloak                   --wait
 install kafka-ui      local-infra/backing/kafka/kafka-ui             --wait
 install kibana        local-infra/backing/elastic/kibana             --wait

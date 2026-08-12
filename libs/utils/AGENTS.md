@@ -10,7 +10,7 @@ See the workspace-level [AGENTS.md](../../AGENTS.md) for shared tooling commands
   Mongo-backed dead letter store. Every service writes to the **one** `dls`
   collection; `source_topic` is what identifies the writer, since each service
   consumes its own topic. That collection is the read path of
-  `apps/services/dls-portal`, which groups, filters and replays from it.
+  `apps/services/dls-console`, which groups, filters and replays from it.
   Per-service collections were tried and reverted — the triage UI is
   cross-service, so a split turns every listing into a `$unionWith` fan-out and
   makes the document identity `(collection, _id)` instead of `_id`.

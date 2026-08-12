@@ -14,7 +14,7 @@ Full usage, URLs and caveats: [README.md](./README.md).
     in the same stack folder: `kafka/` (kafka + kafka-ui), `elastic/`
     (elasticsearch + kibana + es-index), `mongodb/` (mongodb + mongo-express),
     plus `minio/`, `tika/`, the `chief-api/` mock and `keycloak/` (the OIDC
-    issuer `dls-portal` logs in against).
+    issuer `dls-console` logs in against).
   - `observability/` — `otel-operator`, `otel-collector`, and the Grafana
     stack (`mimir`, `loki`, `tempo`, `grafana`). Kept apart from `backing/`
     because no service names these; the collector finds them.

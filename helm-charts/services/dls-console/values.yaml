@@ -1,0 +1,152 @@
+# One release, one image: the console serves its own API, so there is no second
+# chart and no in-cluster proxy hop between a UI and a backend.
+fullnameOverride: dls-console
+replicaCount: 1
+
+# Recreate, not the default rolling update: the dev node runs at ~99% of its
+# memory requests, so a second pod does not fit and every reinstall leaves the
+# new one Pending on "Insufficient memory" until the old one happens to go. The
+# app holds no state between requests except an in-flight bulk run.
+strategy:
+  type: Recreate
+
+image:
+  registry: ""
+  # tools/ci/find_build.py names an app after its path below the group, so the
+  # image built from apps/services/dls-console is this.
+  repository: dls-console
+  tag: local
+  # Image is built straight into the Docker Desktop engine, so never pull.
+  pullPolicy: IfNotPresent
+
+# 8080: unprivileged, as OpenShift requires (see the app's Dockerfile).
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  portName: http
+
+# Non-secret settings. Keys map onto apps/services/dls-console/src/lib/config.ts
+# and src/auth.ts; that app's .env.example is the full list. Flat names, no
+# `__` nesting — this app is one process with one Mongo and one Kafka client.
+env:
+  # The read path: the pipeline's own dead letter store, written by every
+  # service through hermes.utils.send_to_dls. The database and collection names
+  # are load-bearing — point them elsewhere and the console is simply empty.
+  MONGO_HOST: mongodb
+  MONGO_PORT: "27017"
+  MONGO_DATABASE: hermes
+  MONGO_DLS_COLLECTION: dls
+  # The local Mongo speaks plaintext, so no TLS block here. Against a real
+  # cluster, mount the material and name the paths — see the commented
+  # `volumes`/`volumeMounts` at the bottom of this file:
+  #   MONGO_TLS_CA_PATH: /etc/ssl/mongo/ca.pem
+  #   MONGO_TLS_CERT_KEY_PATH: /etc/ssl/mongo/client.pem
+  # With a client certificate and no MONGO_USERNAME/MONGO_PASSWORD in
+  # `secretEnv`, the console authenticates as MONGODB-X509 against `$external`.
+
+  # The write path. Plain JSON: the pipeline's topics carry no Schema Registry
+  # framing, so a replay is a plain produce and nothing here fetches a schema.
+  KAFKA_BROKERS: kafka:9092
+  KAFKA_SECURITY_PROTOCOL: PLAINTEXT
+  KAFKA_PRODUCE_TIMEOUT: "15"
+
+  # Lag is the consuming service's own group on the topic it consumes, and the
+  # group id is derived from the topic (`cargo-lexical.files` -> `cargo-lexical`
+  # -> this template). Change it only if a service stops following the
+  # pipeline's `<service>-service` naming; a topic that does not match just
+  # shows no lag.
+  LAG_GROUP_ID_TEMPLATE: "{service}-service"
+
+  # Split horizon, and both halves are required. The token's `iss` is minted by
+  # Keycloak from KC_HOSTNAME, which is the URL the *browser* reaches
+  # (tools/scripts/sandbox/port-forward.sh maps 8083). The pod cannot reach that URL, so
+  # discovery and the token exchange go through the in-cluster Service instead,
+  # while the browser is still redirected to the public one.
+  AUTH_KEYCLOAK_ISSUER: http://localhost:8083/realms/dls-console
+  AUTH_KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/dls-console
+  AUTH_KEYCLOAK_ID: dls-console
+  # Behind the port-forward the request host is not the pod's own, so next-auth
+  # has to trust the forwarded host when it builds the callback URL.
+  AUTH_TRUST_HOST: "true"
+  # The browser reaches this through tools/scripts/sandbox/port-forward.sh on 8086, and
+  # that port is not free-choice: the realm registers exactly that origin as a
+  # redirect URI, and any other one fails login with `invalid_redirect_uri`.
+  AUTH_URL: http://localhost:8086
+
+  DEV_BYPASS: "false"
+
+  # The injected sidecar, which forwards to the namespace collector.
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+
+# Rendered into a Secret and injected with envFrom. AUTH_SECRET encrypts the
+# session cookie; the Keycloak secret is what makes this a confidential client,
+# and neither ever reaches the browser — the page holds a session cookie only.
+secretEnv:
+  MONGO_USERNAME: root
+  MONGO_PASSWORD: mongoadmin
+  AUTH_SECRET: dev-only-session-secret-change-me
+  AUTH_KEYCLOAK_SECRET: dev-console-secret
+
+# Not /api/health: that endpoint pings Kafka too, and a broker blip would pull a
+# perfectly usable read path out of the Service. /api/health/ready proves the
+# server is answering, which is what readiness means here.
+readinessProbe:
+  httpGet:
+    path: /api/health/ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 6
+
+livenessProbe:
+  httpGet:
+    path: /api/health/ready
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  failureThreshold: 3
+
+# One node process holding a Mongo pool and a librdkafka client. Modest request
+# so the single 8Gi dev node still has room for the job pods; generous limit
+# because a bulk replay holds whole message payloads in memory.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 768Mi
+
+# Empty means the library defaults apply: runAsNonRoot + RuntimeDefault seccomp,
+# no UID pinning, so OpenShift assigns an arbitrary UID. The image is
+# group-writable for exactly that reason.
+podSecurityContext: {}
+containerSecurityContext: {}
+
+# Certificates for a TLS Mongo (and the same pattern for Kafka's KAFKA_SSL_*
+# paths). Nothing to mount locally, so this is off; uncomment together with the
+# MONGO_TLS_* keys in `env` above. The Secret is not created by this chart — it
+# is cluster material, not app config.
+#
+# 0400 and readOnly because the driver only reads them, and an arbitrary
+# OpenShift UID still reads a mode-0400 file it owns via the fsGroup the
+# platform assigns.
+# volumes:
+#   - name: mongo-certs
+#     secret:
+#       secretName: dls-console-mongo-certs
+#       defaultMode: 0400
+# volumeMounts:
+#   - name: mongo-certs
+#     mountPath: /etc/ssl/mongo
+#     readOnly: true
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+podAnnotations:
+  sidecar.opentelemetry.io/inject: "true"

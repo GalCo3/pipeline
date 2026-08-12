@@ -1,4 +1,4 @@
-# Dev-only OIDC issuer. apps/services/dls-portal performs the confidential-client
+# Dev-only OIDC issuer. apps/services/dls-console performs the confidential-client
 # code exchange in-process with next-auth (see that service's AGENTS.md), so
 # local dev needs a real issuer — nothing else in local-infra provides one.
 #
@@ -59,7 +59,7 @@ secretEnv:
 # import has actually run, which is the condition that matters here.
 readinessProbe:
   httpGet:
-    path: /realms/dls-portal
+    path: /realms/dls-console
     port: http
   initialDelaySeconds: 15
   periodSeconds: 10
@@ -67,7 +67,7 @@ readinessProbe:
 
 livenessProbe:
   httpGet:
-    path: /realms/dls-portal
+    path: /realms/dls-console
     port: http
   initialDelaySeconds: 60
   periodSeconds: 30
@@ -77,26 +77,26 @@ configFiles:
   # Dev credentials are intentionally in the clear — this realm never leaves the
   # local cluster, and the client secret being fixed is what lets local dev
   # exercise the same backend-mediated code exchange as production.
-  dls-portal-realm.json:
-    realm: dls-portal
+  dls-console-realm.json:
+    realm: dls-console
     enabled: true
     sslRequired: none
     registrationAllowed: false
     clients:
       # Confidential, not public: the real SSO issues confidential clients only.
-      # The portal is a server-side confidential client — next-auth holds the
+      # The console is a server-side confidential client — next-auth holds the
       # secret and does the code exchange in-process. A public/PKCE client here
       # would let local dev pass on a flow that 401s with `invalid_client`
       # against the real issuer.
-      - clientId: dls-portal
-        name: DLS Portal (Next.js, server-side confidential client)
+      - clientId: dls-console
+        name: DLS Console (Next.js, server-side confidential client)
         enabled: true
         publicClient: false
         standardFlowEnabled: true
         directAccessGrantsEnabled: false
-        secret: dev-portal-secret
+        secret: dev-console-secret
         # next-auth's callback path, not an origin-derived URI: 8086 is the
-        # in-cluster portal as tools/scripts/sandbox/port-forward.sh maps it, 3000 the
+        # in-cluster console as tools/scripts/sandbox/port-forward.sh maps it, 3000 the
         # `next dev` server.
         redirectUris:
           - http://localhost:8086/api/auth/callback/keycloak

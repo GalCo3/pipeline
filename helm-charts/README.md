@@ -27,7 +27,7 @@ helm-charts/
       minio/                Bitnami minio 17.0.21, standalone, bucket `cargo`
       tika/                 Apache Tika server for legacy/image formats
       chief-api/            local mock of the chief document API
-      keycloak/             dev-mode OIDC issuer, realm `dls-portal` imported
+      keycloak/             dev-mode OIDC issuer, realm `dls-console` imported
                             at start (in-memory — no state survives the pod)
     observability/          where telemetry goes and what shows it
       otel-operator/        OpenTelemetry Operator: CRDs + sidecar injection

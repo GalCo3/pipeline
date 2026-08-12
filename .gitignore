@@ -12,7 +12,7 @@ venv/
 dist/
 build/
 
-# Node (apps/services/dls-portal)
+# Node (apps/services/dls-console)
 node_modules/
 .vite/
 *.tsbuildinfo

@@ -92,9 +92,9 @@ build_image() {
 # deployed consumers, both running this same image under their own topic/index.
 IMAGE_SOURCES=(candy-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
-# Node apps: one image, one chart named after the directory. dls-portal serves
+# Node apps: one image, one chart named after the directory. dls-console serves
 # both its UI and its API, so it is a single image like any consumer.
-NODE_APPS=(dls-portal)
+NODE_APPS=(dls-console)
 
 echo "==> Building images"
 > "$TAGS_FILE_TMP"

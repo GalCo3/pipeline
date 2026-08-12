@@ -13,9 +13,9 @@ dev = [
 
 [tool.uv.workspace]
 members = ["libs/*", "apps/services/*", "apps/jobs/*"]
-# dls-portal is Node end to end, so it has no manifest for the glob above to
+# dls-console is Node end to end, so it has no manifest for the glob above to
 # find and every uv command would fail on the missing manifest.
-exclude = ["apps/services/dls-portal"]
+exclude = ["apps/services/dls-console"]
 
 [tool.ruff]
 line-length = 100

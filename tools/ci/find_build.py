@@ -5,7 +5,7 @@ which are only set inside a GitLab CI job.
 
 An app is a uv workspace member under `apps/<group>/`, or any directory under it
 that carries its own `Dockerfile`. The second case is what lets a non-Python app
-(or one that is not a workspace member) ship an image: `apps/services/dls-portal/`
+(or one that is not a workspace member) ship an image: `apps/services/dls-console/`
 is a Node app that never joins the workspace.
 
 An app is affected if either:
@@ -22,7 +22,7 @@ that depends on it.
 Writes one "<group> <image-name> <path>" line per affected app to stdout:
 
     services cargo-lexical apps/services/cargo-lexical
-    services dls-portal apps/services/dls-portal
+    services dls-console apps/services/dls-console
     jobs index-definitions apps/jobs/index-definitions
 
 The image name is the app's path below its group with "/" replaced by "-", so a

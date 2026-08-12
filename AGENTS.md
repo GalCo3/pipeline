@@ -11,7 +11,7 @@ the shared dev tooling config (`ruff`, `ty`); member packages do not repeat it.
   - `observability/` — structured logging, tracing, and metrics library.
 - `apps/services/` — deployable applications that consume the `libs/` libraries.
   - `cargo-lexical/` — placeholder service skeleton, not yet implemented.
-  - `dls-portal/` — the triage console: one Next.js app serving
+  - `dls-console/` — the triage console: one Next.js app serving
     both the UI and its API over `hermes.dls`. Node, not Python, so it
     never joins the uv workspace; it ships its own `Dockerfile` and builds in
     Docker (no node toolchain on the host). See its `AGENTS.md`.

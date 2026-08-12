@@ -70,10 +70,10 @@ forward "mongo express" mongo-express 8082 8081
 forward "keycloak"      keycloak      8083 8080
 # Same constraint as keycloak, from the other side: next-auth posts back to
 # a fixed callback path (/api/auth/callback/keycloak) under the origin in
-# AUTH_URL, so the portal chart's AUTH_URL, this port, and the realm's
+# AUTH_URL, so the console chart's AUTH_URL, this port, and the realm's
 # redirectUris all have to agree on 8086. On the fallback port the login fails
 # with `invalid_redirect_uri`, so fix the collision rather than using it.
-forward "dls-portal"    dls-portal          8086 8080
+forward "dls-console"    dls-console          8086 8080
 
 echo
 echo "Backends:"
