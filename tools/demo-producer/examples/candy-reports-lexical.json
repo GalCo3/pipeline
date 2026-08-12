@@ -1,56 +1,58 @@
 {
-  "topic": "raw.candy-reports-lexical",
+  "topic": "raw.candy-reports",
   "examples": [
     {
-      "name": "full-report",
+      "name": "full-fields-indexed",
       "expect": "indexed",
       "message": {
         "id": "{{id}}",
         "creatingUserName": "alice",
         "actualUserName": "bob",
-        "description": "Container HERMES-0001 cleared customs.",
-        "type": "customs",
+        "description": "Full report with every optional field populated.",
+        "type": "incident",
         "date": "{{past}}",
         "actualDate": "{{now}}",
         "isDeleted": false,
-        "updatingUser": "alice",
+        "updatingUser": "dana",
+        "lastDeletionDate": null,
         "eventId": "event-001",
+        "deleteAuthor": null,
         "cellId": "cell-001",
-        "realityId": "reality-001",
-        "cellHierarchy": "frame-a/mclol-1/cell-x",
+        "realityId": "reality-1",
+        "cellHierarchy": "frame-1/mclol-1/cell-1",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "mirageAction": "none",
-        "militaryDistrictId": 5
+        "militaryDistrictId": 4
       }
     },
     {
-      "name": "minimal-required-only",
+      "name": "minimal-required-fields",
       "expect": "indexed",
       "message": {
         "id": "{{id}}",
         "creatingUserName": "bob",
-        "description": "Minimal report, optionals omitted.",
+        "description": "Only the required fields; every optional field is absent.",
         "type": "status",
         "date": "{{past}}",
         "isDeleted": false,
         "eventId": "event-002",
         "cellId": "cell-002",
-        "realityId": "reality-002",
-        "cellHierarchy": "frame-b/mclol-2/cell-y",
+        "realityId": "reality-1",
+        "cellHierarchy": "frame-1/mclol-2/cell-9",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
-        "militaryDistrictId": 3
+        "militaryDistrictId": 7
       }
     },
     {
-      "name": "int-id-utc-suffix-nulls",
+      "name": "explicit-nulls-int-id-utc-suffix",
       "expect": "indexed",
       "message": {
         "id": "{{id_int}}",
         "creatingUserName": "dana",
         "actualUserName": null,
-        "description": "Numeric id, Z-suffixed timestamps, explicit nulls.",
+        "description": "Explicit nulls on every optional field. Numeric id, Z-suffixed timestamps.",
         "type": "status",
         "date": "{{past_z}}",
         "actualDate": null,
@@ -60,54 +62,73 @@
         "eventId": "event-003",
         "deleteAuthor": null,
         "cellId": "cell-003",
-        "realityId": "reality-003",
-        "cellHierarchy": "frame-c/mclol-3/cell-z",
+        "realityId": "reality-2",
+        "cellHierarchy": "frame-2/mclol-1/cell-4",
         "creationDate": "{{past_z}}",
         "lastUpdateTimeToTransfer": "{{now_z}}",
         "mirageAction": null,
-        "militaryDistrictId": 7
+        "militaryDistrictId": 2
+      }
+    },
+    {
+      "name": "empty-cell-hierarchy",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "creatingUserName": "alice",
+        "description": "Empty cell_hierarchy leaves frame/mclol/cell unset instead of raising.",
+        "type": "incident",
+        "date": "{{past}}",
+        "isDeleted": false,
+        "eventId": "event-004",
+        "cellId": "cell-004",
+        "realityId": "reality-1",
+        "cellHierarchy": "",
+        "creationDate": "{{past}}",
+        "lastUpdateTimeToTransfer": "{{now}}",
+        "militaryDistrictId": 4
       }
     },
     {
       "name": "deleted-report",
       "expect": "deleted",
-      "id_of": "full-report",
+      "id_of": "full-fields-indexed",
       "message": {
         "id": "{{id}}",
         "creatingUserName": "alice",
         "description": "isDeleted is set, so the service deletes this document by id and stops.",
-        "type": "customs",
+        "type": "incident",
         "date": "{{past}}",
         "isDeleted": true,
         "lastDeletionDate": "{{now}}",
-        "deleteAuthor": "erez",
         "eventId": "event-001",
+        "deleteAuthor": "dana",
         "cellId": "cell-001",
-        "realityId": "reality-001",
-        "cellHierarchy": "frame-a/mclol-1/cell-x",
+        "realityId": "reality-1",
+        "cellHierarchy": "frame-1/mclol-1/cell-1",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
-        "militaryDistrictId": 5
+        "militaryDistrictId": 4
       }
     },
     {
-      "name": "future-actual-date-no-hierarchy",
-      "expect": "indexed",
+      "name": "unforbidden-extra-field-to-dls",
+      "expect": "dls",
       "message": {
         "id": "{{id}}",
-        "creatingUserName": "erez",
-        "description": "cellHierarchy is empty, so frame/mclol/cell stay unset.",
-        "type": "forecast",
-        "date": "{{now}}",
-        "actualDate": "{{future}}",
+        "creatingUserName": "bob",
+        "description": "extra=forbid on the model rejects the unknown field below, so validation raises and the message lands in the dead letter store.",
+        "type": "status",
+        "date": "{{past}}",
         "isDeleted": false,
-        "eventId": "event-004",
-        "cellId": "cell-004",
-        "realityId": "reality-004",
-        "cellHierarchy": "",
-        "creationDate": "{{now}}",
-        "lastUpdateTimeToTransfer": "{{future}}",
-        "militaryDistrictId": 1
+        "eventId": "event-005",
+        "cellId": "cell-005",
+        "realityId": "reality-1",
+        "cellHierarchy": "frame-1/mclol-3/cell-2",
+        "creationDate": "{{past}}",
+        "lastUpdateTimeToTransfer": "{{now}}",
+        "militaryDistrictId": 4,
+        "unexpectedField": "not part of the model"
       }
     }
   ]

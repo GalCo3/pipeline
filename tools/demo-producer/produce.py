@@ -54,7 +54,7 @@ INTERVAL_SECONDS = float(os.environ.get("INTERVAL_SECONDS", "0"))
 # adds documents instead of overwriting the previous batch.
 RUN_SEED = int(os.environ.get("RUN_SEED", "") or zlib.crc32(socket.gethostname().encode()) % 90_000)
 
-CARGO_SOURCE = "cargo-lexical"
+CARGO_SOURCES = {"cargo-operational-lexical", "cargo-my-storage-lexical"}
 
 
 def build_txt() -> bytes:
@@ -318,7 +318,7 @@ def main() -> None:
     logger.info("Producing %d sources: %s", len(sources), ", ".join(name for name, _, _ in sources))
 
     s3 = None
-    if any(name == CARGO_SOURCE for name, _, _ in sources):
+    if any(name in CARGO_SOURCES for name, _, _ in sources):
         s3 = create_s3_client()
         ensure_bucket(s3)
 
@@ -335,7 +335,7 @@ def main() -> None:
                 examples,
                 ordinal,
                 run_id,
-                s3 if name == CARGO_SOURCE else None,
+                s3 if name in CARGO_SOURCES else None,
             )
             producer.flush(10)
             logger.info(

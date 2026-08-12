@@ -1,6 +1,6 @@
 apiVersion: v2
 name: cargo-operational-lexical
-description: Cargo enrichment service for operational cargo — same image as cargo-lexical, consumes raw.cargo_operational and indexes to cargo-operational-lexical.
+description: Cargo enrichment service for operational cargo — same image as cargo-lexical, consumes raw.cargo-operational and indexes to cargo-operational-lexical.
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

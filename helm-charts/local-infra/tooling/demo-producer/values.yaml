@@ -34,15 +34,18 @@ env:
   # Which example fixtures (tools/demo-producer/examples/<name>.json) to produce.
   # Empty/unset means all of them. chief-lexical needs the chief-api mock
   # (local-infra/backing/chief-api) up, which install.sh deploys.
-  SOURCES: chat-messages-lexical,chat-rooms-lexical,chat-users-lexical,chief-lexical
+  # cargo-lexical retired: no chart consumes raw.cargo-lexical anymore, its
+  # split successors cargo-operational-lexical and cargo-my-storage-lexical
+  # are listed below instead.
+  SOURCES: chat-messages-lexical,chat-rooms-lexical,chat-users-lexical,chief-lexical,candy-reports-lexical,cargo-operational-lexical,cargo-my-storage-lexical
   # Each fixture carries its own topic; these override it per source.
-  # cargo-lexical retired: no chart consumes raw.cargo-lexical anymore, and
-  # cargo-operational-lexical / cargo-my-storage-lexical don't have their own
-  # example fixtures yet.
-  TOPIC_CHAT_MESSAGES_LEXICAL: raw.chat-messages-lexical
-  TOPIC_CHAT_ROOMS_LEXICAL: raw.chat-rooms-lexical
-  TOPIC_CHAT_USERS_LEXICAL: raw.chat-users-lexical
-  TOPIC_CHIEF_LEXICAL: raw.chief-lexical
+  TOPIC_CHAT_MESSAGES_LEXICAL: raw.chat-messages
+  TOPIC_CHAT_ROOMS_LEXICAL: raw.chat-rooms
+  TOPIC_CHAT_USERS_LEXICAL: raw.chat-users
+  TOPIC_CHIEF_LEXICAL: raw.chief
+  TOPIC_CANDY_REPORTS_LEXICAL: raw.candy-reports
+  TOPIC_CARGO_OPERATIONAL_LEXICAL: raw.cargo-operational
+  TOPIC_CARGO_MY_STORAGE_LEXICAL: raw.cargo-my-storage
   S3_ENDPOINT: http://minio:9000
   S3_BUCKET: cargo-lexical
   # >0 keeps the producer looping every N seconds instead of exiting.

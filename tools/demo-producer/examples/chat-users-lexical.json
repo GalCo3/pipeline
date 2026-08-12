@@ -1,5 +1,5 @@
 {
-  "topic": "raw.chat-users-lexical",
+  "topic": "raw.chat-users",
   "examples": [
     {
       "name": "full-user",
