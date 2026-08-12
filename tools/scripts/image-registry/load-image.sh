@@ -1,5 +1,4 @@
 #!/bin/bash
-
 IMAGE_FILE=$1
 BASE="${IMAGE_FILE%.tar.gz}"
 
