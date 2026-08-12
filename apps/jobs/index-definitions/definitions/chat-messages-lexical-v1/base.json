@@ -151,7 +151,6 @@
           }
         }
       },
-      "number_of_shards": "18",
       "analysis": {
         "filter": {
           "idf_acronyms_filter": {
