@@ -1,4 +1,4 @@
-# Runs at install/upgrade time (see tools/scripts/install.sh), same as
+# Runs at install/upgrade time (see tools/scripts/sandbox/install.sh), same as
 # demo-producer. Note the definitions under apps/jobs/index-definitions/definitions
 # are named for real environments (np/prep/prod) — e.g. a plain "cargo-lexical"
 # index, no alias — which does not match the aliased index name

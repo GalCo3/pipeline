@@ -12,6 +12,12 @@ venv/
 dist/
 build/
 
+# Node (apps/services/dls-portal)
+node_modules/
+.vite/
+*.tsbuildinfo
+*.local
+
 # JetBrains
 .idea/
 
@@ -25,6 +31,7 @@ Thumbs.db
 # Env / secrets
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 
@@ -34,8 +41,10 @@ Thumbs.db
 # Helm
 helm-charts/**/charts/*.tgz
 
-# Local build state
-tools/scripts/sandbox/.image-tags
+# Local build state — the tags file build-images.sh writes, plus the temp file
+# it stages it through. Any path.
+.image-tags
+.image-tags.tmp
 
 # Claude
 .claude

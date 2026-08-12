@@ -1,0 +1,237 @@
+{
+  // Multi-root: "pipeline" is the real repo root (all paths below resolve against
+  // it via ${workspaceFolder:pipeline}); "apps" and "libs" are views onto its
+  // subdirectories, hidden from the root view by files.exclude so they appear once.
+  "folders": [
+    {
+      "name": "pipeline",
+      "path": "."
+    },
+    {
+      "name": "apps",
+      "path": "apps"
+    },
+    {
+      "name": "libs",
+      "path": "libs"
+    }
+  ],
+  "settings": {
+    // ---- Interpreter: the single uv workspace venv at the repo root ----
+    "python.defaultInterpreterPath": "${workspaceFolder:pipeline}/.venv/bin/python",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+
+    // ---- Testing: pytest lives per package, discovery is rooted at libs/ ----
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.cwd": "${workspaceFolder:pipeline}",
+    "python.testing.pytestArgs": ["libs"],
+
+    // ---- Linting/formatting: ruff, configured once in the root pyproject.toml ----
+    "ruff.configuration": "${workspaceFolder:pipeline}/pyproject.toml",
+    "ruff.importStrategy": "fromEnvironment",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true,
+      "editor.rulers": [100],
+      "editor.codeActionsOnSave": {
+        "source.fixAll.ruff": "explicit",
+        "source.organizeImports.ruff": "explicit"
+      }
+    },
+
+    // Pylance handles editor intel; `uv run ty check` is the authoritative type gate.
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+      // src/ layout packages are editable-installed into .venv; sibling modules
+      // (settings.py, models.py) resolve at runtime via the app's own cwd.
+      "reportMissingModuleSource": "none"
+    },
+
+    // ---- Helm charts are Go templates, not plain YAML ----
+    "files.associations": {
+      "helm-charts/**/templates/*.yaml": "helm-template",
+      "helm-charts/**/templates/*.tpl": "helm-template",
+      "helm-charts/**/Chart.yaml": "yaml",
+      "helm-charts/**/values*.yaml": "yaml",
+      ".gitlab-ci.yml": "gitlab-ci"
+    },
+    "yaml.schemas": {
+      "https://json.schemastore.org/chart.json": "helm-charts/**/Chart.yaml"
+    },
+
+    // ---- Noise reduction in the explorer / search ----
+    "files.exclude": {
+      // Shown as their own top-level workspace folders — hide the duplicates
+      // that would otherwise appear inside the "pipeline" root folder.
+      "apps": true,
+      "libs": true,
+      ".venv": true,
+      "**/__pycache__": true,
+      "**/*.egg-info": true,
+      "**/.pytest_cache": true,
+      "**/.ruff_cache": true,
+      "**/.DS_Store": true
+    },
+    "search.exclude": {
+      "**/.venv": true,
+      "**/uv.lock": true,
+      "**/helm-charts/**/charts/*.tgz": true
+    },
+    "files.watcherExclude": {
+      "**/.venv/**": true,
+      "**/.ruff_cache/**": true,
+      "**/.pytest_cache/**": true
+    },
+
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "editor.rulers": [100]
+  },
+
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "ms-python.debugpy",
+      "charliermarsh.ruff",
+      "redhat.vscode-yaml",
+      "tim-koehler.helm-intellisense",
+      "ms-kubernetes-tools.vscode-kubernetes-tools",
+      "ms-azuretools.vscode-docker",
+      "tamasfe.even-better-toml"
+    ]
+  },
+
+  "tasks": {
+    "version": "2.0.0",
+    "options": {
+      "cwd": "${workspaceFolder:pipeline}"
+    },
+    "presentation": {
+      "reveal": "always",
+      "panel": "dedicated",
+      "clear": true
+    },
+    "tasks": [
+      {
+        "label": "uv: sync workspace",
+        "type": "shell",
+        "command": "uv sync --all-packages",
+        "problemMatcher": []
+      },
+      {
+        "label": "ruff: check",
+        "type": "shell",
+        "command": "uv run ruff check .",
+        "group": "test",
+        "problemMatcher": {
+          "owner": "ruff",
+          "fileLocation": ["relative", "${workspaceFolder:pipeline}"],
+          "pattern": {
+            "regexp": "^(.+):(\\d+):(\\d+): (\\w+) (.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "code": 4,
+            "message": 5
+          }
+        }
+      },
+      {
+        "label": "ruff: format",
+        "type": "shell",
+        "command": "uv run ruff format .",
+        "problemMatcher": []
+      },
+      {
+        "label": "ty: check",
+        "type": "shell",
+        "command": "uv run ty check",
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "lint + typecheck",
+        "dependsOrder": "sequence",
+        "dependsOn": ["ruff: check", "ty: check"],
+        "group": {
+          "kind": "test",
+          "isDefault": true
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "stack: install (local k8s)",
+        "type": "shell",
+        "command": "./tools/scripts/install.sh",
+        "problemMatcher": []
+      },
+      {
+        "label": "stack: populate",
+        "type": "shell",
+        "command": "./tools/scripts/populate.sh",
+        "problemMatcher": []
+      },
+      {
+        "label": "stack: port-forward",
+        "type": "shell",
+        "command": "./tools/scripts/port-forward.sh",
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "stack: clean",
+        "type": "shell",
+        "command": "./tools/scripts/clean.sh",
+        "problemMatcher": []
+      }
+    ]
+  },
+
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        // Services/jobs import sibling modules (settings.py, models.py) by bare
+        // name, so cwd must be the app directory — not the repo root.
+        "name": "Run app in current folder (main.py)",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${fileDirname}/main.py",
+        "cwd": "${fileDirname}",
+        "console": "integratedTerminal",
+        "justMyCode": false
+      },
+      {
+        "name": "Run current file",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${file}",
+        "cwd": "${fileDirname}",
+        "console": "integratedTerminal",
+        "justMyCode": false
+      },
+      {
+        "name": "Job: index-definitions",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder:pipeline}/apps/jobs/index-definitions/main.py",
+        "cwd": "${workspaceFolder:pipeline}/apps/jobs/index-definitions",
+        "console": "integratedTerminal",
+        "justMyCode": false
+      },
+      {
+        "name": "pytest: current test file",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": ["-v", "${file}"],
+        "cwd": "${workspaceFolder:pipeline}",
+        "console": "integratedTerminal",
+        "justMyCode": false
+      }
+    ]
+  }
+}

@@ -9,7 +9,7 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-hermes}"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 CHARTS_DIR="$REPO_ROOT/helm-charts"
 
 SERVICES=(candy-reports-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)

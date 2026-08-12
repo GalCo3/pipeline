@@ -27,6 +27,8 @@ helm-charts/
       minio/                Bitnami minio 17.0.21, standalone, bucket `cargo`
       tika/                 Apache Tika server for legacy/image formats
       chief-api/            local mock of the chief document API
+      keycloak/             dev-mode OIDC issuer, realm `dls-portal` imported
+                            at start (in-memory — no state survives the pod)
     observability/          where telemetry goes and what shows it
       otel-operator/        OpenTelemetry Operator: CRDs + sidecar injection
       otel-collector/       namespace collector + injected sidecar (CRs)
@@ -44,8 +46,10 @@ helm-charts/
 ```
 
 The scripts that drive these charts live outside the chart tree, in
-[`tools/scripts/`](../tools/scripts): `install.sh` (build images, resolve deps,
-install everything), `populate.sh`, `clean.sh`, `port-forward.sh`.
+[`tools/scripts/sandbox/`](../tools/scripts/sandbox): `build-images.sh` (build
+every image, record its content-addressed tag), `install.sh` (resolve deps,
+install everything from those tags; `--build` rebuilds first), `populate.sh`,
+`clean.sh`, `port-forward.sh`.
 
 In-cluster DNS names are pinned via `fullnameOverride`, so the addresses in
 `services/cargo-lexical/values.yaml` hold regardless of release name: `kafka:9092`,
@@ -56,8 +60,9 @@ In-cluster DNS names are pinned via `fullnameOverride`, so the addresses in
 Enable Kubernetes in Docker Desktop → Settings → Kubernetes, then:
 
 ```bash
-./tools/scripts/install.sh      # ~10 min on a cold cluster
-./tools/scripts/port-forward.sh # UI access, Ctrl-C to stop
+./tools/scripts/sandbox/build-images.sh # once, and again whenever image code changes
+./tools/scripts/sandbox/install.sh      # ~10 min on a cold cluster
+./tools/scripts/sandbox/port-forward.sh # UI access, Ctrl-C to stop
 ```
 
 Plain URL list: [links.txt](./links.txt).
@@ -134,9 +139,24 @@ update and delete routes, source aliases vs model field names, optional fields
 present / absent / null, and for cargo every file type the extractor handles
 plus the missing-object (dead letter) and unsupported-format (skipped) paths.
 Records are produced **without a Kafka key**, like the real sources. `SOURCES`
-picks which fixtures to produce (default: everything except `chief-lexical`,
-whose indexing path calls the chief API); `TOPIC_<SOURCE>` overrides a fixture's
-topic.
+picks which fixtures to produce (default: all six, `chief-lexical` included —
+its indexing path calls the chief API, so the `chief-api` mock has to be up or
+those messages land in the DLS); `TOPIC_<SOURCE>` overrides a fixture's topic.
+
+### Producing one source only
+
+Triggering the CronJob always produces every source in `SOURCES`. To re-seed a
+single one, upgrade with `SOURCES` narrowed — the post-upgrade hook Job fires a
+batch with just that source:
+
+```sh
+helm upgrade --install demo-producer helm-charts/local-infra/tooling/demo-producer \
+  -n hermes --set env.SOURCES=chief-lexical
+```
+
+Do **not** reach for `kubectl run <name> --image=demo-producer:...`. That makes a
+bare Pod with no owner, so nothing reaps it: `ttlSecondsAfterFinished` is a Job
+field and does not apply, and the Pod sits in `Completed` until deleted by hand.
 
 ## Telemetry
 
@@ -187,7 +207,13 @@ annotated pods    <--scrape-------------------------------- hermes-collector (pr
 - **Host access is via port-forward.** Docker Desktop's Kubernetes node is not
   on the host network, so NodePort addresses and `LoadBalancer` external IPs do
   not resolve from macOS. The NodePort values in the infra charts are kept for
-  clusters where they do work; `scripts/port-forward.sh` is the reliable path.
+  clusters where they do work; `tools/scripts/sandbox/port-forward.sh` is the reliable
+  path. Docker Desktop does bind some of those ports on localhost itself (each
+  NodePort Service at its *Service* port: 8080, 5601, 9200, 27017, …) without
+  reliably routing them — a Desktop restart is what repairs that. The script
+  does not fight it: a taken port moves that service to port + 10000 and the
+  address it actually used is printed. Keycloak is the one that must keep its
+  port, since its issuer URL is baked into the tokens it mints.
 - **MongoDB uses the official image**, not a Bitnami wrapper: the
   `bitnamilegacy` MongoDB tags are amd64-only and will not run on Apple
   Silicon. The chart is built on `hermes-common` with a PVC template.

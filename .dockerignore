@@ -17,6 +17,13 @@ __pycache__
 .ruff_cache
 .mypy_cache
 
+# Node build output and deps — reinstalled inside the image.
+node_modules
+**/node_modules
+**/dist
+**/.vite
+**/*.tsbuildinfo
+
 # Deployment and docs: never read at runtime, but change often.
 helm-charts
 demo-producer

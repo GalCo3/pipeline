@@ -1,0 +1,10 @@
+apiVersion: v2
+name: keycloak
+description: Local-dev Keycloak (dev mode, in-memory, realm imported at start) for dls-portal's OIDC login.
+type: application
+version: 0.1.0
+appVersion: "26.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../../library/hermes-common

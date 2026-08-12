@@ -1,12 +1,22 @@
-Run helm-charts/scripts/port-forward.sh first.
+Run tools/scripts/port-forward.sh first.
+
+These are the ports it uses when they are free. When one is already taken —
+Docker Desktop binds several of them itself, at the Service's own port — the
+script moves that service to port + 10000 (9200 -> 19200) and prints the address
+it actually used. Trust the script's output over this file in that case.
+
+Keycloak is the exception: its issuer URL is baked into the token, so it has to
+be on 8083. If the script reports it on 18083, free 8083 rather than using the
+fallback — the login will fail on an issuer mismatch.
 
 UIs
 http://localhost:3000    grafana          (anonymous, or admin / grafana)
 http://localhost:8080    kafka-ui
 http://localhost:5601    kibana
-http://localhost:8081    headlamp
+http://localhost:8084    headlamp         (8081 is mongo-express's Service port)
 http://localhost:8082    mongo-express
 http://localhost:9001    minio console    (minioadmin / minioadmin)
+http://localhost:8083    keycloak         (admin / admin; realm dls-portal, user dev / dev)
 
 Grafana
 http://localhost:3000/d/hermes-pipeline          dashboard
@@ -22,3 +32,8 @@ http://localhost:3100    loki
 http://localhost:3200    tempo
 localhost:9092           kafka bootstrap
 mongodb://root:mongoadmin@localhost:27017
+
+No port-forward needed: to reach a service from inside the cluster, run a
+throwaway pod on its network, e.g.
+  kubectl -n hermes run curl --rm -i --restart=Never \
+      --image=curlimages/curl:8.11.1 -- -sS http://elasticsearch:9200

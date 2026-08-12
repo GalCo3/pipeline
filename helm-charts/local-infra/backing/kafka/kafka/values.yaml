@@ -28,14 +28,17 @@ kafka:
     persistence:
       enabled: true
       size: 2Gi
-    # Measured at ~586Mi / ~21m: a JVM sitting near its heap, so the memory
-    # request stays; only the CPU reservation comes down.
+    # The chart's default heap is a percentage of the *limit*, so lowering the
+    # limit is what lowers the heap. Fixed sizes instead, since a dev broker with
+    # one partition per topic has no reason to scale with the container.
+    heapOpts: -Xms256m -Xmx512m
+    # Was 768Mi/1536Mi against a measured ~530Mi.
     resources:
       requests:
         cpu: 100m
-        memory: 768Mi
+        memory: 512Mi
       limits:
-        memory: 1536Mi
+        memory: 1Gi
 
   broker:
     replicaCount: 0

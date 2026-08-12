@@ -29,26 +29,29 @@ build:
     BUILDAH_FORMAT: docker
     GIT_DEPTH: "0"
   before_script:
+    # find_build.py reads uv.lock with tomllib — git and python3 are all it needs.
     - dnf install -y git python3 >/dev/null
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="${HOME}/.local/bin:${PATH}"
   script:
     - python3 tools/ci/find_build.py > affected_apps.txt
     - cat affected_apps.txt
     - |
       buildah login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 
-      while read -r ENTRY; do
-        [ -z "${ENTRY}" ] && continue
-
-        GROUP="${ENTRY%%/*}"
-        NAME="${ENTRY#*/}"
+      while read -r GROUP NAME APP_PATH; do
+        [ -z "${GROUP}" ] && continue
 
         SHA_DESTINATION="${CI_REGISTRY_IMAGE}/${NAME}:${CI_COMMIT_SHORT_SHA}"
         LATEST_DESTINATION="${CI_REGISTRY_IMAGE}/${NAME}:latest"
 
+        # An app that ships its own Dockerfile overrides the shared one — that is
+        # how an app with a different entrypoint or a non-Python toolchain builds
+        # without special-casing it here. The context is the repo root either way,
+        # so an override can still reach libs/ and the workspace lockfile.
+        DOCKERFILE="${CI_PROJECT_DIR}/${APP_PATH}/Dockerfile"
+        [ -f "${DOCKERFILE}" ] || DOCKERFILE="${CI_PROJECT_DIR}/apps/Dockerfile"
+
         buildah bud \
-          --file "${CI_PROJECT_DIR}/apps/Dockerfile" \
+          --file "${DOCKERFILE}" \
           --build-arg GROUP="${GROUP}" \
           --build-arg NAME="${NAME}" \
           --tag "${SHA_DESTINATION}" \

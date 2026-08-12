@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
     index_name: str
-    dls_collection: str = "dead_letter_store"
+    dls_collection: str = "dls"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

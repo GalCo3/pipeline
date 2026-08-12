@@ -1,0 +1,162 @@
+# Dev-only OIDC issuer. apps/services/dls-portal performs the confidential-client
+# code exchange in-process with next-auth (see that service's AGENTS.md), so
+# local dev needs a real issuer — nothing else in local-infra provides one.
+#
+# `start-dev` means an in-memory H2 database: the realm below is re-imported on
+# every pod start and every user/session created through the UI is lost with the
+# pod. That is deliberate — the realm is config here, not state, so there is no
+# PVC to keep in sync.
+fullnameOverride: keycloak
+replicaCount: 1
+
+# Recreate, not the default rolling update: a second 512Mi pod does not fit on
+# the single dev node once the rest of the stack has its requests in, so an
+# upgrade would sit Pending on "Insufficient memory" forever while the old pod
+# keeps the realm. Nothing is lost by stopping first — the realm is re-imported
+# into an in-memory H2 on every start.
+strategy:
+  type: Recreate
+
+image:
+  registry: quay.io
+  repository: keycloak/keycloak
+  tag: "26.0"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  portName: http
+
+command: ["/opt/keycloak/bin/kc.sh"]
+# --import-realm reads every file under /opt/keycloak/data/import, which is where
+# the ConfigMap below is mounted.
+args: ["start-dev", "--import-realm"]
+
+env:
+  # The token `iss` is minted from this, and the backend validates `iss` against
+  # its configured issuer — so it must be the URL the *browser* uses, not the
+  # in-cluster Service name. tools/scripts/sandbox/port-forward.sh maps this port.
+  # (Keycloak 25 replaced the old KC_HOSTNAME_URL with a full-URL KC_HOSTNAME.)
+  KC_HOSTNAME: http://localhost:8083
+  # Dev mode already serves plain HTTP; stating it keeps the intent explicit
+  # for anyone who switches this chart to `start`.
+  KC_HTTP_ENABLED: "true"
+  # The image's own heap sizing is a percentage of the container limit; this
+  # pins it instead, so the limit above can come down without the JVM following
+  # it into a GC death spiral.
+  JAVA_OPTS_KC_HEAP: -Xms64m -Xmx384m
+
+secretEnv:
+  # Renamed from KEYCLOAK_ADMIN/KEYCLOAK_ADMIN_PASSWORD in Keycloak 26.
+  KC_BOOTSTRAP_ADMIN_USERNAME: admin
+  KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+
+# Keycloak's own health endpoints moved to the management port (9000) in 25 and
+# need KC_HEALTH_ENABLED, so probe the realm instead: it 200s only once the
+# import has actually run, which is the condition that matters here.
+readinessProbe:
+  httpGet:
+    path: /realms/dls-portal
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 30
+
+livenessProbe:
+  httpGet:
+    path: /realms/dls-portal
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+configFiles:
+  # Rendered to JSON by the library chart, so the realm stays reviewable as YAML.
+  # Dev credentials are intentionally in the clear — this realm never leaves the
+  # local cluster, and the client secret being fixed is what lets local dev
+  # exercise the same backend-mediated code exchange as production.
+  dls-portal-realm.json:
+    realm: dls-portal
+    enabled: true
+    sslRequired: none
+    registrationAllowed: false
+    clients:
+      # Confidential, not public: the real SSO issues confidential clients only.
+      # The portal is a server-side confidential client — next-auth holds the
+      # secret and does the code exchange in-process. A public/PKCE client here
+      # would let local dev pass on a flow that 401s with `invalid_client`
+      # against the real issuer.
+      - clientId: dls-portal
+        name: DLS Portal (Next.js, server-side confidential client)
+        enabled: true
+        publicClient: false
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        secret: dev-portal-secret
+        # next-auth's callback path, not an origin-derived URI: 8086 is the
+        # in-cluster portal as tools/scripts/sandbox/port-forward.sh maps it, 3000 the
+        # `next dev` server.
+        redirectUris:
+          - http://localhost:8086/api/auth/callback/keycloak
+          - http://localhost:3000/api/auth/callback/keycloak
+        webOrigins:
+          - http://localhost:8086
+          - http://localhost:3000
+    roles:
+      realm:
+        - name: dls-user
+          description: Can triage DLS messages
+    users:
+      - username: dev
+        enabled: true
+        email: dev@example.com
+        emailVerified: true
+        firstName: Dev
+        lastName: User
+        credentials:
+          - type: password
+            value: dev
+            temporary: false
+        realmRoles:
+          - dls-user
+        clientRoles: {}
+
+volumes:
+  - name: realm
+    configMap:
+      name: keycloak
+
+volumeMounts:
+  # Whole-directory mount: --import-realm reads every file in it, so adding a
+  # second realm stays a values-only change.
+  - name: realm
+    mountPath: /opt/keycloak/data/import
+    readOnly: true
+
+# Was 512Mi/1Gi against a measured ~545Mi. The realm is a handful of objects in
+# an in-memory H2 — the footprint is almost entirely JVM heap, so cap the heap
+# rather than only trimming the numbers underneath it.
+resources:
+  requests:
+    cpu: 200m
+    memory: 384Mi
+  limits:
+    memory: 768Mi
+
+# The image ships a numeric USER (1000), but kubelet cannot verify that from the
+# manifest alone when runAsNonRoot is set, so state it.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}

@@ -23,7 +23,7 @@ class ChiefLexicalSettings(BaseSettings):
     chief_config: ChiefConfig
 
     index_name: str = "chief-lexical"
-    dls_collection: str = "dead_letter_store"
+    dls_collection: str = "dls"
 
     model_config = SettingsConfigDict(
         env_file=".env",

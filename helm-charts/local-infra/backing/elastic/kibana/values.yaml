@@ -29,14 +29,19 @@ kibana:
   persistence:
     enabled: false
 
-  # Measured at ~586Mi / ~32m: a Node process that stays near its heap, so the
-  # memory request stays; only the CPU reservation comes down.
+  # Do not cap the Node heap here. Kibana 9 allocates ~370MB before its plugins
+  # finish installing their templates, so a `--max-old-space-size=384` kills it
+  # mid-bootstrap with "Ineffective mark-compacts near heap limit" — the pod then
+  # restart-loops with nothing obviously wrong in the chart.
+  #
+  # Was 768Mi/2Gi against a measured ~569Mi idle. Only the reservation comes
+  # down; the limit stays well clear of the heap it actually wants.
   resources:
     requests:
       cpu: 100m
-      memory: 768Mi
+      memory: 512Mi
     limits:
-      memory: 2Gi
+      memory: 1280Mi
 
   volumePermissions:
     image:

@@ -1,32 +1,53 @@
 #!/usr/bin/env bash
 # Installs the whole local stack into the `hermes` namespace, in dependency order.
-# Image tags come from tools/scripts/.image-tags, written by build-images.sh —
+# Image tags come from .image-tags beside this script, written by build-images.sh —
 # run that script first (or pass --build here) whenever image code changes.
 # Rebuilding on every install is unnecessary: build_image already tags by
 # content ID, so nothing downstream needs re-running just to install again.
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-hermes}"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CHARTS_DIR="../../../helm-charts"
-TAGS_FILE="./.image-tags"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+CHARTS_DIR="$REPO_ROOT/helm-charts"
+TAGS_FILE="$SCRIPT_DIR/.image-tags"
 
 if [[ "${1:-}" == "--build" ]]; then
-    "$REPO_ROOT/tools/scripts/build-images.sh"
+    "$SCRIPT_DIR/build-images.sh"
     shift
 fi
 
-[[ -s "$TAGS_FILE" ]] || "$REPO_ROOT/tools/scripts/build-images.sh"
+[[ -s "$TAGS_FILE" ]] || "$SCRIPT_DIR/build-images.sh"
 
-declare -A IMAGE_TAGS
-while IFS=: read -r name tag; do
-    [[ -n "$name" ]] || continue
-    IMAGE_TAGS["$name"]="$tag"
+# name:tag lines kept as a flat array, not an associative one: macOS ships
+# bash 3.2, where `declare -A` is a syntax error. A handful of images makes a
+# linear lookup free.
+IMAGE_TAGS=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -n "$line" ]] && IMAGE_TAGS+=("$line")
 done < "$TAGS_FILE"
 
-CARGO_LEXICAL_TAG="${IMAGE_TAGS[cargo-lexical]}"
-DEMO_PRODUCER_TAG="${IMAGE_TAGS[demo-producer]}"
-INDEX_DEFINITIONS_TAG="${IMAGE_TAGS[index-definitions]}"
+# Prints the recorded tag for an image name, and fails loudly rather than
+# expanding to an empty --set when the tags file has no line for it.
+tag_of() {
+    local pair
+    # `${a[@]}` on an empty array is an unbound-variable error under bash 3.2's
+    # `set -u`, hence the count guard.
+    [[ ${#IMAGE_TAGS[@]} -gt 0 ]] || { echo "$TAGS_FILE is empty — run build-images.sh" >&2; return 1; }
+    for pair in "${IMAGE_TAGS[@]}"; do
+        [[ "$pair" == "$1:"* ]] && { echo "${pair#*:}"; return 0; }
+    done
+    echo "no image tag recorded for '$1' — run build-images.sh" >&2
+    return 1
+}
+
+CARGO_LEXICAL_TAG="$(tag_of cargo-lexical)"
+DEMO_PRODUCER_TAG="$(tag_of demo-producer)"
+INDEX_DEFINITIONS_TAG="$(tag_of index-definitions)"
+
+# Node apps that are a single image and a single chart named after the
+# directory. dls-portal serves both its UI and its API, so it is one release.
+NODE_APPS=(dls-portal)
 
 # Services that have a chart under services/, one release each below.
 SERVICES=(candy-reports-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
@@ -97,6 +118,8 @@ install minio         local-infra/backing/minio                      --wait
 install elasticsearch local-infra/backing/elastic/elasticsearch      --wait
 install mongodb       local-infra/backing/mongodb/mongodb            --wait
 install tika          local-infra/backing/tika                       --wait
+# OIDC issuer for dls-portal; nothing else in the stack provides one.
+install keycloak      local-infra/backing/keycloak                   --wait
 install kafka-ui      local-infra/backing/kafka/kafka-ui             --wait
 install kibana        local-infra/backing/elastic/kibana             --wait
 install mongo-express local-infra/backing/mongodb/mongo-express      --wait
@@ -144,11 +167,15 @@ done
 install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
 install demo-producer     local-infra/tooling/demo-producer     --set "image.tag=$DEMO_PRODUCER_TAG"
 for service in "${SERVICES[@]}"; do
-    install "$service" "services/$service" --set "image.tag=${IMAGE_TAGS[$service]}"
+    install "$service" "services/$service" --set "image.tag=$(tag_of "$service")"
 done
 # Same cargo-lexical image, different topic/index — no image of their own to build.
 install cargo-operational-lexical services/cargo-operational-lexical --set "image.tag=$CARGO_LEXICAL_TAG"
 install cargo-my-storage-lexical  services/cargo-my-storage-lexical  --set "image.tag=$CARGO_LEXICAL_TAG"
+
+for app in "${NODE_APPS[@]}"; do
+    install "$app" "services/$app" --set "image.tag=$(tag_of "$app")"
+done
 
 echo
 echo "Done. UI access: tools/scripts/port-forward.sh"

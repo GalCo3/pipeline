@@ -1,0 +1,10 @@
+apiVersion: v2
+name: dls-portal
+description: DLS Portal — one Next.js server serving both the triage UI and its API over the pipeline's hermes.dls.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../library/hermes-common

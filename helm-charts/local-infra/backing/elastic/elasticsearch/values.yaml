@@ -27,15 +27,19 @@ elasticsearch:
     persistence:
       enabled: true
       size: 4Gi
-    heapSize: 512m
-    # Measured at ~1171Mi — already above the request, which is the JVM heap
-    # (512m) plus off-heap. Leave the memory alone; only the CPU comes down.
+    # 384m heap for a dev node holding a handful of small indices. RSS runs at
+    # roughly twice the heap here — the rest is Lucene's off-heap and the mmap'd
+    # segments — so this is what sets the numbers below, not the other way round.
+    heapSize: 384m
+    # Was 1Gi/2Gi against a measured ~1123Mi. The single dev node only has ~8Gi
+    # allocatable and this pod was the largest single claim on it, which is what
+    # left reinstalls of other charts Pending on "Insufficient memory".
     resources:
       requests:
         cpu: 100m
-        memory: 1Gi
+        memory: 768Mi
       limits:
-        memory: 2Gi
+        memory: 1280Mi
 
   data:
     replicaCount: 0

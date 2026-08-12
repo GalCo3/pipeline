@@ -7,7 +7,13 @@ See the workspace-level [AGENTS.md](../../AGENTS.md) for shared tooling commands
 ## Structure
 
 - `dls.py` — `DLSRecord` and `send_to_dls`, for writing failed Kafka messages to a
-  Mongo-backed dead letter store.
+  Mongo-backed dead letter store. Every service writes to the **one** `dls`
+  collection; `source_topic` is what identifies the writer, since each service
+  consumes its own topic. That collection is the read path of
+  `apps/services/dls-portal`, which groups, filters and replays from it.
+  Per-service collections were tried and reverted — the triage UI is
+  cross-service, so a split turns every listing into a `$unionWith` fan-out and
+  makes the document identity `(collection, _id)` instead of `_id`.
 - `site.py` — `site_error`, raises from a multi-site `(SiteResponse, SiteResponse | None)`
   pair (see `connections` `AGENTS.md`) if either side failed.
 - `indexing.py` — `with_indexed_at`, stamps a document with the time the pipeline handed

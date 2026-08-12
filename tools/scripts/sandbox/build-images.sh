@@ -5,8 +5,9 @@
 # rebuilds when asked (see its --build flag).
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-TAGS_FILE="$REPO_ROOT/tools/scripts/.image-tags"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+TAGS_FILE="$SCRIPT_DIR/.image-tags"
 TAGS_FILE_TMP="$TAGS_FILE.tmp"
 trap 'rm -f "$TAGS_FILE_TMP"' EXIT
 
@@ -91,13 +92,30 @@ build_image() {
 # deployed consumers, both running this same image under their own topic/index.
 IMAGE_SOURCES=(candy-reports-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
 
+# Node apps: one image, one chart named after the directory. dls-portal serves
+# both its UI and its API, so it is a single image like any consumer.
+NODE_APPS=(dls-portal)
+
 echo "==> Building images"
 > "$TAGS_FILE_TMP"
 for service in "${IMAGE_SOURCES[@]}"; do
-    tag="$(build_image "$service" -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=services \
+    # Same rule as CI (tools/ci/find_build.py): an app that ships its own
+    # Dockerfile overrides the shared one, and the context is the repo root
+    # either way so the build can reach libs/ and uv.lock.
+    dockerfile="$REPO_ROOT/apps/services/$service/Dockerfile"
+    [[ -f "$dockerfile" ]] || dockerfile="$REPO_ROOT/apps/Dockerfile"
+
+    tag="$(build_image "$service" -f "$dockerfile" --build-arg GROUP=services \
         --build-arg "NAME=$service" "$REPO_ROOT")"
     echo "    $service -> $tag"
     echo "$service:$tag" >> "$TAGS_FILE_TMP"
+done
+# Repo root context again — the Dockerfile spells out its own subpath, and it
+# takes no GROUP/NAME build args.
+for app in "${NODE_APPS[@]}"; do
+    tag="$(build_image "$app" -f "$REPO_ROOT/apps/services/$app/Dockerfile" "$REPO_ROOT")"
+    echo "    $app -> $tag"
+    echo "$app:$tag" >> "$TAGS_FILE_TMP"
 done
 DEMO_PRODUCER_TAG="$(build_image demo-producer "$REPO_ROOT/tools/demo-producer")"
 echo "    demo-producer -> $DEMO_PRODUCER_TAG"
