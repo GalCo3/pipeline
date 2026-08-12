@@ -338,10 +338,15 @@ class BaseElasticHandler:
         aliases: dict[str, Any],
         is_multisite: bool = False,
     ) -> None:
-        self.local_client.indices.create(
-            index=name, mappings=mappings, settings=settings, aliases=aliases
-        )
-        if is_multisite and self.remote_client:
+        # Local and remote can drift independently (e.g. a prior run created
+        # the index on one site but failed before the other), so each site's
+        # existence must be checked on its own rather than relying on the
+        # caller's single index_exists() check.
+        if not self.local_client.indices.exists(index=name):
+            self.local_client.indices.create(
+                index=name, mappings=mappings, settings=settings, aliases=aliases
+            )
+        if is_multisite and self.remote_client and not self.remote_client.indices.exists(index=name):
             self.remote_client.indices.create(
                 index=name, mappings=mappings, settings=settings, aliases=aliases
             )
