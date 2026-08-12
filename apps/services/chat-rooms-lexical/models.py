@@ -18,7 +18,7 @@ class ChatRoomMessage(BaseModel):
     classification_color: str | None = Field(default=None, alias="classificationColor")
 
     created_at: datetime | None = Field(default=None, alias="ts")
-    updated_at: datetime | None = Field(default=None, alias="updatedAt_")
+    updated_at: datetime | None = Field(default=None, alias="_updatedAt")
 
     description: str | None = None
     topic: str | None = None
