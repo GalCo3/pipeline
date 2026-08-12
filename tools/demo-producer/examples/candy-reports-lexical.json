@@ -1,0 +1,114 @@
+{
+  "topic": "raw.candy-reports-lexical",
+  "examples": [
+    {
+      "name": "full-report",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "creatingUserName": "alice",
+        "actualUserName": "bob",
+        "description": "Container HERMES-0001 cleared customs.",
+        "type": "customs",
+        "date": "{{past}}",
+        "actualDate": "{{now}}",
+        "isDeleted": false,
+        "updatingUser": "alice",
+        "eventId": "event-001",
+        "cellId": "cell-001",
+        "realityId": "reality-001",
+        "cellHierarchy": "frame-a/mclol-1/cell-x",
+        "creationDate": "{{past}}",
+        "lastUpdateTimeToTransfer": "{{now}}",
+        "mirageAction": "none",
+        "militaryDistrictId": 5
+      }
+    },
+    {
+      "name": "minimal-required-only",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "creatingUserName": "bob",
+        "description": "Minimal report, optionals omitted.",
+        "type": "status",
+        "date": "{{past}}",
+        "isDeleted": false,
+        "eventId": "event-002",
+        "cellId": "cell-002",
+        "realityId": "reality-002",
+        "cellHierarchy": "frame-b/mclol-2/cell-y",
+        "creationDate": "{{past}}",
+        "lastUpdateTimeToTransfer": "{{now}}",
+        "militaryDistrictId": 3
+      }
+    },
+    {
+      "name": "int-id-utc-suffix-nulls",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id_int}}",
+        "creatingUserName": "dana",
+        "actualUserName": null,
+        "description": "Numeric id, Z-suffixed timestamps, explicit nulls.",
+        "type": "status",
+        "date": "{{past_z}}",
+        "actualDate": null,
+        "isDeleted": false,
+        "updatingUser": null,
+        "lastDeletionDate": null,
+        "eventId": "event-003",
+        "deleteAuthor": null,
+        "cellId": "cell-003",
+        "realityId": "reality-003",
+        "cellHierarchy": "frame-c/mclol-3/cell-z",
+        "creationDate": "{{past_z}}",
+        "lastUpdateTimeToTransfer": "{{now_z}}",
+        "mirageAction": null,
+        "militaryDistrictId": 7
+      }
+    },
+    {
+      "name": "deleted-report",
+      "expect": "deleted",
+      "id_of": "full-report",
+      "message": {
+        "id": "{{id}}",
+        "creatingUserName": "alice",
+        "description": "isDeleted is set, so the service deletes this document by id and stops.",
+        "type": "customs",
+        "date": "{{past}}",
+        "isDeleted": true,
+        "lastDeletionDate": "{{now}}",
+        "deleteAuthor": "erez",
+        "eventId": "event-001",
+        "cellId": "cell-001",
+        "realityId": "reality-001",
+        "cellHierarchy": "frame-a/mclol-1/cell-x",
+        "creationDate": "{{past}}",
+        "lastUpdateTimeToTransfer": "{{now}}",
+        "militaryDistrictId": 5
+      }
+    },
+    {
+      "name": "future-actual-date-no-hierarchy",
+      "expect": "indexed",
+      "message": {
+        "id": "{{id}}",
+        "creatingUserName": "erez",
+        "description": "cellHierarchy is empty, so frame/mclol/cell stay unset.",
+        "type": "forecast",
+        "date": "{{now}}",
+        "actualDate": "{{future}}",
+        "isDeleted": false,
+        "eventId": "event-004",
+        "cellId": "cell-004",
+        "realityId": "reality-004",
+        "cellHierarchy": "",
+        "creationDate": "{{now}}",
+        "lastUpdateTimeToTransfer": "{{future}}",
+        "militaryDistrictId": 1
+      }
+    }
+  ]
+}
