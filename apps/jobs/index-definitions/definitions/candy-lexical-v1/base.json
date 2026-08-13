@@ -3,7 +3,7 @@
     "candy-lexical": {}
   },
   "mappings": {
-    "dynamic": false,
+    "dynamic": "strict",
     "properties": {
       "__high_0": {
         "type": "alias",

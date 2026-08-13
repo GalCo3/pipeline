@@ -3,7 +3,7 @@
     "chat-rooms-lexical": {}
   },
   "mappings": {
-    "dynamic": false,
+    "dynamic": "strict",
     "properties": {
       "__low_0": {
         "type": "alias",

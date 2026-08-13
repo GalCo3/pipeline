@@ -3,7 +3,7 @@
     "cargo-my-storage-lexical": {}
   },
   "mappings": {
-    "dynamic": "false",
+    "dynamic": "strict",
     "runtime": {
       "_captions_line": {
         "type": "keyword",
