@@ -53,7 +53,7 @@
         "path": "description"
       },
       "id": {
-        "type": "keyword"
+        "type": "integer"
       },
       "is_deleted": {
         "type": "boolean"
@@ -66,6 +66,9 @@
       },
       "military_district_id": {
         "type": "integer"
+      },
+      "military_district_name": {
+        "type": "keyword"
       },
       "mirage_action": {
         "type": "keyword"
