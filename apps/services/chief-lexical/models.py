@@ -13,7 +13,7 @@ class ChiefCommandContent(BaseModel):
     id: str | int
     name: str
     full_name: str
-    order: int
+    order: str
     user_id: str | int
     create_date: datetime | str
     last_update_date: datetime | str
