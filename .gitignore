@@ -48,3 +48,8 @@ helm-charts/**/charts/*.tgz
 
 # Claude
 .claude
+
+# tar gz files
+*.tar.gz
+# xz also
+*.tar.xz
