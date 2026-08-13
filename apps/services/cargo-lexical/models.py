@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from hermes.utils import parse_date_value
 
@@ -30,7 +37,9 @@ class CargoMessage(BaseModel):
     holder: str | None = None  # only in non-operational
     description: str
     is_verified: bool | None = None  # only in operational
-    labels: list[LabelItem] | None = []  # only in operational
+    labels: list[LabelItem] | None = Field(
+        default=[], validation_alias=AliasChoices("labels", "file_labels")
+    )  # only in operational
 
     path_id: str
     path: str
