@@ -23,6 +23,20 @@ import type { TokenSet } from "@/lib/oidc";
 
 const COOKIE = "dls-console.session";
 
+/**
+ * Browsers cap a single cookie at 4096 bytes of name plus value, and drop the
+ * whole `Set-Cookie` when it does not fit. The sealed session carries three
+ * IdP-issued JWTs, and a token with a real group list clears that on its own, so
+ * the cookie is written in numbered chunks — `<name>.0`, `<name>.1`, … — and
+ * reassembled on read. 3500 leaves room for the name and the attributes.
+ */
+const CHUNK = 3500;
+const MAX_CHUNKS = 16;
+
+function chunkName(index: number): string {
+  return `${COOKIE}.${index}`;
+}
+
 export interface Session {
   actor: string;
   accessToken: string;
@@ -54,7 +68,16 @@ export async function sealSession(session: Session): Promise<string> {
 }
 
 export async function readSession(): Promise<Session | null> {
-  const raw = (await cookies()).get(COOKIE)?.value;
+  const jar = await cookies();
+  let raw = "";
+  for (let i = 0; i < MAX_CHUNKS; i += 1) {
+    const part = jar.get(chunkName(i))?.value;
+    if (part === undefined) break;
+    raw += part;
+  }
+  // The unchunked name is the fallback so a session sealed by an earlier build
+  // survives the deploy rather than logging everyone out.
+  if (!raw) raw = jar.get(COOKIE)?.value ?? "";
   if (!raw) return null;
   try {
     const { payload } = await jwtDecrypt(raw, key());
@@ -81,17 +104,39 @@ export function sessionFrom(tokens: TokenSet, actor: string, previous: Session |
 }
 
 export async function writeSessionCookie(session: Session): Promise<void> {
-  (await cookies()).set(COOKIE, await sealSession(session), {
+  const sealed = await sealSession(session);
+  const parts: string[] = [];
+  for (let at = 0; at < sealed.length; at += CHUNK) parts.push(sealed.slice(at, at + CHUNK));
+  if (parts.length > MAX_CHUNKS) {
+    // Reading back only ever reassembles MAX_CHUNKS, so a session that does not
+    // fit must fail loudly here rather than round-trip as a corrupt cookie.
+    throw new Error(`session too large for ${MAX_CHUNKS} cookie chunks`);
+  }
+
+  const options = {
     httpOnly: true,
     // The console is served over HTTPS everywhere it is deployed; `next dev`
     // over plain http is the one case that needs the flag off.
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: 12 * 60 * 60,
-  });
+  };
+
+  const jar = await cookies();
+  parts.forEach((part, index) => jar.set(chunkName(index), part, options));
+  // A shorter session than last time leaves trailing chunks behind, and a stale
+  // tail concatenates into garbage. Same for a cookie from the unchunked build.
+  if (jar.has(COOKIE)) jar.delete(COOKIE);
+  for (let i = parts.length; i < MAX_CHUNKS; i += 1) {
+    if (jar.has(chunkName(i))) jar.delete(chunkName(i));
+  }
 }
 
 export async function clearSessionCookie(): Promise<void> {
-  (await cookies()).delete(COOKIE);
+  const jar = await cookies();
+  jar.delete(COOKIE);
+  for (let i = 0; i < MAX_CHUNKS; i += 1) {
+    if (jar.has(chunkName(i))) jar.delete(chunkName(i));
+  }
 }
