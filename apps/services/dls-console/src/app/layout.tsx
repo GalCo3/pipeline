@@ -12,6 +12,7 @@ import "./globals.css";
 import { config } from "@/lib/config";
 import { Shell } from "@/components/Shell";
 import { Providers } from "@/components/Providers";
+import { SessionProvider } from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
   title: "DLS Console",
@@ -34,7 +35,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground">
         <Providers>
-          <Shell store={config.storeLabel}>{children}</Shell>
+          {/* The gate wraps the shell, not the reverse: an operator who is not
+              signed in should see a splash, not a chrome-complete console with
+              empty panels behind it while the redirect fires. */}
+          <SessionProvider devBypass={config.auth.devBypass}>
+            <Shell store={config.storeLabel}>{children}</Shell>
+          </SessionProvider>
         </Providers>
       </body>
     </html>

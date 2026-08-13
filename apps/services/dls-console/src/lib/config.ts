@@ -156,10 +156,43 @@ export const config = {
   get lag() {
     return { groupIdTemplate: str("LAG_GROUP_ID_TEMPLATE", "{service}-service") };
   },
+  /**
+   * OIDC, confidential client. Names mirror dlq-triage's `AUTH__OIDC_*` block
+   * (flattened, as everything here is) so one realm's client spells the same
+   * way in both apps.
+   *
+   * `issuerUrl` is the bare realm URL — no `/.well-known/openid-configuration`
+   * suffix. Nothing here fetches a discovery document (see `src/lib/oidc.ts`),
+   * so a suffix would only corrupt every endpoint path derived from it.
+   */
   get auth() {
+    const issuerUrl = str("AUTH_OIDC_ISSUER_URL");
+    const internalUrl = process.env.AUTH_OIDC_INTERNAL_URL;
     return {
+      issuerUrl,
+      /** Base this *process* uses to reach the IdP. Split-horizon aware. */
+      idpBase: (internalUrl || issuerUrl).replace(/\/$/, ""),
+      clientId: str("AUTH_OIDC_CLIENT_ID"),
+      // Absent means the deploy is missing its Secret; the token exchange
+      // answers 503 rather than quietly behaving like a public client.
+      clientSecret: process.env.AUTH_OIDC_CLIENT_SECRET || null,
+      // Optional: Keycloak's stock access token carries `aud: account`, so this
+      // stays unchecked until the realm has an audience mapper for the console.
+      audience: process.env.AUTH_OIDC_AUDIENCE || null,
+      jwksTtl: num("AUTH_OIDC_JWKS_TTL", 300),
+      // Seals the session cookie. Never leaves this process — unlike the client
+      // secret, which is shared with the IdP. The two are not interchangeable.
+      sessionSecret: str("AUTH_SECRET"),
       devBypass: bool("DEV_BYPASS", false),
       devActor: str("DEV_ACTOR", "dev@example.com"),
+    };
+  },
+  /** The two values the browser needs to build its authorize redirect. Public
+   *  by construction: no secret is reachable from this getter. */
+  get publicAuth() {
+    return {
+      issuerUrl: str("AUTH_OIDC_ISSUER_URL").replace(/\/$/, ""),
+      clientId: str("AUTH_OIDC_CLIENT_ID"),
     };
   },
 };
