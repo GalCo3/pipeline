@@ -20,7 +20,7 @@ class CandyReportsMessage(BaseModel):
     is_deleted: bool = Field(alias="isDeleted")
     updating_user: str | None = Field(default=None, alias="updatingUser")
     last_deletion_date: datetime | None = Field(default=None, alias="lastDeletionDate")
-    event_id: str = Field(alias="eventId")
+    event_id: int | None = Field(default=None, alias="eventId")
     delete_author: str | None = Field(default=None, alias="deleteAuthor")
     cell_id: str = Field(alias="cellId")
     reality_id: str = Field(alias="realityId")
@@ -40,7 +40,8 @@ class CandyReportsMessage(BaseModel):
         if not data:
             return {}
         data["id"] = str(data["id"])
-        data["eventId"] = str(data["eventId"])
+        event_id = data.get("eventId")
+        data["eventId"] = int(event_id) if event_id is not None else None
         data["cellId"] = str(data["cellId"])
         data["realityId"] = str(data["realityId"])
         cell_hierarchy: str = data["cellHierarchy"]

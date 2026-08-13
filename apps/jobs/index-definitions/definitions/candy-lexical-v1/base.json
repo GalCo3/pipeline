@@ -53,7 +53,7 @@
         "path": "description"
       },
       "id": {
-        "type": "integer"
+        "type": "keyword"
       },
       "is_deleted": {
         "type": "boolean"
