@@ -163,7 +163,7 @@ configFiles:
           type: text
         is_verified:
           type: boolean
-        file_labels:
+        labels:
           type: nested
           properties:
             label_id:

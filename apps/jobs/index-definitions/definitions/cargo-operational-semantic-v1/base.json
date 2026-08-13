@@ -94,7 +94,7 @@
           "ef_construction": 100
         }
       },
-      "file_labels": {
+      "labels": {
         "properties": {
           "created": {
             "type": "date"

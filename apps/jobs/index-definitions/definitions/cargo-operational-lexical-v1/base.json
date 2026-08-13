@@ -72,7 +72,7 @@
       "last_modified": {
         "type": "date"
       },
-      "file_labels": {
+      "labels": {
         "properties": {
           "created": {
             "type": "date"

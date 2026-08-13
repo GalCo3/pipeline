@@ -10,7 +10,7 @@
         "name": "manifest.txt",
         "description": "Operational plain-text manifest, streamed extractor.",
         "is_verified": true,
-        "file_labels": [
+        "labels": [
           {
             "label_id": 1,
             "label_name": "demo",
@@ -39,7 +39,7 @@
         "name": "shipment.docx",
         "description": "Operational DOCX, buffered extractor.",
         "is_verified": false,
-        "file_labels": [
+        "labels": [
           {
             "label_id": 2,
             "label_name": "shipment",
@@ -73,7 +73,7 @@
       "message": {
         "id": "{{id_int}}",
         "name": "bill-of-lading.pdf",
-        "description": "Numeric id and Z-suffixed timestamps, no file_labels.",
+        "description": "Numeric id and Z-suffixed timestamps, no labels.",
         "is_verified": true,
         "path_id": "2/17/703",
         "path": "/root/demo/cargo-operational-lexical/bol",
@@ -95,7 +95,7 @@
         "name": "weights.xlsx",
         "description": "Operational XLSX with a deep path_id; path_list is always recomputed from path_id by the model.",
         "is_verified": true,
-        "file_labels": [
+        "labels": [
           {
             "label_id": 4,
             "label_name": "weights",
@@ -128,7 +128,7 @@
         "name": "port-briefing.pptx",
         "description": "Operational PPTX, buffered extractor.",
         "is_verified": true,
-        "file_labels": [],
+        "labels": [],
         "path_id": "1/42/705",
         "path": "/root/demo/cargo-operational-lexical/briefings",
         "reality_id": "reality-1",
@@ -149,7 +149,7 @@
         "name": "seal-photo.png",
         "description": "Image goes through the remote Tika extractor rather than a local one.",
         "is_verified": true,
-        "file_labels": null,
+        "labels": null,
         "path_id": "1/42/706",
         "path": "/root/demo/cargo-operational-lexical/photos",
         "reality_id": "reality-1",
@@ -192,7 +192,7 @@
         "name": "relabelled-manifest.txt",
         "description": "last_modified > ver_last_modified: metadata changed but the file did not, so no text extraction.",
         "is_verified": true,
-        "file_labels": [
+        "labels": [
           {
             "label_id": 5,
             "label_name": "relabelled",

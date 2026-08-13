@@ -30,7 +30,7 @@ class CargoMessage(BaseModel):
     holder: str | None = None  # only in non-operational
     description: str
     is_verified: bool | None = None  # only in operational
-    file_labels: list[LabelItem] | None = []  # only in operational
+    labels: list[LabelItem] | None = []  # only in operational
 
     path_id: str
     path: str
