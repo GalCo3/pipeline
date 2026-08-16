@@ -13,6 +13,7 @@ import type {
   MessageDetail,
   MessageSummary,
   Page,
+  ReplayInput,
   ReplayResult,
   SharedFields,
   Stats,
@@ -88,7 +89,7 @@ export const api = {
   neighbours: (id: string, params: { fingerprint?: string | null; status?: string | null }) =>
     request<{ prev: string | null; next: string | null }>(`/messages/${id}/neighbours${query(params)}`),
 
-  replay: (id: string, input: { payload?: unknown; targetTopic?: string | null } = {}) =>
+  replay: (id: string, input: ReplayInput = {}) =>
     request<ReplayResult>(`/messages/${id}/replay`, {
       method: "POST",
       body: JSON.stringify(input),

@@ -1,13 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Archive, ChevronLeft, Send } from "lucide-react";
+import { Archive, ChevronLeft, Pencil, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { api } from "@/lib/client";
-import type { BulkEdit } from "@/lib/types";
+import type { BulkEdit, BulkTarget } from "@/lib/types";
 import { ConfirmDialog, DISCARD_COUNTDOWN_SECONDS } from "@/components/Modal";
 import { MessageList } from "@/components/MessageList";
 import { BulkEditModal } from "@/components/bulk/BulkEditModal";
@@ -28,8 +28,11 @@ export default function GroupPage() {
 
   const [status, setStatus] = useState<string | null>("NEW");
   const [page, setPage] = useState(1);
-  const [editOpen, setEditOpen] = useState(false);
-  const [discardOpen, setDiscardOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Both bulk entry points aim the same modal, so they share one target slot:
+  // the whole group, or just the rows the operator ticked.
+  const [editTarget, setEditTarget] = useState<BulkTarget | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<BulkTarget | null>(null);
   const bulk = useBulk();
 
   // Separate from the message page: the header describes the group, so it must
@@ -44,7 +47,8 @@ export default function GroupPage() {
     queryFn: () => api.groupMessages(fingerprint, { status, page }),
   });
 
-  const target = { fingerprint };
+  const wholeGroup: BulkTarget = { fingerprint };
+  const selection: BulkTarget | null = selected.size ? { messageIds: [...selected] } : null;
 
   return (
     <div className="space-y-5">
@@ -90,10 +94,20 @@ export default function GroupPage() {
                 ["ALL", "All"],
               ]}
             />
-            <Button size="sm" variant="brand" icon={Send} onClick={() => setEditOpen(true)}>
-              Replay all NEW
+            <Button
+              size="sm"
+              variant="brand"
+              icon={Pencil}
+              onClick={() => setEditTarget(wholeGroup)}
+            >
+              Bulk edit &amp; replay
             </Button>
-            <Button size="sm" variant="danger" icon={Archive} onClick={() => setDiscardOpen(true)}>
+            <Button
+              size="sm"
+              variant="danger"
+              icon={Archive}
+              onClick={() => setDiscardTarget(wholeGroup)}
+            >
               Discard all NEW
             </Button>
           </div>
@@ -113,6 +127,15 @@ export default function GroupPage() {
               status ? `&status=${status}` : ""
             }`
           }
+          selected={selected}
+          onToggle={(id, checked) =>
+            setSelected((prev) => {
+              const next = new Set(prev);
+              if (checked) next.add(id);
+              else next.delete(id);
+              return next;
+            })
+          }
         />
         {messages.data && (
           <Pagination
@@ -124,27 +147,55 @@ export default function GroupPage() {
         )}
       </Panel>
 
-      {editOpen && (
+      {/* Selection bar — fixed, so the actions stay reachable however far the
+          operator has scrolled through a long group. */}
+      {selection && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+            <span className="text-sm tabular-nums">{selected.size} selected</span>
+            <Button size="sm" onClick={() => setSelected(new Set())}>
+              Clear
+            </Button>
+            <span className="ml-auto flex gap-2">
+              <Button size="sm" variant="brand" icon={Send} onClick={() => setEditTarget(selection)}>
+                Edit &amp; replay
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                icon={Archive}
+                onClick={() => setDiscardTarget(selection)}
+              >
+                Discard
+              </Button>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {editTarget && (
         <BulkEditModal
-          target={target}
-          onClose={() => setEditOpen(false)}
+          target={editTarget}
+          onClose={() => setEditTarget(null)}
           onSubmit={(edit: BulkEdit | null) => {
-            void bulk.replay(target, edit);
-            setEditOpen(false);
+            void bulk.replay(editTarget, edit);
+            setEditTarget(null);
+            setSelected(new Set());
           }}
         />
       )}
 
-      {discardOpen && (
+      {discardTarget && (
         <ConfirmDialog
-          title="Discard this error group"
-          message="Every NEW message in the group is marked DISCARDED. Soft delete — the documents survive and each one is audited."
+          title="Discard messages"
+          message="Every NEW message in this target is marked DISCARDED. Soft delete — the documents survive and each one is audited."
           confirmLabel="Discard"
           countdown={DISCARD_COUNTDOWN_SECONDS}
-          onClose={() => setDiscardOpen(false)}
+          onClose={() => setDiscardTarget(null)}
           onConfirm={() => {
-            void bulk.discard(target);
-            setDiscardOpen(false);
+            void bulk.discard(discardTarget);
+            setDiscardTarget(null);
+            setSelected(new Set());
           }}
         />
       )}

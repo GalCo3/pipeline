@@ -12,10 +12,12 @@ import { kafka } from "@/lib/kafka/client";
  * consumers deserialize: no Schema Registry, no Avro framing. `produce` awaits
  * the broker ack, so REPLAYED is set strictly after the record is durable.
  *
- * Neither a key nor the original headers can be reproduced: a DLS record stores
+ * Neither a key nor the original headers can be *reproduced*: a DLS record stores
  * the decoded value and nothing else (`hermes.utils.dls.DLSRecord`), because the
- * consumer hands its handler an already-deserialized message. The one header
- * this sets is its own replay marker.
+ * consumer hands its handler an already-deserialized message. They can still be
+ * *supplied* — an operator who knows what the record carried (or wants a
+ * partition-affine replay) sets them on the edit form — and the replay marker
+ * this module owns is always stamped on top.
  */
 
 /**
@@ -69,18 +71,28 @@ export type ProduceResult = { partition: number; offset: number | null };
 
 /**
  * Produce one record and await its ack. Throws `ProduceError` on any failure.
+ *
+ * `key` and `headers` are the operator's, `REPLAY_OF_HEADER` is ours and goes on
+ * last: a replay must stay identifiable as one however the form was filled in.
  */
 export async function produce(
   topic: string,
   value: Buffer,
   replayOf: string,
+  options: { key?: string | null; headers?: Record<string, string> | null } = {},
 ): Promise<ProduceResult> {
   let reports: KafkaJS.RecordMetadata[];
   try {
     const instance = await producer();
     reports = await instance.send({
       topic,
-      messages: [{ value, headers: { [REPLAY_OF_HEADER]: replayOf } }],
+      messages: [
+        {
+          value,
+          ...(options.key ? { key: Buffer.from(options.key, "utf8") } : {}),
+          headers: { ...(options.headers ?? {}), [REPLAY_OF_HEADER]: replayOf },
+        },
+      ],
     });
   } catch (error) {
     throw new ProduceError(error instanceof Error ? error.message : String(error));

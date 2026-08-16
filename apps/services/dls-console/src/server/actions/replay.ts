@@ -63,6 +63,8 @@ export async function replay(
   options: {
     payload?: unknown;
     targetTopic?: string | null;
+    key?: string | null;
+    headers?: Record<string, string> | null;
     edit?: BulkEdit | null;
     bulkId?: string | null;
   } = {},
@@ -73,13 +75,19 @@ export async function replay(
 
   let payload: unknown = options.payload ?? null;
   let targetTopic: string | null = options.targetTopic ?? null;
+  let key: string | null = options.key ?? null;
+  let headers: Record<string, string> | null = options.headers ?? null;
 
   // A bulk edit is merged per-message here (over this document's own payload)
-  // and can redirect the target for the whole batch.
+  // and can redirect the target, the record key and the headers for the whole
+  // batch. Key and headers are batch-wide by construction: the DLS record kept
+  // none of its own, so there is no per-message value to merge over.
   if (options.edit) {
     const edited = applyEdit(doc, options.edit);
     if (edited !== null) payload = edited;
     if (options.edit.targetTopic) targetTopic = options.edit.targetTopic;
+    if (options.edit.key) key = options.edit.key;
+    if (options.edit.headers) headers = options.edit.headers;
   }
 
   const topic = target(doc, targetTopic);
@@ -101,7 +109,7 @@ export async function replay(
 
   let produced;
   try {
-    produced = await produce(topic, value, messageId);
+    produced = await produce(topic, value, messageId, { key, headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await auditFailed(messageId, action, actor, topic, message, options.bulkId);
@@ -118,6 +126,10 @@ export async function replay(
     producedPartition: produced.partition,
     producedOffset: produced.offset,
   };
+  // Only when set — an audit entry that says `key: null` on every ordinary
+  // replay reads as "the operator cleared the key" rather than "there wasn't one".
+  if (key) detail.key = key;
+  if (headers && Object.keys(headers).length) detail.headers = headers;
   if (edited) {
     detail.payloadBefore = doc.original_message;
     detail.payloadAfter = payload;

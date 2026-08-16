@@ -9,7 +9,8 @@ import { prettyJson } from "@/lib/format";
 import type { BulkEdit, BulkTarget } from "@/lib/types";
 import { Modal } from "@/components/Modal";
 import { PayloadEditor } from "@/components/Json";
-import { Button, Eyebrow, Input, Spinner } from "@/components/ui";
+import { RecordOverridesFields, useRecordOverrides } from "@/components/RecordOverrides";
+import { Button, Eyebrow, Spinner } from "@/components/ui";
 
 /**
  * Bulk edit & replay — shared values only.
@@ -21,8 +22,10 @@ import { Button, Eyebrow, Input, Spinner } from "@/components/ui";
  * them, and the alternative (edit a key that varies) would overwrite real
  * per-message data.
  *
- * Past the server's inspection cap it answers `tooMany`, and this degrades to a
- * plain replay-all rather than guessing.
+ * Past the server's inspection cap it answers `tooMany`, and the payload form
+ * degrades to a plain replay-all rather than guessing. The record-level fields
+ * (target topic, key, headers) are unaffected either way — they are supplied
+ * rather than derived, so nothing has to be compared to offer them.
  */
 export function BulkEditModal({
   target,
@@ -40,7 +43,7 @@ export function BulkEditModal({
 
   const [text, setText] = useState<string | null>(null);
   const [parsed, setParsed] = useState<Record<string, unknown> | undefined>(undefined);
-  const [targetTopic, setTargetTopic] = useState("");
+  const overrides = useRecordOverrides();
 
   const shared = data?.payload ?? {};
   const value = text ?? prettyJson(shared);
@@ -56,19 +59,16 @@ export function BulkEditModal({
           <Button onClick={onClose}>Cancel</Button>
           <Button
             variant="brand"
-            disabled={canEdit && text !== null && parsed === undefined}
+            disabled={!overrides.valid || (canEdit && text !== null && parsed === undefined)}
             onClick={() =>
-              onSubmit(
-                canEdit
-                  ? {
-                      // Untouched editor → no payload edit at all, so an operator
-                      // who only wanted a redirect doesn't rewrite every payload
-                      // with the shared values.
-                      payload: text === null ? null : (parsed ?? null),
-                      targetTopic: targetTopic || null,
-                    }
-                  : null,
-              )
+              onSubmit({
+                // Untouched editor → no payload edit at all, so an operator who
+                // only wanted a redirect doesn't rewrite every payload with the
+                // shared values. Past the comparison cap there is no payload form
+                // at all, but the record-level overrides still apply.
+                payload: canEdit && text !== null ? (parsed ?? null) : null,
+                ...overrides.overrides,
+              })
             }
           >
             Replay {data?.total ?? 0} message{data?.total === 1 ? "" : "s"}
@@ -131,24 +131,19 @@ export function BulkEditModal({
             </>
           )}
 
-          <div>
-            <Eyebrow>Target topic</Eyebrow>
-            <Input
-              className="mt-1 w-full font-mono"
-              placeholder={
-                data.targetVaries
-                  ? "messages replay to their own source topic"
-                  : (data.targetTopic ?? "")
-              }
-              value={targetTopic}
-              onChange={(e) => setTargetTopic(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {data.targetVaries
+          <RecordOverridesFields
+            state={overrides}
+            topicPlaceholder={
+              data.targetVaries
+                ? "messages replay to their own source topic"
+                : (data.targetTopic ?? "")
+            }
+            topicHint={
+              data.targetVaries
                 ? "This group spans topics. Left empty, each message goes back to the topic it failed on."
-                : "Left empty, every message goes back to the topic it failed on."}
-            </p>
-          </div>
+                : "Left empty, every message goes back to the topic it failed on."
+            }
+          />
         </div>
       )}
     </Modal>

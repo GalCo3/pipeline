@@ -118,11 +118,30 @@ export type BulkTarget = {
   messageIds?: string[] | null;
 };
 
-export type BulkEdit = {
+/**
+ * What a replay may override on the record it produces.
+ *
+ * `key` and `headers` are supplied rather than restored — a DLS document keeps
+ * neither (see `hermes.utils.dls.DLSRecord`), so an empty field means "produce
+ * without one", not "produce the original".
+ */
+export type RecordOverrides = {
+  /** the Kafka record key; empty → keyless, which is how the pipeline produces */
+  key?: string | null;
+  /** extra Kafka headers; `x-dls-replay-of` is always stamped on top */
+  headers?: Record<string, string> | null;
+  /** redirect; without it a message replays to its own source topic */
+  targetTopic?: string | null;
+};
+
+export type ReplayInput = RecordOverrides & {
+  /** the full replacement payload — its presence is what makes it an edit */
+  payload?: unknown;
+};
+
+export type BulkEdit = RecordOverrides & {
   /** top-level keys SET on each payload (shallow merge, nested replaced whole) */
   payload?: Record<string, unknown> | null;
-  /** batch redirect; without it each message replays to its own source topic */
-  targetTopic?: string | null;
 };
 
 export type SharedFields = {

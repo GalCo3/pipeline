@@ -50,6 +50,20 @@ describe("normalize", () => {
     expect(normalize("bad doc {'a': {'b': [1, 2]}} rejected")).toBe("bad doc <obj> rejected");
   });
 
+  it("masks an opaque id that is neither a uuid, a digest nor a number", () => {
+    // The pipeline's own ids look like this — letters and digits interleaved, so
+    // the digest rule (all hex) and the number rule (word boundaries) both miss
+    // them and every document hashes to its own group.
+    expect(
+      normalize("Failed to index chat-users-lexical document QMdvxJcvT4LzsCS9d", "chat-users-lexical.users"),
+    ).toBe("Failed to index <svc> document <id>");
+    expect(normalize("Failed to index chat-users-lexical document QMdvxJcvT4LzsCS9d", "chat-users-lexical.users")).toBe(
+      normalize("Failed to index chat-users-lexical document 7fKp2aWqZzLm4Nb8x", "chat-users-lexical.users"),
+    );
+    // A plain word keeps its shape — the rule needs a digit AND a letter.
+    expect(normalize("record not found")).toBe("record not found");
+  });
+
   it("keeps a uuid whole through the number sweep", () => {
     // The general \d+ rule would otherwise shred a UUID into <n> fragments and
     // stop two occurrences of the same error from matching.
@@ -130,7 +144,7 @@ describe("fingerprints", () => {
     expect(out.errorFingerprint).toBe("efp:51f249a101dbcc4565a5260eb7536745f743f0d1");
     // Bump this and `ensureStamped` re-derives the whole collection — which is
     // the only safe way to change anything above.
-    expect(out.fpVersion).toBe(3);
+    expect(out.fpVersion).toBe(4);
   });
 
   it("keeps the two namespaces apart", () => {

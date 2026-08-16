@@ -34,6 +34,26 @@ export function serviceOf(sourceTopic: string | null | undefined): string {
   return (sourceTopic ?? "").split(".", 1)[0] || "—";
 }
 
+/**
+ * The payload's own id — what an operator actually recognizes a record by.
+ *
+ * The Mongo `_id` is the API's identity and means nothing to anyone reading a
+ * screen, so the message header leads with the business id instead. Case is not
+ * agreed across the pipeline's producers (`id`, `ID`, `Id`, `iD`), and some send
+ * `_id`, so all of them are accepted in that order; anything non-scalar is
+ * ignored rather than stringified into `[object Object]`.
+ */
+export function payloadId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const record = payload as Record<string, unknown>;
+  for (const key of ["id", "ID", "Id", "iD", "_id"]) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value;
+    if (typeof value === "number" || typeof value === "bigint") return String(value);
+  }
+  return null;
+}
+
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }

@@ -50,8 +50,9 @@ with the recipe and the stamp pass re-derives everything.
   serialization: the pipeline's topics are plain JSON, and an SR-framed record
   would be undeserializable to every consumer downstream.
 - **No key and no original headers exist.** The consumer hands its handler a
-  decoded value, so `send_to_dls` stores that and nothing else. The one header a
-  replay carries is `x-dls-replay-of`, set here.
+  decoded value, so `send_to_dls` stores that and nothing else. A replay may
+  *supply* a key and headers from the edit form — they are the operator's, never
+  a restoration — and `x-dls-replay-of` is stamped on top of whatever is given.
 - **NEW is the absence of `status`.** The services write no status field, and the
   stamp pass deliberately never writes one — a stamp racing an operator's
   discard could otherwise revive a resolved document.
@@ -115,9 +116,9 @@ error group rather than as a reopened document.
 
 From the `error` string only. Normalize (mask the **writing service and its
 topic** first, then **brace-delimited payload echoes**, then UUIDs, ISO
-timestamps, hex digests, addresses, then bare numbers — in that order, or the
-number sweep shreds the others), recover the exception class from the last
-traceback line,
+timestamps, hex digests, addresses, **opaque alphanumeric ids**, then bare
+numbers — in that order, or the number sweep shreds the others), recover the
+exception class from the last traceback line,
 then hash twice: `fingerprint = sha1(type + normalized + source_topic)` (`fp:`,
 drives the topic screen) and `errorFingerprint = sha1(type + normalized)`
 (`efp:`, collapses one error spanning N topics into one row). Group lookups and
@@ -136,6 +137,16 @@ makes every group a group of one; the braces mark that span as data rather than
 description, so it collapses to `<obj>` and the model, field and constraint
 around it stay. On this pipeline's store the two masks together take 24 groups
 down to 5.
+
+The opaque-id rule is the third. The ids this pipeline carries look like
+`QMdvxJcvT4LzsCS9d` — not a UUID (no dashes), not all-hex (the digest rule misses
+it), and immune to the bare-number sweep because letters sit either side of the
+digits — so `Failed to index <svc> document QMdvxJcvT4LzsCS9d` hashed one group
+per document, which is exactly the "grouping doesn't group" symptom. Any
+`[A-Za-z0-9_-]` word of six or more characters carrying at least one letter and
+at least one digit becomes `<id>`. It over-reaches onto `base64`/`sha256`/`utf16`
+and that is the accepted trade: it costs a little readability in a group title
+and nothing in grouping, since the collapse is consistent.
 
 ## Layout
 
@@ -165,7 +176,7 @@ above it.
 | `GET /messages/{id}` | Full document: payload, error + stack, partition/offset |
 | `GET /messages/{id}/audit` | Audit trail for one message |
 | `GET /messages/{id}/neighbours?fingerprint=` | Prev/next within the group — the serial review loop |
-| `POST /messages/{id}/replay` | Replay; body `{payload?, targetTopic?}` — `payload` makes it edit & replay |
+| `POST /messages/{id}/replay` | Replay; body `{payload?, targetTopic?, key?, headers?}` — `payload` makes it edit & replay |
 | `POST /messages/{id}/discard` | Soft-delete, body `{reason?}` |
 | `GET /history`, `DELETE /history` | Resolved messages; Clear-history purge |
 | `POST /bulk/replay`, `POST /bulk/discard` | `{target: {fingerprint} \| {sourceTopic} \| {messageIds[]}, edit?/reason?}` → `202 {bulkId}` |
@@ -205,10 +216,17 @@ stamps every resulting audit entry. Without a redirect each message replays to
 **Bulk edit & replay** is shared-values-only: `POST /bulk/shared` deep-compares
 the target's `NEW` payloads and returns the top-level keys identical across all
 of them, the varying keys (shown locked) and the common source topic. Past
-`SHARED_CAP` (1000) it returns `tooMany` and the UI falls back to plain
+`SHARED_CAP` (1000) it returns `tooMany` and the payload form falls back to plain
 replay-all. Applying an edit: `payload` is a **shallow** merge of top-level keys
-(nested objects replaced whole), new keys may be added, and `targetTopic`
-redirects the whole batch.
+(nested objects replaced whole), new keys may be added, and `targetTopic`, `key`
+and `headers` apply to the whole batch.
+
+The three record-level fields — **produced to / record key (id) / headers** —
+are one component (`components/RecordOverrides.tsx`) shared by the single-message
+edit modal and the bulk one, so a replay is described identically whether it is
+aimed at one document or a thousand. They are *supplied*, never compared or
+restored, which is why `tooMany` doesn't disable them and why the message screen
+no longer carries a loose target-topic box beside its buttons.
 
 Failure map: no `source_topic` and no override → 409 · payload not
 JSON-encodable → 422 · produce/ack fails → 502, status stays `NEW` · already
@@ -231,6 +249,19 @@ lists run at body size with mono sub-lines, and the numeric columns are
 fixed-width and tabular so counts line up down a list instead of drifting with
 the text beside them. Each list carries a column header — the right-hand columns
 are icons and dots, fast to scan once known and opaque until then.
+
+The group screen carries the same two bulk entry points as the topic screen:
+**Bulk edit & replay** over every NEW member, and per-row checkboxes feeding a
+fixed selection bar for a subset. Both open the one bulk modal — a group is a
+target like any other, and having to leave the group to bulk-act on it was the
+gap.
+
+The message screen's header leads with the **payload's own id**
+(`id`/`ID`/`Id`/`iD`/`_id` — case is not agreed across producers), then the Mongo
+**`doc`** id the API keys on. Both are labelled: unlabelled, two hex-ish strings
+side by side read as the same thing said twice. `partition` / `offset` belong to
+the Coordinates panel and the header does not repeat them as a `part:offset`
+chip.
 
 Filters default to `NEW` — resolved messages live on History. Status colors are
 consistent everywhere (NEW = attention/amber, REPLAYED = success/green,

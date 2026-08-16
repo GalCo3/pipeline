@@ -33,16 +33,27 @@ import { createHash } from "node:crypto";
  * this is what makes `ensureStamped` re-derive every document that still
  * carries an older recipe.
  */
-export const FP_VERSION = 3;
+export const FP_VERSION = 4;
 
 // Order matters only in that the specific patterns run before the general number
 // sweep — a UUID or an ISO timestamp would otherwise be shredded into fragments
 // by it and stop matching itself across occurrences.
+//
+// The opaque-token rule is what catches the ids this pipeline actually carries:
+// Rocket.Chat hands out things like `QMdvxJcvT4LzsCS9d`, which is neither a UUID
+// (no dashes) nor all-hex (so the digest rule misses it) nor a bare number (the
+// letters around the digits kill the `\b`), so `Failed to index <svc> document
+// QMdvxJcvT4LzsCS9d` used to hash one group per document. Any word of six or
+// more `[A-Za-z0-9_-]` chars mixing at least one letter with at least one digit
+// is treated as an identifier. It over-reaches slightly — `base64`, `sha256` and
+// `utf16` go the same way — which costs a little readability in a group title
+// and nothing at all in grouping, since it collapses them consistently.
 const SUBSTITUTIONS: Array<[RegExp, string]> = [
   [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<id>"],
   [/\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<ts>"],
   [/\b[0-9a-f]{16,}\b/gi, "<hash>"],
   [/0x[0-9a-f]+/gi, "<addr>"],
+  [/(?<![\w-])(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{6,}(?![\w-])/g, "<id>"],
   [/\b\d+\b/g, "<n>"],
 ];
 

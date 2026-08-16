@@ -7,9 +7,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { api } from "@/lib/client";
-import { formatTs, prettyJson } from "@/lib/format";
+import type { ReplayInput } from "@/lib/types";
+import { formatTs, payloadId, prettyJson } from "@/lib/format";
 import { JsonView, PayloadEditor } from "@/components/Json";
 import { ConfirmDialog, DISCARD_COUNTDOWN_SECONDS, Modal } from "@/components/Modal";
+import { RecordOverridesFields, useRecordOverrides } from "@/components/RecordOverrides";
 import {
   Button,
   Chip,
@@ -41,7 +43,9 @@ export default function MessagePage() {
   const [reason, setReason] = useState("");
   const [payloadText, setPayloadText] = useState<string | null>(null);
   const [parsed, setParsed] = useState<unknown>(undefined);
-  const [targetTopic, setTargetTopic] = useState("");
+  // Target topic, key and headers all live in the edit modal — the same three
+  // fields the bulk form offers, described the same way.
+  const overrides = useRecordOverrides();
 
   const message = useQuery({ queryKey: ["message", id], queryFn: () => api.message(id) });
   const audit = useQuery({ queryKey: ["audit", id], queryFn: () => api.messageAudit(id) });
@@ -57,8 +61,7 @@ export default function MessagePage() {
   }
 
   const replay = useMutation({
-    mutationFn: (input: { payload?: unknown; targetTopic?: string | null }) =>
-      api.replay(id, input),
+    mutationFn: (input: ReplayInput) => api.replay(id, input),
     onSuccess: () => {
       setEditing(false);
       refresh();
@@ -78,6 +81,7 @@ export default function MessagePage() {
   if (!message.data) return null;
 
   const doc = message.data;
+  const docId = payloadId(doc.payload);
   const resolved = doc.status !== "NEW";
   const groupHref = fingerprint ? `/groups/${encodeURIComponent(fingerprint)}` : "/";
   const suffix = `?${fingerprint ? `fingerprint=${encodeURIComponent(fingerprint)}` : ""}${
@@ -116,14 +120,21 @@ export default function MessagePage() {
         )}
       </div>
 
+      {/* Two identities, and the one an operator recognizes leads: the payload's
+          own id. The Mongo `_id` is what the API keys on — labelled, because two
+          bare hex-ish strings side by side read as one thing said twice. The
+          record's own coordinates are `partition` / `offset` in the Coordinates
+          panel; the header does not repeat them. */}
       <div className="flex flex-wrap items-center gap-3">
         <StatusBadge status={doc.status} />
         <h1 className="font-display text-xl font-semibold">{doc.error.type ?? "Unknown error"}</h1>
-        <Chip mono title="partition:offset in the source topic">
-          {doc.kafkaId ?? "—"}
-        </Chip>
+        {docId && (
+          <Chip mono title="the payload's own id field">
+            id {docId}
+          </Chip>
+        )}
         <Chip mono title="Mongo _id — the identity every API call uses">
-          {doc.id}
+          doc {doc.id}
         </Chip>
         <span className="text-xs text-muted-foreground">failed {formatTs(doc.failedAt)}</span>
       </div>
@@ -134,9 +145,9 @@ export default function MessagePage() {
             variant="brand"
             icon={Send}
             loading={replay.isPending && !editing}
-            onClick={() => replay.mutate({ targetTopic: targetTopic || null })}
+            onClick={() => replay.mutate({})}
           >
-            Replay to {targetTopic || doc.sourceTopic}
+            Replay to {doc.sourceTopic}
           </Button>
           <Button icon={Pencil} onClick={() => setEditing(true)}>
             Edit &amp; replay
@@ -144,13 +155,6 @@ export default function MessagePage() {
           <Button variant="danger" icon={Archive} onClick={() => setDiscarding(true)}>
             Discard
           </Button>
-          <Input
-            value={targetTopic}
-            onChange={(e) => setTargetTopic(e.target.value)}
-            placeholder={doc.sourceTopic ?? "target topic"}
-            className="w-64 font-mono"
-            aria-label="Redirect target topic"
-          />
         </div>
       )}
 
@@ -232,21 +236,34 @@ export default function MessagePage() {
                 variant="brand"
                 icon={Send}
                 loading={replay.isPending}
-                disabled={parsed === undefined}
-                onClick={() => replay.mutate({ payload: parsed, targetTopic: targetTopic || null })}
+                disabled={parsed === undefined || !overrides.valid}
+                onClick={() => replay.mutate({ payload: parsed, ...overrides.overrides })}
               >
                 Replay edited
               </Button>
             </>
           }
         >
-          <PayloadEditor
-            value={payloadText ?? prettyJson(doc.payload)}
-            onChange={(text, value) => {
-              setPayloadText(text);
-              setParsed(value);
-            }}
-          />
+          <div className="space-y-4">
+            <div>
+              <Eyebrow>Payload</Eyebrow>
+              <div className="mt-1">
+                <PayloadEditor
+                  value={payloadText ?? prettyJson(doc.payload)}
+                  onChange={(text, value) => {
+                    setPayloadText(text);
+                    setParsed(value);
+                  }}
+                />
+              </div>
+            </div>
+
+            <RecordOverridesFields
+              state={overrides}
+              topicPlaceholder={doc.sourceTopic ?? "target topic"}
+              topicHint="Left empty, the message goes back to the topic it failed on."
+            />
+          </div>
         </Modal>
       )}
 

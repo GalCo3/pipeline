@@ -25,11 +25,16 @@ export const POST = route(async (request: Request) => {
   const input = await body<Input>(request);
   const target = input.target ?? {};
 
-  // A no-op edit (nothing changed, no redirect) degrades to a plain replay-all.
-  const edit =
-    input.edit && (Object.keys(input.edit.payload ?? {}).length > 0 || input.edit.targetTopic)
-      ? input.edit
-      : null;
+  // A no-op edit (nothing changed, no redirect, no key or headers) degrades to a
+  // plain replay-all — the modal always submits an edit object, so "the operator
+  // opened the form and typed nothing" has to be recognized here.
+  const touched =
+    Boolean(input.edit) &&
+    (Object.keys(input.edit?.payload ?? {}).length > 0 ||
+      Boolean(input.edit?.targetTopic) ||
+      Boolean(input.edit?.key) ||
+      Object.keys(input.edit?.headers ?? {}).length > 0);
+  const edit = touched ? input.edit : null;
 
   const { bulkId, messageIds } = await start({ action: "REPLAY", actor, target });
   after(() => run({ bulkId, action: "REPLAY", actor, messageIds, edit }));
