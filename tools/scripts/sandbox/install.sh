@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# Installs the whole local stack into the `hermes` namespace, in dependency order.
-# Image tags come from .image-tags beside this script, written by build-images.sh —
-# run that script first (or pass --build here) whenever image code changes.
-# Rebuilding on every install is unnecessary: build_image already tags by
-# content ID, so nothing downstream needs re-running just to install again.
-#
-# --light leaves out the releases in LIGHT_SKIP below, for a smaller stack on a
-# machine that cannot hold the full one.
+# Installs the local stack into the `hermes` namespace, in dependency order.
+# usage: install.sh [--build] [--light]   (--light drops the releases in LIGHT_SKIP)
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-hermes}"
@@ -30,37 +24,14 @@ if [[ "$BUILD" == 1 || ! -s "$TAGS_FILE" ]]; then
     "$SCRIPT_DIR/build-images.sh"
 fi
 
-# name:tag lines kept as a flat array, not an associative one: macOS ships
-# bash 3.2, where `declare -A` is a syntax error. A handful of images makes a
-# linear lookup free.
-IMAGE_TAGS=()
-while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ -n "$line" ]] && IMAGE_TAGS+=("$line")
-done < "$TAGS_FILE"
-
-# Prints the recorded tag for an image name, and fails loudly rather than
-# expanding to an empty --set when the tags file has no line for it.
 tag_of() {
-    local pair
-    # `${a[@]}` on an empty array is an unbound-variable error under bash 3.2's
-    # `set -u`, hence the count guard.
-    [[ ${#IMAGE_TAGS[@]} -gt 0 ]] || { echo "$TAGS_FILE is empty — run build-images.sh" >&2; return 1; }
-    for pair in "${IMAGE_TAGS[@]}"; do
-        [[ "$pair" == "$1:"* ]] && { echo "${pair#*:}"; return 0; }
-    done
-    echo "no image tag recorded for '$1' — run build-images.sh" >&2
-    return 1
+    local tag
+    tag="$(sed -n "s/^$1://p" "$TAGS_FILE")"
+    [[ -n "$tag" ]] || { echo "no image tag recorded for '$1' — run build-images.sh" >&2; return 1; }
+    echo "$tag"
 }
 
-DEMO_PRODUCER_TAG="$(tag_of demo-producer)"
-INDEX_DEFINITIONS_TAG="$(tag_of index-definitions)"
-MOCK_TRITON_TAG="$(tag_of mock-triton)"
-
-# Every release under services/, as `release[:image]`. The image defaults to the
-# release name; the cargo pair spell theirs out because they are the same
-# cargo-lexical consumer deployed twice under different topics and indices, so
-# neither has an image of its own. dls-console is in here too: it serves its UI
-# and its API from one image, which makes it a release like any other.
+# release[:image] under services/; image defaults to the release name.
 APPS=(
     candy-lexical
     chat-messages-lexical
@@ -72,28 +43,12 @@ APPS=(
     dls-console
 )
 
-# --light drops these releases. All four are read-only views onto something
-# else in the stack, except keycloak, which is dls-console's OIDC issuer: a
-# --light stack still serves the console UI, but signing in fails.
-LIGHT_SKIP=(grafana keycloak kibana mongo-express)
+# Dropped by --light; space-padded so `*" $release "*` matches whole names only.
+# keycloak is dls-console's OIDC issuer, so a --light console cannot log in.
+LIGHT_SKIP=" grafana keycloak kibana mongo-express "
 
-skipped() {
-    local release
-    [[ "$LIGHT" == 1 ]] || return 1
-    for release in "${LIGHT_SKIP[@]}"; do
-        [[ "$release" == "$1" ]] && return 0
-    done
-    return 1
-}
-
-echo "==> Resolving chart dependencies"
-
-# `helm dependency update` re-resolves and re-downloads every subchart on
-# every run. Chart.lock already pins them, so skip the fetch when each locked
-# dependency is present under charts/. Timestamps are useless for this: a
-# fresh clone stamps Chart.yaml and Chart.lock identically, so compare content.
-
-# Number of entries under a `dependencies:` block.
+# `helm dependency update` re-downloads every subchart on every run, so skip the
+# fetch when Chart.lock's pins are all present under charts/.
 count_deps() {
     awk '/^dependencies:/ { inblock = 1; next }
          /^[^ -]/         { inblock = 0 }
@@ -101,8 +56,6 @@ count_deps() {
          END              { print n + 0 }' "$1"
 }
 
-# True when every dependency in Chart.lock has its tarball on disk, and the
-# lock still covers everything Chart.yaml declares.
 deps_satisfied() {
     local dir="$1" line name="" version=""
 
@@ -120,22 +73,16 @@ deps_satisfied() {
     done < "$dir/Chart.lock"
 }
 
-resolve_deps() {
-    local dir="$1"
-
-    grep -q '^dependencies:' "$dir/Chart.yaml" || return 0
-    deps_satisfied "$dir" && return 0
-
-    # A lock exists but is unsatisfied: honour its pins rather than re-resolving.
+echo "==> Resolving chart dependencies"
+while IFS= read -r chart; do
+    dir="$(dirname "$chart")"
+    grep -q '^dependencies:' "$chart" || continue
+    deps_satisfied "$dir" && continue
     if [[ -f "$dir/Chart.lock" ]]; then
         helm dependency build "$dir" >/dev/null
     else
         helm dependency update "$dir" >/dev/null
     fi
-}
-
-while IFS= read -r chart; do
-    resolve_deps "$(dirname "$chart")"
 done < <(find "$CHARTS_DIR" -name Chart.yaml)
 
 kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$NAMESPACE"
@@ -143,7 +90,7 @@ kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "
 install() {
     local release="$1" chart="$2"
     shift 2
-    if skipped "$release"; then
+    if [[ "$LIGHT" == 1 && "$LIGHT_SKIP" == *" $release "* ]]; then
         echo "==> $release (skipped, --light)"
         return 0
     fi
@@ -151,68 +98,101 @@ install() {
     helm upgrade --install "$release" "$CHARTS_DIR/$chart" -n "$NAMESPACE" --timeout 15m "$@"
 }
 
-install kafka         local-infra/backing/kafka/kafka                --wait
-install minio         local-infra/backing/minio                      --wait
-install elasticsearch local-infra/backing/elastic/elasticsearch      --wait
-install mongodb       local-infra/backing/mongodb/mongodb            --wait
-install tika          local-infra/backing/tika                       --wait
-# OIDC issuer for dls-console; nothing else in the stack provides one.
-install keycloak      local-infra/backing/keycloak                   --wait
-install kafka-ui      local-infra/backing/kafka/kafka-ui             --wait
-install kibana        local-infra/backing/elastic/kibana             --wait
-install mongo-express local-infra/backing/mongodb/mongo-express      --wait
-# chief-lexical enriches from this; see local-infra/backing/chief-api for what it stands in for.
-install chief-api     local-infra/backing/chief-api                  --wait
-# The semantic path embeds against this; see local-infra/backing/triton for what
-# it stands in for. Release and Service are named `triton`, the image is not.
-install triton        local-infra/backing/triton                     --wait --set "image.tag=$MOCK_TRITON_TAG"
-install headlamp      local-infra/tooling/headlamp                   --wait
-# Telemetry backends before the collector, which starts pushing as soon as it is up.
-install mimir         local-infra/observability/mimir                --wait
-install loki          local-infra/observability/loki                 --wait
-install tempo         local-infra/observability/tempo                --wait
-install grafana       local-infra/observability/grafana              --wait
-install otel-operator local-infra/observability/otel-operator        --wait
+# install, with the recorded tag for $3 wired into image.tag.
+install_tagged() {
+    local release="$1" chart="$2" tag
+    tag="$(tag_of "$3")"
+    shift 3
+    install "$release" "$chart" --set "image.tag=$tag" "$@"
+}
 
-# The operator's webhook serving cert is regenerated by helm on every upgrade,
-# but nothing on the Deployment changes, so the running pod keeps serving the
-# previous cert while the webhook configs already carry the new CA. Creating an
-# OpenTelemetryCollector then fails the admission webhook with
-# "x509: certificate signed by unknown authority". Restarting the operator makes
-# it load the cert helm just wrote.
+# These releases don't depend on each other, so installing them one at a time
+# means the run costs the *sum* of their readiness waits instead of the longest
+# one. install_bg starts a release in the background with its output buffered
+# (parallel helm logs would otherwise interleave into nonsense); wait_batch
+# collects them in launch order, replays each log, and fails if any failed.
+LOG_DIR="$(mktemp -d)"
+trap 'rm -rf "$LOG_DIR"' EXIT
+
+BG_PIDS=()
+BG_NAMES=()
+
+install_bg() {
+    local release="$1"
+    install "$@" >"$LOG_DIR/$release.log" 2>&1 &
+    BG_PIDS+=("$!")
+    BG_NAMES+=("$release")
+}
+
+install_tagged_bg() {
+    local release="$1"
+    install_tagged "$@" >"$LOG_DIR/$release.log" 2>&1 &
+    BG_PIDS+=("$!")
+    BG_NAMES+=("$release")
+}
+
+wait_batch() {
+    local i failed=()
+    [[ ${#BG_PIDS[@]} -gt 0 ]] || return 0
+    for i in "${!BG_PIDS[@]}"; do
+        if ! wait "${BG_PIDS[$i]}"; then
+            failed+=("${BG_NAMES[$i]}")
+        fi
+        cat "$LOG_DIR/${BG_NAMES[$i]}.log"
+    done
+    BG_PIDS=()
+    BG_NAMES=()
+    [[ ${#failed[@]} -eq 0 ]] || { echo "failed: ${failed[*]}" >&2; return 1; }
+}
+
+# Everything the pipeline itself talks to. --wait here, since the jobs, the
+# consumers and the collector below all need these actually serving.
+echo "==> Backing services (parallel)"
+install_bg kafka         local-infra/backing/kafka/kafka           --wait
+install_bg minio         local-infra/backing/minio                 --wait
+install_bg elasticsearch local-infra/backing/elastic/elasticsearch --wait
+install_bg mongodb       local-infra/backing/mongodb/mongodb       --wait
+install_bg tika          local-infra/backing/tika                  --wait
+install_bg keycloak      local-infra/backing/keycloak              --wait
+install_bg chief-api     local-infra/backing/chief-api             --wait
+install_tagged_bg triton local-infra/backing/triton mock-triton    --wait
+install_bg mimir         local-infra/observability/mimir           --wait
+install_bg loki          local-infra/observability/loki            --wait
+install_bg tempo         local-infra/observability/tempo           --wait
+install_bg otel-operator local-infra/observability/otel-operator   --wait
+wait_batch
+
+# Consoles: nothing in the stack blocks on them, and each retries its own
+# backend on its own, so no --wait — the install returns as soon as Kubernetes
+# has accepted the manifests and the pods come up in the background.
+echo "==> Consoles (parallel, no readiness wait)"
+install_bg kafka-ui      local-infra/backing/kafka/kafka-ui
+install_bg kibana        local-infra/backing/elastic/kibana
+install_bg mongo-express local-infra/backing/mongodb/mongo-express
+install_bg headlamp      local-infra/tooling/headlamp
+install_bg grafana       local-infra/observability/grafana
+wait_batch
+
+# Helm regenerates the webhook cert without changing the Deployment, so the
+# running pod keeps serving the old one and collector creation fails on x509.
 echo "==> Restarting otel-operator (reload regenerated webhook cert)"
 kubectl -n "$NAMESPACE" rollout restart deploy/otel-operator
 kubectl -n "$NAMESPACE" rollout status deploy/otel-operator --timeout=180s
 
-# The webhook Service's endpoint can lag the pod's readiness by a few
-# seconds — kube-proxy hasn't synced yet even though rollout status just
-# reported Ready — so the very next admission call here occasionally times
-# out with "context deadline exceeded". That failure is transient, but
-# `helm upgrade --install` leaves the release stuck in state "failed" and
-# set -e would otherwise abort before the jobs and consumers install at all.
+# The webhook endpoint can lag the pod's readiness by a few seconds.
 for attempt in 1 2 3 4 5; do
-    if install otel-collector local-infra/observability/otel-collector; then
-        break
-    fi
+    install otel-collector local-infra/observability/otel-collector && break
     [[ "$attempt" == 5 ]] && { echo "otel-collector install failed after 5 attempts" >&2; exit 1; }
     echo "    webhook not ready yet, retrying ($attempt/5)..."
     sleep 5
 done
 
-# Both jobs run before the consumers, which is also the order populate.sh keeps:
-# the consumers' memory requests leave the single dev node with no room for a
-# job pod to schedule into, and a consumer subscribed to a topic that does not
-# exist yet dies on UNKNOWN_TOPIC_OR_PART — the topics are auto-created by the
-# producer. Every service reads with auto.offset.reset=earliest, so starting
-# after the produce still consumes the whole backlog.
-install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
-install demo-producer     local-infra/tooling/demo-producer     --set "image.tag=$DEMO_PRODUCER_TAG"
+# Jobs before consumers: no node room for a job pod once the consumers are up,
+# and a consumer whose topic does not exist yet dies on UNKNOWN_TOPIC_OR_PART.
+install_tagged index-definitions local-infra/tooling/index-definitions index-definitions
+install_tagged demo-producer     local-infra/tooling/demo-producer     demo-producer
 for entry in "${APPS[@]}"; do
-    release="${entry%%:*}"
-    # Assigned before the install so a missing tag aborts here: tag_of's failure
-    # inside an argument would only expand to an empty --set.
-    tag="$(tag_of "${entry##*:}")"
-    install "$release" "services/$release" --set "image.tag=$tag"
+    install_tagged "${entry%%:*}" "services/${entry%%:*}" "${entry##*:}"
 done
 
 echo
