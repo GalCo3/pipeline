@@ -1,10 +1,12 @@
 """Dev-only stand-in for the production Triton Inference Server.
 
 Prod runs a real Triton (2.56.0) serving ONNX models on GPUs; the semantic
-pipeline embeds chunks through its `retrieval_embedder` model. Nothing in the
-local stack can run that — no GPU, and the model file is not in this repo — so
-this serves the same KServe v2 API over the same three ports, backed by
-`embed.py` instead of ONNX Runtime:
+pipeline embeds chunks through its `retrieval_embedder` model, scores
+query/document pairs through `cargo_reranker`, and labels chat messages through
+`chat-reports-classifier`. Nothing in the local stack can run those — no GPU,
+and the model files are not in this repo — so this serves the same KServe v2 API
+over the same three ports, backed by `embed.py`, `rerank.py` and `classify.py`
+instead of ONNX Runtime:
 
     8000  HTTP inference + health + metadata (`tritonclient.http`)
     8001  gRPC inference (`tritonclient.grpc`)
@@ -19,11 +21,11 @@ the same code runs against both without branching.
 What it deliberately keeps strict, because getting these wrong locally means
 finding out in prod:
 
-  * `input_ids`/`attention_mask` must be INT64 — the model takes **token ids,
-    not text**. There is no tokenizer in the model repository (raw
-    onnxruntime_onnx, no ensemble, no python backend), so callers tokenize
-    themselves, in dev exactly as in prod.
-  * A batch over `max_batch_size` (16) is rejected, with Triton's own message.
+  * Every input is INT64 — the models take **token ids, not text**. There is no
+    tokenizer in the model repository (raw onnxruntime_onnx, no ensemble, no
+    python backend), so callers tokenize themselves, in dev exactly as in prod.
+  * A batch over the model's `max_batch_size` (16 for the embedder and the
+    reranker, 4 for the classifier) is rejected, with Triton's own message.
   * An unknown model, a missing input, or a dtype/shape mismatch is rejected.
 
 What it does not model: real latency, GPU queueing, dynamic batching, shared
@@ -46,7 +48,9 @@ import numpy as np
 from google.protobuf import json_format
 from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
 
+import classify
 import embed
+import rerank
 
 HTTP_PORT = 8000
 GRPC_PORT = 8001
@@ -72,6 +76,16 @@ NUMPY_DTYPES = {
     "FP16": np.float16,
     "FP32": np.float32,
     "FP64": np.float64,
+}
+
+# The stand-in behind each model in the contract. A contract entry with no
+# implementation here is a bug, not a configuration: `_model_or_error` only lets
+# through names that have metadata and config, and having those means the model
+# claims to be READY.
+IMPLEMENTATIONS = {
+    "retrieval_embedder": embed.infer,
+    "cargo_reranker": rerank.infer,
+    "chat-reports-classifier": classify.infer,
 }
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -150,15 +164,20 @@ def run_inference(model_name: str, inputs: dict[str, np.ndarray]) -> dict[str, n
             f"for '{model_name}'"
         )
 
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    if input_ids.shape != attention_mask.shape:
-        raise InferenceError(
-            f"input_ids shape {list(input_ids.shape)} does not match attention_mask shape "
-            f"{list(attention_mask.shape)}"
-        )
+    # Every input these models take is one per token, so they arrive as parallel
+    # [batch, seq] tensors. Ragged ones would be a caller bug the real model
+    # notices only as a shape error deep in ONNX Runtime.
+    reference_name, reference = next(iter(inputs.items()))
+    for name, tensor in inputs.items():
+        if tensor.shape != reference.shape:
+            raise InferenceError(
+                f"{name} shape {list(tensor.shape)} does not match {reference_name} shape "
+                f"{list(reference.shape)}"
+            )
 
-    return embed.infer(input_ids, attention_mask)
+    # Tensor names are the implementations' parameter names, so a model gaining
+    # or losing an input is a contract.json edit plus a signature, nothing else.
+    return IMPLEMENTATIONS[model_name](**inputs)
 
 
 def _select_outputs(

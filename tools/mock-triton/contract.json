@@ -4,12 +4,10 @@
     "metadata it will see in prod. Refresh by re-running, against the real server:",
     "  GET  /v2                                      -> server",
     "  POST /v2/repository/index                     -> repository_index",
-    "  GET  /v2/models/retrieval_embedder            -> models[].metadata",
-    "  GET  /v2/models/retrieval_embedder/config     -> models[].config",
-    "Only retrieval_embedder is implemented. The other two models prod loads are",
-    "listed in repository_index (they are visible there in prod, and a client that",
-    "enumerates models would notice their absence), but have no metadata/config and",
-    "reject inference — add them here the same way when something needs them."
+    "  GET  /v2/models/<name>                        -> models[].metadata",
+    "  GET  /v2/models/<name>/config                 -> models[].config",
+    "Every model prod loads is implemented; a new one is a metadata/config entry",
+    "here, a line in repository_index and a stand-in wired into server.py."
   ],
 
   "server": {
@@ -39,6 +37,185 @@
   ],
 
   "models": {
+    "cargo_reranker": {
+      "metadata": {
+        "name": "cargo_reranker",
+        "versions": ["1"],
+        "platform": "onnxruntime_onnx",
+        "inputs": [
+          { "name": "attention_mask", "datatype": "INT64", "shape": [-1, -1] },
+          { "name": "input_ids", "datatype": "INT64", "shape": [-1, -1] }
+        ],
+        "outputs": [{ "name": "logits", "datatype": "FP32", "shape": [-1, 1] }]
+      },
+
+      "config": {
+        "name": "cargo_reranker",
+        "platform": "onnxruntime_onnx",
+        "backend": "onnxruntime",
+        "runtime": "",
+        "version_policy": { "latest": { "num_versions": 1 } },
+        "max_batch_size": 16,
+        "input": [
+          {
+            "name": "attention_mask",
+            "data_type": "TYPE_INT64",
+            "format": "FORMAT_NONE",
+            "dims": [-1],
+            "is_shape_tensor": false,
+            "allow_ragged_batch": false,
+            "optional": false,
+            "is_non_linear_format_io": false
+          },
+          {
+            "name": "input_ids",
+            "data_type": "TYPE_INT64",
+            "format": "FORMAT_NONE",
+            "dims": [-1],
+            "is_shape_tensor": false,
+            "allow_ragged_batch": false,
+            "optional": false,
+            "is_non_linear_format_io": false
+          }
+        ],
+        "output": [
+          {
+            "name": "logits",
+            "data_type": "TYPE_FP32",
+            "dims": [1],
+            "label_filename": "",
+            "is_shape_tensor": false,
+            "is_non_linear_format_io": false
+          }
+        ],
+        "batch_input": [],
+        "batch_output": [],
+        "optimization": {
+          "priority": "PRIORITY_DEFAULT",
+          "input_pinned_memory": { "enable": true },
+          "output_pinned_memory": { "enable": true },
+          "gather_kernel_buffer_threshold": 0,
+          "eager_batching": false
+        },
+        "instance_group": [
+          {
+            "name": "cargo_reranker",
+            "kind": "KIND_GPU",
+            "count": 1,
+            "gpus": [0],
+            "secondary_devices": [],
+            "profile": [],
+            "passive": false,
+            "host_policy": ""
+          }
+        ],
+        "default_model_filename": "model.onnx",
+        "cc_model_filenames": {},
+        "metric_tags": {},
+        "parameters": {},
+        "model_warmup": []
+      }
+    },
+
+    "chat-reports-classifier": {
+      "metadata": {
+        "name": "chat-reports-classifier",
+        "versions": ["1"],
+        "platform": "onnxruntime_onnx",
+        "inputs": [
+          { "name": "token_type_ids", "datatype": "INT64", "shape": [-1, -1] },
+          { "name": "attention_mask", "datatype": "INT64", "shape": [-1, -1] },
+          { "name": "input_ids", "datatype": "INT64", "shape": [-1, -1] }
+        ],
+        "outputs": [{ "name": "logits", "datatype": "FP32", "shape": [-1, 2] }]
+      },
+
+      "config": {
+        "name": "chat-reports-classifier",
+        "platform": "onnxruntime_onnx",
+        "backend": "onnxruntime",
+        "runtime": "",
+        "version_policy": { "latest": { "num_versions": 1 } },
+        "max_batch_size": 4,
+        "input": [
+          {
+            "name": "token_type_ids",
+            "data_type": "TYPE_INT64",
+            "format": "FORMAT_NONE",
+            "dims": [-1],
+            "is_shape_tensor": false,
+            "allow_ragged_batch": false,
+            "optional": false,
+            "is_non_linear_format_io": false
+          },
+          {
+            "name": "attention_mask",
+            "data_type": "TYPE_INT64",
+            "format": "FORMAT_NONE",
+            "dims": [-1],
+            "is_shape_tensor": false,
+            "allow_ragged_batch": false,
+            "optional": false,
+            "is_non_linear_format_io": false
+          },
+          {
+            "name": "input_ids",
+            "data_type": "TYPE_INT64",
+            "format": "FORMAT_NONE",
+            "dims": [-1],
+            "is_shape_tensor": false,
+            "allow_ragged_batch": false,
+            "optional": false,
+            "is_non_linear_format_io": false
+          }
+        ],
+        "output": [
+          {
+            "name": "logits",
+            "data_type": "TYPE_FP32",
+            "dims": [2],
+            "label_filename": "",
+            "is_shape_tensor": false,
+            "is_non_linear_format_io": false
+          }
+        ],
+        "batch_input": [],
+        "batch_output": [],
+        "optimization": {
+          "priority": "PRIORITY_DEFAULT",
+          "input_pinned_memory": { "enable": true },
+          "output_pinned_memory": { "enable": true },
+          "gather_kernel_buffer_threshold": 0,
+          "eager_batching": false
+        },
+        "dynamic_batching": {
+          "preferred_batch_size": [4],
+          "max_queue_delay_microseconds": 0,
+          "preserve_ordering": false,
+          "priority_levels": 0,
+          "default_priority_level": 0,
+          "priority_queue_policy": {}
+        },
+        "instance_group": [
+          {
+            "name": "chat-reports-classifier",
+            "kind": "KIND_GPU",
+            "count": 1,
+            "gpus": [0],
+            "secondary_devices": [],
+            "profile": [],
+            "passive": false,
+            "host_policy": ""
+          }
+        ],
+        "default_model_filename": "model.onnx",
+        "cc_model_filenames": {},
+        "metric_tags": {},
+        "parameters": {},
+        "model_warmup": []
+      }
+    },
+
     "retrieval_embedder": {
       "metadata": {
         "name": "retrieval_embedder",

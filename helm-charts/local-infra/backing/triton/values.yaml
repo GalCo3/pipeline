@@ -1,16 +1,17 @@
 # Dev-only stand-in for the real Triton Inference Server.
 #
 # Prod runs Triton 2.56.0 on GPUs, serving ONNX models; the semantic path embeds
-# chunks through its `retrieval_embedder`. Locally there is no GPU and the model
-# file is not in this repo, so tools/mock-triton serves the same KServe v2 API on
-# the same three ports with deterministic vectors behind it. Everything it
+# chunks through its `retrieval_embedder`, scores query/document pairs through
+# `cargo_reranker` and labels chat messages through `chat-reports-classifier`.
+# Locally there is no GPU and the model files are not in this repo, so tools/mock-triton serves the same KServe v2 API on the same three
+# ports with deterministic vectors behind it. Everything it
 # reports about itself — server metadata, repository index, model metadata and
 # config — is replayed verbatim from prod, so a client that reads
 # `max_batch_size`, tensor names or dtypes off the server needs no dev/prod
 # branch. See tools/mock-triton/contract.json for the captured contract and how
 # to refresh it.
 #
-# The model takes **token ids, not text**: there is no tokenizer in the model
+# The models take **token ids, not text**: there is no tokenizer in the model
 # repository (raw onnxruntime_onnx, no ensemble), so callers tokenize before
 # calling, here exactly as in prod. The mock enforces INT64 inputs to keep that
 # honest.

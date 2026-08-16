@@ -36,7 +36,7 @@ EMBEDDING_DIM = 1024
 _VECTORS: dict[int, np.ndarray] = {}
 
 
-def _vector_for(token_id: int) -> np.ndarray:
+def vector_for(token_id: int) -> np.ndarray:
     """The fixed unit vector for one token id."""
     cached = _VECTORS.get(token_id)
     if cached is not None:
@@ -72,7 +72,7 @@ def infer(input_ids: np.ndarray, attention_mask: np.ndarray) -> dict[str, np.nda
     token_embeddings = np.empty((batch, seq, EMBEDDING_DIM), dtype=np.float32)
     for row in range(batch):
         for position in range(seq):
-            token_embeddings[row, position] = _vector_for(int(input_ids[row, position]))
+            token_embeddings[row, position] = vector_for(int(input_ids[row, position]))
 
     # Mean pooling over the unmasked tokens, then re-normalise — what
     # sentence-transformers does, and the reason `attention_mask` is an input at
