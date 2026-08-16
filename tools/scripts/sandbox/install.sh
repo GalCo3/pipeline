@@ -4,6 +4,9 @@
 # run that script first (or pass --build here) whenever image code changes.
 # Rebuilding on every install is unnecessary: build_image already tags by
 # content ID, so nothing downstream needs re-running just to install again.
+#
+# --light leaves out the releases in LIGHT_SKIP below, for a smaller stack on a
+# machine that cannot hold the full one.
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-hermes}"
@@ -12,12 +15,20 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 CHARTS_DIR="$REPO_ROOT/helm-charts"
 TAGS_FILE="$SCRIPT_DIR/.image-tags"
 
-if [[ "${1:-}" == "--build" ]]; then
-    "$SCRIPT_DIR/build-images.sh"
+BUILD=0
+LIGHT=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --build) BUILD=1 ;;
+        --light) LIGHT=1 ;;
+        *) echo "usage: $(basename "$0") [--build] [--light]" >&2; exit 2 ;;
+    esac
     shift
-fi
+done
 
-[[ -s "$TAGS_FILE" ]] || "$SCRIPT_DIR/build-images.sh"
+if [[ "$BUILD" == 1 || ! -s "$TAGS_FILE" ]]; then
+    "$SCRIPT_DIR/build-images.sh"
+fi
 
 # name:tag lines kept as a flat array, not an associative one: macOS ships
 # bash 3.2, where `declare -A` is a syntax error. A handful of images makes a
@@ -41,17 +52,39 @@ tag_of() {
     return 1
 }
 
-CARGO_LEXICAL_TAG="$(tag_of cargo-lexical)"
 DEMO_PRODUCER_TAG="$(tag_of demo-producer)"
 INDEX_DEFINITIONS_TAG="$(tag_of index-definitions)"
 MOCK_TRITON_TAG="$(tag_of mock-triton)"
 
-# Node apps that are a single image and a single chart named after the
-# directory. dls-console serves both its UI and its API, so it is one release.
-NODE_APPS=(dls-console)
+# Every release under services/, as `release[:image]`. The image defaults to the
+# release name; the cargo pair spell theirs out because they are the same
+# cargo-lexical consumer deployed twice under different topics and indices, so
+# neither has an image of its own. dls-console is in here too: it serves its UI
+# and its API from one image, which makes it a release like any other.
+APPS=(
+    candy-lexical
+    chat-messages-lexical
+    chat-rooms-lexical
+    chat-users-lexical
+    chief-lexical
+    cargo-operational-lexical:cargo-lexical
+    cargo-my-storage-lexical:cargo-lexical
+    dls-console
+)
 
-# Services that have a chart under services/, one release each below.
-SERVICES=(candy-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+# --light drops these releases. All four are read-only views onto something
+# else in the stack, except keycloak, which is dls-console's OIDC issuer: a
+# --light stack still serves the console UI, but signing in fails.
+LIGHT_SKIP=(grafana keycloak kibana mongo-express)
+
+skipped() {
+    local release
+    [[ "$LIGHT" == 1 ]] || return 1
+    for release in "${LIGHT_SKIP[@]}"; do
+        [[ "$release" == "$1" ]] && return 0
+    done
+    return 1
+}
 
 echo "==> Resolving chart dependencies"
 
@@ -110,6 +143,10 @@ kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "
 install() {
     local release="$1" chart="$2"
     shift 2
+    if skipped "$release"; then
+        echo "==> $release (skipped, --light)"
+        return 0
+    fi
     echo "==> $release"
     helm upgrade --install "$release" "$CHARTS_DIR/$chart" -n "$NAMESPACE" --timeout 15m "$@"
 }
@@ -170,16 +207,13 @@ done
 # after the produce still consumes the whole backlog.
 install index-definitions local-infra/tooling/index-definitions --set "image.tag=$INDEX_DEFINITIONS_TAG"
 install demo-producer     local-infra/tooling/demo-producer     --set "image.tag=$DEMO_PRODUCER_TAG"
-for service in "${SERVICES[@]}"; do
-    install "$service" "services/$service" --set "image.tag=$(tag_of "$service")"
-done
-# Same cargo-lexical image, different topic/index — no image of their own to build.
-install cargo-operational-lexical services/cargo-operational-lexical --set "image.tag=$CARGO_LEXICAL_TAG"
-install cargo-my-storage-lexical  services/cargo-my-storage-lexical  --set "image.tag=$CARGO_LEXICAL_TAG"
-
-for app in "${NODE_APPS[@]}"; do
-    install "$app" "services/$app" --set "image.tag=$(tag_of "$app")"
+for entry in "${APPS[@]}"; do
+    release="${entry%%:*}"
+    # Assigned before the install so a missing tag aborts here: tag_of's failure
+    # inside an argument would only expand to an empty --set.
+    tag="$(tag_of "${entry##*:}")"
+    install "$release" "services/$release" --set "image.tag=$tag"
 done
 
 echo
-echo "Done. UI access: tools/scripts/port-forward.sh"
+echo "Done. UI access: tools/scripts/sandbox/port-forward.sh"
