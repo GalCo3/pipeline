@@ -9,6 +9,7 @@ import { useState } from "react";
 import { api } from "@/lib/client";
 import type { ReplayInput } from "@/lib/types";
 import { formatTs, payloadId, prettyJson } from "@/lib/format";
+import { FieldsEditor } from "@/components/Fields";
 import { JsonView, PayloadEditor } from "@/components/Json";
 import { ConfirmDialog, DISCARD_COUNTDOWN_SECONDS, Modal } from "@/components/Modal";
 import { RecordOverridesFields, useRecordOverrides } from "@/components/RecordOverrides";
@@ -29,6 +30,10 @@ import {
  * Prev/next walk the group the operator arrived from, which is what turns this
  * from a leaf into a serial review loop — decide, advance, decide.
  */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 export default function MessagePage() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -120,11 +125,10 @@ export default function MessagePage() {
         )}
       </div>
 
-      {/* Two identities, and the one an operator recognizes leads: the payload's
-          own id. The Mongo `_id` is what the API keys on — labelled, because two
-          bare hex-ish strings side by side read as one thing said twice. The
-          record's own coordinates are `partition` / `offset` in the Coordinates
-          panel; the header does not repeat them. */}
+      {/* The identity an operator recognizes is the payload's own id; the Mongo
+          `_id` is an API detail and lives in the URL, which is where anyone who
+          needs it will get it. The record's own coordinates are `partition` /
+          `offset` in the Coordinates panel; the header does not repeat them. */}
       <div className="flex flex-wrap items-center gap-3">
         <StatusBadge status={doc.status} />
         <h1 className="font-display text-xl font-semibold">{doc.error.type ?? "Unknown error"}</h1>
@@ -133,9 +137,6 @@ export default function MessagePage() {
             id {docId}
           </Chip>
         )}
-        <Chip mono title="Mongo _id — the identity every API call uses">
-          doc {doc.id}
-        </Chip>
         <span className="text-xs text-muted-foreground">failed {formatTs(doc.failedAt)}</span>
       </div>
 
@@ -248,13 +249,23 @@ export default function MessagePage() {
             <div>
               <Eyebrow>Payload</Eyebrow>
               <div className="mt-1">
-                <PayloadEditor
-                  value={payloadText ?? prettyJson(doc.payload)}
-                  onChange={(text, value) => {
-                    setPayloadText(text);
-                    setParsed(value);
-                  }}
-                />
+                {/* Field rows for the ordinary case — a decoded message is an
+                    object. Anything else (an array, a bare scalar) has no
+                    fields to lay out, so it keeps the JSON editor. */}
+                {isRecord(doc.payload) ? (
+                  <FieldsEditor
+                    initial={doc.payload}
+                    onChange={(value, error) => setParsed(error ? undefined : value)}
+                  />
+                ) : (
+                  <PayloadEditor
+                    value={payloadText ?? prettyJson(doc.payload)}
+                    onChange={(text, value) => {
+                      setPayloadText(text);
+                      setParsed(value);
+                    }}
+                  />
+                )}
               </div>
             </div>
 

@@ -1,20 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { RecordOverrides } from "@/lib/types";
+import { FieldsEditor } from "@/components/Fields";
 import { Eyebrow, Input } from "@/components/ui";
 
 /**
- * The three record-level fields every replay form offers: where it goes, what
- * key it carries, what headers ride with it.
+ * The record-level fields a replay form offers: where it goes, what key it
+ * carries, what headers ride with it.
  *
  * Shared by the single-message edit modal and the bulk one so a replay is
  * described the same way whether it is aimed at one document or a thousand —
  * the single screen used to grow a stray target-topic box beside its buttons,
  * which meant the same decision lived in two places with two different shapes.
  *
- * None of these three is *restored*: a DLS document keeps the decoded value and
+ * The key is single-message only (`showKey`). It chooses the partition, so one
+ * key applied across a bulk replay would funnel every message in the batch onto
+ * one partition — a batch-wide key is a footgun with no use case behind it.
+ *
+ * None of these is *restored*: a DLS document keeps the decoded value and
  * nothing else, so an empty key field means "produce keyless" (which is how the
  * pipeline itself produces) rather than "reuse the original".
  */
@@ -22,36 +27,35 @@ import { Eyebrow, Input } from "@/components/ui";
 export type OverridesState = {
   key: string;
   setKey: (value: string) => void;
-  headersText: string;
-  setHeadersText: (value: string) => void;
+  /** parsed headers, or `undefined` while a row is invalid */
+  headers: Record<string, string> | undefined;
+  setHeaders: (value: Record<string, string> | undefined) => void;
+  headersError: string | null;
+  setHeadersError: (value: string | null) => void;
   targetTopic: string;
   setTargetTopic: (value: string) => void;
-  /** parsed headers, or `undefined` while the JSON is unparseable */
-  headers: Record<string, string> | undefined;
-  headersError: string | null;
   /** false while a field is mid-edit and invalid — the caller disables commit */
   valid: boolean;
   /** only the fields the operator actually filled in */
   overrides: RecordOverrides;
 };
 
-/** Live-validated state for the three fields. */
+/** Live-validated state for the record-level fields. */
 export function useRecordOverrides(): OverridesState {
   const [key, setKey] = useState("");
-  const [headersText, setHeadersText] = useState("");
   const [targetTopic, setTargetTopic] = useState("");
-
-  const { headers, headersError } = useMemo(() => parseHeaders(headersText), [headersText]);
+  const [headers, setHeaders] = useState<Record<string, string> | undefined>({});
+  const [headersError, setHeadersError] = useState<string | null>(null);
 
   return {
     key,
     setKey,
-    headersText,
-    setHeadersText,
-    targetTopic,
-    setTargetTopic,
     headers,
     headersError,
+    setHeaders,
+    setHeadersError,
+    targetTopic,
+    setTargetTopic,
     valid: headersError === null,
     overrides: {
       key: key || null,
@@ -61,46 +65,16 @@ export function useRecordOverrides(): OverridesState {
   };
 }
 
-/**
- * Headers are a flat string map because that is what a Kafka header is on the
- * wire; a nested value would have to be stringified on the way out anyway, and
- * silently doing that would hide it from the operator who typed it.
- */
-function parseHeaders(text: string): {
-  headers: Record<string, string> | undefined;
-  headersError: string | null;
-} {
-  if (!text.trim()) return { headers: {}, headersError: null };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return {
-      headers: undefined,
-      headersError: error instanceof Error ? error.message : "invalid JSON",
-    };
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { headers: undefined, headersError: "headers must be a JSON object" };
-  }
-  const out: Record<string, string> = {};
-  for (const [name, value] of Object.entries(parsed)) {
-    if (typeof value !== "string") {
-      return { headers: undefined, headersError: `header "${name}" must be a string` };
-    }
-    out[name] = value;
-  }
-  return { headers: out, headersError: null };
-}
-
 export function RecordOverridesFields({
   state,
   topicPlaceholder,
   topicHint,
+  showKey = true,
 }: {
   state: OverridesState;
   topicPlaceholder: string;
   topicHint: string;
+  showKey?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -116,9 +90,9 @@ export function RecordOverridesFields({
         <p className="mt-1 text-xs text-muted-foreground">{topicHint}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {showKey && (
         <div>
-          <Eyebrow>Record key (id)</Eyebrow>
+          <Eyebrow>Record key</Eyebrow>
           <Input
             className="mt-1 w-full font-mono"
             placeholder="none — produced keyless"
@@ -130,27 +104,29 @@ export function RecordOverridesFields({
             Chooses the partition. The original key was never stored, so empty means keyless.
           </p>
         </div>
+      )}
 
-        <div>
-          <Eyebrow>Headers</Eyebrow>
-          <textarea
-            rows={3}
-            spellCheck={false}
-            value={state.headersText}
-            onChange={(e) => state.setHeadersText(e.target.value)}
-            placeholder={'{"x-source": "console"}'}
-            aria-label="Headers"
-            className="code-pane scrollbar-thin mt-1 w-full rounded-md p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      <div>
+        <Eyebrow>Headers</Eyebrow>
+        <div className="mt-1">
+          {/* Kafka headers are a flat string map on the wire, so every value is
+              a string — a nested one would have to be stringified on the way
+              out anyway, and doing that silently would hide it from whoever
+              typed it. */}
+          <FieldsEditor
+            stringsOnly
+            initial={{}}
+            addLabel="Add header"
+            emptyHint="No extra headers."
+            onChange={(value, error) => {
+              state.setHeaders(value as Record<string, string> | undefined);
+              state.setHeadersError(error);
+            }}
           />
-          {state.headersError ? (
-            <p className="mt-1 text-xs text-destructive">{state.headersError}</p>
-          ) : (
-            <p className="mt-1 text-xs text-muted-foreground">
-              JSON object of strings. <span className="font-mono">x-dls-replay-of</span> is added
-              automatically.
-            </p>
-          )}
         </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          <span className="font-mono">x-dls-replay-of</span> is added automatically.
+        </p>
       </div>
     </div>
   );

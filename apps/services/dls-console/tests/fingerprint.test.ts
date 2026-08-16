@@ -64,6 +64,35 @@ describe("normalize", () => {
     expect(normalize("record not found")).toBe("record not found");
   });
 
+  it("masks an opaque id that carries no digit at all", () => {
+    // Roughly half the ids this pipeline dead-letters are letters only, so the
+    // digit rule misses them and the console grew thousands of one-document
+    // groups beside the masked one. Case flips are what give them away.
+    const topic = "chat-messages-lexical.messages";
+    const one = normalize("Failed to index chat-messages-lexical document KiCGopwvZPDaZTFRx", topic);
+    const two = normalize("Failed to index chat-messages-lexical document SeewykudkXzmPMMkt", topic);
+    expect(one).toBe("Failed to index <svc> document <id>");
+    expect(two).toBe(one);
+    // …and it lands on the same text as the ids that do carry digits, so the
+    // singletons fold into the group that was already there.
+    expect(normalize("Failed to index chat-messages-lexical document ZZWx6ECT9hhSMoMxo", topic)).toBe(
+      one,
+    );
+  });
+
+  it("leaves ordinary CamelCase and acronyms alone", () => {
+    // Written identifiers capitalize word starts, so interior capitals stand
+    // alone; a leading run is an acronym, which is why only interior runs count.
+    expect(normalize("DeserializingConsumer raised")).toBe("DeserializingConsumer raised");
+    expect(normalize("ChatUserMessage validation failed")).toBe(
+      "ChatUserMessage validation failed",
+    );
+    expect(normalize("HTTPServer refused the connection")).toBe(
+      "HTTPServer refused the connection",
+    );
+    expect(normalize("XMLHttpRequest aborted")).toBe("XMLHttpRequest aborted");
+  });
+
   it("keeps a uuid whole through the number sweep", () => {
     // The general \d+ rule would otherwise shred a UUID into <n> fragments and
     // stop two occurrences of the same error from matching.
@@ -144,7 +173,7 @@ describe("fingerprints", () => {
     expect(out.errorFingerprint).toBe("efp:51f249a101dbcc4565a5260eb7536745f743f0d1");
     // Bump this and `ensureStamped` re-derives the whole collection — which is
     // the only safe way to change anything above.
-    expect(out.fpVersion).toBe(4);
+    expect(out.fpVersion).toBe(5);
   });
 
   it("keeps the two namespaces apart", () => {

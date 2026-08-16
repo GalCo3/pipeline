@@ -1,14 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Lock } from "lucide-react";
 import { useState } from "react";
 
 import { api } from "@/lib/client";
-import { prettyJson } from "@/lib/format";
 import type { BulkEdit, BulkTarget } from "@/lib/types";
 import { Modal } from "@/components/Modal";
-import { PayloadEditor } from "@/components/Json";
+import { FieldsEditor } from "@/components/Fields";
 import { RecordOverridesFields, useRecordOverrides } from "@/components/RecordOverrides";
 import { Button, Eyebrow, Spinner } from "@/components/ui";
 
@@ -16,16 +14,17 @@ import { Button, Eyebrow, Spinner } from "@/components/ui";
  * Bulk edit & replay — shared values only.
  *
  * The server deep-compares the target's NEW payloads and returns the top-level
- * keys identical across all of them; anything that differs is listed as locked
- * rather than silently editable. That restraint is the point: one form applied
- * to N messages can only safely set a value that was already the same in all of
- * them, and the alternative (edit a key that varies) would overwrite real
- * per-message data.
+ * keys identical across all of them, and only those are offered as fields. That
+ * restraint is the point: one form applied to N messages can only safely set a
+ * value that was already the same in all of them, and the alternative (edit a
+ * key that varies) would overwrite real per-message data. The keys that differ
+ * are simply absent — a message-by-message fact has no single value to show
+ * here, and listing them told the operator nothing they could act on.
  *
  * Past the server's inspection cap it answers `tooMany`, and the payload form
  * degrades to a plain replay-all rather than guessing. The record-level fields
- * (target topic, key, headers) are unaffected either way — they are supplied
- * rather than derived, so nothing has to be compared to offer them.
+ * (target topic, headers) are unaffected either way — they are supplied rather
+ * than derived, so nothing has to be compared to offer them.
  */
 export function BulkEditModal({
   target,
@@ -41,12 +40,12 @@ export function BulkEditModal({
     queryFn: () => api.bulkShared(target),
   });
 
-  const [text, setText] = useState<string | null>(null);
-  const [parsed, setParsed] = useState<Record<string, unknown> | undefined>(undefined);
+  // `touched` rather than a value comparison: an operator who only wanted a
+  // redirect must not have every payload rewritten with the shared values.
+  const [touched, setTouched] = useState(false);
+  const [fields, setFields] = useState<Record<string, unknown> | undefined>(undefined);
   const overrides = useRecordOverrides();
 
-  const shared = data?.payload ?? {};
-  const value = text ?? prettyJson(shared);
   const canEdit = Boolean(data && !data.tooMany && data.eligible > 0);
 
   return (
@@ -59,14 +58,12 @@ export function BulkEditModal({
           <Button onClick={onClose}>Cancel</Button>
           <Button
             variant="brand"
-            disabled={!overrides.valid || (canEdit && text !== null && parsed === undefined)}
+            disabled={!overrides.valid || (canEdit && touched && fields === undefined)}
             onClick={() =>
               onSubmit({
-                // Untouched editor → no payload edit at all, so an operator who
-                // only wanted a redirect doesn't rewrite every payload with the
-                // shared values. Past the comparison cap there is no payload form
-                // at all, but the record-level overrides still apply.
-                payload: canEdit && text !== null ? (parsed ?? null) : null,
+                // Past the comparison cap there is no payload form at all, but
+                // the record-level overrides still apply.
+                payload: canEdit && touched ? (fields ?? null) : null,
                 ...overrides.overrides,
               })
             }
@@ -89,50 +86,28 @@ export function BulkEditModal({
           </p>
 
           {canEdit && (
-            <>
-              <div>
-                <Eyebrow>Shared payload keys</Eyebrow>
-                <div className="mt-1">
-                  <PayloadEditor
-                    rows={12}
-                    value={value}
-                    onChange={(next, parsedValue) => {
-                      setText(next);
-                      setParsed(
-                        parsedValue && typeof parsedValue === "object" && !Array.isArray(parsedValue)
-                          ? (parsedValue as Record<string, unknown>)
-                          : undefined,
-                      );
-                    }}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Applied as a shallow merge over each message&apos;s own payload — nested objects
-                  are replaced whole, and new keys may be added.
-                </p>
+            <div>
+              <Eyebrow>Shared payload fields</Eyebrow>
+              <div className="mt-1">
+                <FieldsEditor
+                  initial={data.payload}
+                  emptyHint="No values are shared across every message."
+                  onChange={(value, error) => {
+                    setTouched(true);
+                    setFields(error ? undefined : value);
+                  }}
+                />
               </div>
-
-              {data.varyingPayloadKeys.length > 0 && (
-                <div>
-                  <Eyebrow>Varies across messages — not editable</Eyebrow>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {data.varyingPayloadKeys.map((key) => (
-                      <span
-                        key={key}
-                        className="inline-flex items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
-                      >
-                        <Lock className="h-3 w-3" />
-                        {key}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Applied as a shallow merge over each message&apos;s own payload — nested objects
+                are replaced whole, and new fields may be added.
+              </p>
+            </div>
           )}
 
           <RecordOverridesFields
             state={overrides}
+            showKey={false}
             topicPlaceholder={
               data.targetVaries
                 ? "messages replay to their own source topic"

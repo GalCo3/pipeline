@@ -33,7 +33,7 @@ import { createHash } from "node:crypto";
  * this is what makes `ensureStamped` re-derive every document that still
  * carries an older recipe.
  */
-export const FP_VERSION = 4;
+export const FP_VERSION = 5;
 
 // Order matters only in that the specific patterns run before the general number
 // sweep — a UUID or an ISO timestamp would otherwise be shredded into fragments
@@ -83,6 +83,36 @@ function maskObjects(text: string): string {
   return out;
 }
 
+/**
+ * Mask the ids the digit rule cannot see.
+ *
+ * Rocket.Chat hands out 17-character alphanumeric ids, and a good share of them
+ * carry no digit at all — `SeewykudkXzmPMMkt`, `KiCGopwvZPDaZTFRx`. The opaque-
+ * token rule above requires a digit *and* a letter, so those pass through
+ * untouched and every document lands in a group of one: the console showed one
+ * masked group of ~14k beside a couple of thousand singletons of the same bug.
+ *
+ * What separates them from real words is not how *often* the case changes —
+ * `ChatUserMessage` changes as often as some ids do — but *how*. Written
+ * identifiers capitalize word starts, so every interior capital stands alone:
+ * `DeserializingConsumer`, `ValueError`, `XMLHttpRequest`. A random id has no
+ * word starts, so capitals clump: `…PMMkt`, `…ZTFRx`, `…GZRFeZHy`.
+ *
+ * Hence the rule: a run of two or more capitals that is *not* at the start of
+ * the token. Leading runs are exempt because that is exactly where a real
+ * acronym sits — `HTTPServer`, `XMLParser`, `IOError` all survive.
+ *
+ * Digits neither start nor break a run, so `ZZWx6ECT9hhSMoMxo` is read on its
+ * letters (`ECT` is interior) rather than being split by the `6` into two
+ * innocent-looking halves.
+ */
+const TOKEN = /[A-Za-z0-9_-]{8,}/g;
+const INTERIOR_CAPITAL_RUN = /[a-z][0-9_-]*[A-Z][0-9_-]*[A-Z]/;
+
+function maskShuffledCaseIds(text: string): string {
+  return text.replace(TOKEN, (token) => (INTERIOR_CAPITAL_RUN.test(token) ? "<id>" : token));
+}
+
 function escapeRe(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -130,7 +160,9 @@ export function normalize(error: string | null | undefined, sourceTopic?: string
   for (const [pattern, replacement] of SUBSTITUTIONS) {
     text = text.replace(pattern, replacement);
   }
-  return text.replace(/\s+/g, " ").trim();
+  // Last: the writer's own name is already `<svc>`, so a hyphenated service
+  // slug can never reach the case-flip test and be mistaken for an id.
+  return maskShuffledCaseIds(text).replace(/\s+/g, " ").trim();
 }
 
 /**
