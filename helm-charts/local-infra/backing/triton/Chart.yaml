@@ -1,0 +1,12 @@
+apiVersion: v2
+name: triton
+description: Dev-only stand-in for the production Triton Inference Server, so the semantic path can embed locally.
+type: application
+# appVersion is the *real* server's version, which the mock reports as its own:
+# dev code reading /v2 gets the same answer it gets in prod.
+version: 0.1.0
+appVersion: "2.56.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../../library/hermes-common

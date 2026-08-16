@@ -84,6 +84,10 @@ forward "minio s3"      minio         9000 9000
 forward "elasticsearch" elasticsearch 9200 9200
 forward "mongodb"       mongodb       27017 27017 "(root / mongoadmin)"
 forward "tika"          tika          9998 9998
+# Both Triton ports: a client is configured for one protocol or the other, and
+# either should be reachable from the host.
+forward "triton http"   triton        8000 8000
+forward "triton grpc"   triton        8001 8001 "(grpc)"
 forward "kafka broker"  kafka         9092 9092 "(bootstrap.servers)"
 echo
 

@@ -1,0 +1,92 @@
+# Dev-only stand-in for the real Triton Inference Server.
+#
+# Prod runs Triton 2.56.0 on GPUs, serving ONNX models; the semantic path embeds
+# chunks through its `retrieval_embedder`. Locally there is no GPU and the model
+# file is not in this repo, so tools/mock-triton serves the same KServe v2 API on
+# the same three ports with deterministic vectors behind it. Everything it
+# reports about itself — server metadata, repository index, model metadata and
+# config — is replayed verbatim from prod, so a client that reads
+# `max_batch_size`, tensor names or dtypes off the server needs no dev/prod
+# branch. See tools/mock-triton/contract.json for the captured contract and how
+# to refresh it.
+#
+# The model takes **token ids, not text**: there is no tokenizer in the model
+# repository (raw onnxruntime_onnx, no ensemble), so callers tokenize before
+# calling, here exactly as in prod. The mock enforces INT64 inputs to keep that
+# honest.
+#
+# Named `triton` rather than `mock-triton` on purpose: the service name is the
+# DNS name consumers address, and it should read the same in both environments.
+fullnameOverride: triton
+replicaCount: 1
+
+image:
+  # Built by tools/scripts/sandbox/build-images.sh; the tag is set by install.sh.
+  registry: ""
+  repository: mock-triton
+  tag: local
+  pullPolicy: IfNotPresent
+
+# The three ports real Triton opens. 8000 is the primary so probes and the
+# `http` port name line up with every other chart; 8001/8002 come along as
+# extras. Consumers pick by name, not number.
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8000
+  portName: http
+  extraPorts:
+    - name: grpc
+      port: 8001
+      targetPort: grpc
+      protocol: TCP
+    - name: metrics
+      port: 8002
+      targetPort: metrics
+      protocol: TCP
+
+extraContainerPorts:
+  - name: grpc
+    containerPort: 8001
+    protocol: TCP
+  - name: metrics
+    containerPort: 8002
+    protocol: TCP
+
+# Triton's own readiness endpoint, so the probe path matches prod's.
+livenessProbe:
+  httpGet:
+    path: /v2/health/live
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /v2/health/ready
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 10
+
+# Idle is a few MB; the working set is one batch of token vectors plus the
+# lazily built token->vector table. A full 16 x 512 batch of `token_embeddings`
+# is ~33Mi on its own and is built before it is serialised, hence the headroom.
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 768Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext: {}
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+env: {}

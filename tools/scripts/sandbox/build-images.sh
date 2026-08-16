@@ -120,6 +120,12 @@ done
 DEMO_PRODUCER_TAG="$(build_image demo-producer "$REPO_ROOT/tools/demo-producer")"
 echo "    demo-producer -> $DEMO_PRODUCER_TAG"
 echo "demo-producer:$DEMO_PRODUCER_TAG" >> "$TAGS_FILE_TMP"
+# Stands in for the real Triton the semantic path embeds against. Its chart is
+# local-infra/backing/triton, and the image is named for what it is rather than
+# what it impersonates — only the Service carries the name `triton`.
+MOCK_TRITON_TAG="$(build_image mock-triton "$REPO_ROOT/tools/mock-triton")"
+echo "    mock-triton -> $MOCK_TRITON_TAG"
+echo "mock-triton:$MOCK_TRITON_TAG" >> "$TAGS_FILE_TMP"
 INDEX_DEFINITIONS_TAG="$(build_image index-definitions -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=jobs \
     --build-arg NAME=index-definitions "$REPO_ROOT")"
 echo "    index-definitions -> $INDEX_DEFINITIONS_TAG"

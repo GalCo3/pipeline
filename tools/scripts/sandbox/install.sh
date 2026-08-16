@@ -44,6 +44,7 @@ tag_of() {
 CARGO_LEXICAL_TAG="$(tag_of cargo-lexical)"
 DEMO_PRODUCER_TAG="$(tag_of demo-producer)"
 INDEX_DEFINITIONS_TAG="$(tag_of index-definitions)"
+MOCK_TRITON_TAG="$(tag_of mock-triton)"
 
 # Node apps that are a single image and a single chart named after the
 # directory. dls-console serves both its UI and its API, so it is one release.
@@ -125,6 +126,9 @@ install kibana        local-infra/backing/elastic/kibana             --wait
 install mongo-express local-infra/backing/mongodb/mongo-express      --wait
 # chief-lexical enriches from this; see local-infra/backing/chief-api for what it stands in for.
 install chief-api     local-infra/backing/chief-api                  --wait
+# The semantic path embeds against this; see local-infra/backing/triton for what
+# it stands in for. Release and Service are named `triton`, the image is not.
+install triton        local-infra/backing/triton                     --wait --set "image.tag=$MOCK_TRITON_TAG"
 install headlamp      local-infra/tooling/headlamp                   --wait
 # Telemetry backends before the collector, which starts pushing as soon as it is up.
 install mimir         local-infra/observability/mimir                --wait

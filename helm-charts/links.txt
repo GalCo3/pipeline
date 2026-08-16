@@ -31,6 +31,8 @@ APIs
 http://localhost:9200    elasticsearch
 http://localhost:9000    minio s3         (minioadmin / minioadmin)
 http://localhost:9998    tika
+http://localhost:8000    triton           (mock; /v2 for server metadata)
+localhost:8001           triton grpc
 http://localhost:8090    mimir
 http://localhost:3100    loki
 http://localhost:3200    tempo
