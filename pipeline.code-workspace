@@ -43,6 +43,19 @@
     // Pylance handles editor intel; `uv run ty check` is the authoritative type gate.
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
+    // uv installs the workspace packages editable, through an import hook Pylance
+    // cannot follow — so `hermes.*` reads as unresolved in the editor while it
+    // imports fine at runtime. Pointing at the src/ trees fixes that statically.
+    // The two tools/ entries are for scripts that put their own directory on
+    // sys.path (the mock's modules, the tokenizer uploader).
+    "python.analysis.extraPaths": [
+      "${workspaceFolder:pipeline}/libs/connections/src",
+      "${workspaceFolder:pipeline}/libs/observability/src",
+      "${workspaceFolder:pipeline}/libs/text-extraction/src",
+      "${workspaceFolder:pipeline}/libs/utils/src",
+      "${workspaceFolder:pipeline}/tools/mock-triton",
+      "${workspaceFolder:pipeline}/tools/scripts/tokenizers"
+    ],
     "python.analysis.diagnosticSeverityOverrides": {
       // src/ layout packages are editable-installed into .venv; sibling modules
       // (settings.py, models.py) resolve at runtime via the app's own cwd.
