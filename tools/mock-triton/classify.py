@@ -23,9 +23,8 @@ what it declares, but a single message is all segment 0; nothing here reads it.
 
 from __future__ import annotations
 
-import numpy as np
-
 import embed
+import numpy as np
 
 # The projection below is a cosine between two directions in embedding space, so it
 # sits within ~1/sqrt(dim) of zero; `sqrt(dim)` rescales it to roughly unit

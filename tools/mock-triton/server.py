@@ -46,14 +46,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-import grpc
-import numpy as np
-from google.protobuf import json_format
-from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
-
 import classify
 import embed
+import grpc
+import numpy as np
 import rerank
+from google.protobuf import json_format
+from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
 
 HTTP_PORT = 8000
 GRPC_PORT = 8001
@@ -213,7 +212,7 @@ def _select_outputs(
 class HTTPHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - base class name
+    def log_message(self, format: str, *args: Any) -> None:
         log.info("http %s", format % args)
 
     def _send_json(self, payload: Any, status: int = 200) -> None:
@@ -232,7 +231,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
     def _send_error(self, message: str, status: int = 400) -> None:
         self._send_json({"error": message}, status)
 
-    def do_GET(self) -> None:  # noqa: N802 - base class name
+    def do_GET(self) -> None:
         path = self.path.split("?", 1)[0].rstrip("/")
         parts = [segment for segment in path.split("/") if segment]
 
@@ -267,7 +266,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
         except InferenceError as error:
             self._send_error(str(error))
 
-    def do_POST(self) -> None:  # noqa: N802 - base class name
+    def do_POST(self) -> None:
         path = self.path.split("?", 1)[0].rstrip("/")
         parts = [segment for segment in path.split("/") if segment]
 
@@ -404,43 +403,43 @@ class GRPCService(service_pb2_grpc.GRPCInferenceServiceServicer):
     one `ParseDict` away, and the two protocols cannot drift apart.
     """
 
-    def ServerLive(self, request, context):  # noqa: N802 - generated name
+    def ServerLive(self, request, context):
         return service_pb2.ServerLiveResponse(live=True)
 
-    def ServerReady(self, request, context):  # noqa: N802 - generated name
+    def ServerReady(self, request, context):
         return service_pb2.ServerReadyResponse(ready=True)
 
-    def ModelReady(self, request, context):  # noqa: N802 - generated name
+    def ModelReady(self, request, context):
         return service_pb2.ModelReadyResponse(ready=request.name in MODELS)
 
-    def ServerMetadata(self, request, context):  # noqa: N802 - generated name
+    def ServerMetadata(self, request, context):
         return json_format.ParseDict(SERVER_METADATA, service_pb2.ServerMetadataResponse())
 
-    def ModelMetadata(self, request, context):  # noqa: N802 - generated name
+    def ModelMetadata(self, request, context):
         with _abort_on_error(context):
             model = _model_or_error(request.name)
         return json_format.ParseDict(model["metadata"], service_pb2.ModelMetadataResponse())
 
-    def ModelConfig(self, request, context):  # noqa: N802 - generated name
+    def ModelConfig(self, request, context):
         with _abort_on_error(context):
             model = _model_or_error(request.name)
         return service_pb2.ModelConfigResponse(
             config=json_format.ParseDict(model["config"], model_config_pb2.ModelConfig())
         )
 
-    def RepositoryIndex(self, request, context):  # noqa: N802 - generated name
+    def RepositoryIndex(self, request, context):
         return json_format.ParseDict(
             {"models": REPOSITORY_INDEX}, service_pb2.RepositoryIndexResponse()
         )
 
-    def ModelStatistics(self, request, context):  # noqa: N802 - generated name
+    def ModelStatistics(self, request, context):
         names = [request.name] if request.name else list(MODELS)
         return json_format.ParseDict(
             {"model_stats": [_model_stats(name) for name in names]},
             service_pb2.ModelStatisticsResponse(),
         )
 
-    def ModelInfer(self, request, context):  # noqa: N802 - generated name
+    def ModelInfer(self, request, context):
         inputs: dict[str, np.ndarray] = {}
         for position, tensor in enumerate(request.inputs):
             dtype = NUMPY_DTYPES.get(tensor.datatype)
@@ -528,10 +527,10 @@ class _abort_on_error:
 class MetricsHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - base class name
+    def log_message(self, format: str, *args: Any) -> None:
         pass  # Prometheus scrapes this every few seconds; logging it is noise.
 
-    def do_GET(self) -> None:  # noqa: N802 - base class name
+    def do_GET(self) -> None:
         if self.path.rstrip("/") != "/metrics":
             self.send_response(404)
             self.send_header("Content-Length", "0")

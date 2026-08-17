@@ -76,13 +76,11 @@ def create_triton_clients(
     """
     local_client = create_triton_raw_client(config.local_site)
     remote_client = (
-        create_triton_raw_client(config.remote_site)
-        if config.remote_site is not None
-        else None
+        create_triton_raw_client(config.remote_site) if config.remote_site is not None else None
     )
 
     logger.info("Created local Triton client", extra={"endpoint": config.local_site.endpoint})
-    if remote_client:
+    if config.remote_site is not None:
         logger.info("Created remote Triton client", extra={"endpoint": config.remote_site.endpoint})
 
     return local_client, remote_client

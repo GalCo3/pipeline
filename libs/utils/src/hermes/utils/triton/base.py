@@ -58,7 +58,8 @@ def _download_tokenizer_from_s3(
         logger.warning("Listing s3://%s/%s failed: %s", s3_bucket, prefix, res.error)
         return False
 
-    keys = [obj["Key"] for obj in res.response.get("Contents", []) if not obj["Key"].endswith("/")]
+    contents = (res.response or {}).get("Contents", [])
+    keys = [obj["Key"] for obj in contents if not obj["Key"].endswith("/")]
     if not keys:
         logger.warning("No tokenizer files under s3://%s/%s", s3_bucket, prefix)
         return False
@@ -66,7 +67,7 @@ def _download_tokenizer_from_s3(
     destination.mkdir(parents=True, exist_ok=True)
     for key in keys:
         file_resp, _ = s3_handler.get_file(key=key, bucket=s3_bucket)
-        if not file_resp.is_success:
+        if not file_resp.is_success or file_resp.response is None:
             logger.warning("Fetching s3://%s/%s failed: %s", s3_bucket, key, file_resp.error)
             continue
         (destination / Path(key).name).write_bytes(file_resp.response["Body"].read())
@@ -218,7 +219,7 @@ class TritonLM:
             out["name"]: np.array(out["data"]).reshape(out["shape"])
             if "shape" in out
             else np.array(out["data"])
-            for out in local_resp.response.get("outputs", [])
+            for out in (local_resp.response or {}).get("outputs", [])
         }
 
     def close(self):

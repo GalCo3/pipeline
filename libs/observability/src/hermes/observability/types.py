@@ -12,8 +12,6 @@ class MessageStatus(StrEnum):
     ERROR = "error"
 
 
-
-
 class CircuitBreakerState(StrEnum):
     CLOSED = "CLOSED"
     OPEN = "OPEN"
@@ -31,4 +29,3 @@ class MetricUnit(StrEnum):
     MEGABYTES = "MBy"
     PERCENT = "%"
     DIMENSIONLESS = "1"
-

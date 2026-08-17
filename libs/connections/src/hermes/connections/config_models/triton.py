@@ -9,7 +9,6 @@ class BaseTritonSiteConfig(BaseModel, frozen=True):
     verify_ssl: bool = False
 
 
-
 class BaseTritonConfig(BaseModel, frozen=True):
     local_site: BaseTritonSiteConfig
     remote_site: BaseTritonSiteConfig | None = None

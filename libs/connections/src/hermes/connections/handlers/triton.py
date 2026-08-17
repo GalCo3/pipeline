@@ -1,7 +1,7 @@
 import logging
 
 from ..config_models.triton import BaseTritonConfig
-from ..factories.triton import create_triton_clients, TritonClientSession
+from ..factories.triton import TritonClientSession, create_triton_clients
 from ..models import SiteResponse
 from ..utils import execute_on_client
 
@@ -28,7 +28,7 @@ class BaseTritonHandler:
         """Helper method to execute GET or POST on local and optional remote clients."""
         client_fn = getattr(self.local_client, method)
         args = (path, json_data) if json_data is not None else (path,)
-        
+
         local_response = execute_on_client(client_fn, *args)
         remote_response: SiteResponse | None = None
 
@@ -74,11 +74,17 @@ class BaseTritonHandler:
         path = f"v2/models/{model_name}/versions/{model_version}/config"
         return self._execute("get", path, is_multisite=is_multisite)
 
-    def _get_config_field(self, model_name: str, model_version: str, field: str, default: str | int | list | dict):
+    def _get_config_field(
+        self,
+        model_name: str,
+        model_version: str,
+        field: str,
+        default: str | int | list | dict,
+    ):
         local_resp, _ = self.get_model_config(model_name, model_version)
         if not local_resp.is_success:
             raise RuntimeError(f"Failed to get config for model '{model_name}': {local_resp.error}")
-        return local_resp.response.get(field, default)
+        return (local_resp.response or {}).get(field, default)
 
     def get_model_output_names(self, model_name: str, model_version: str = "1") -> list[str]:
         """Extract output names from the local client config."""
@@ -92,7 +98,9 @@ class BaseTritonHandler:
     def get_model_input_dtypes(self, model_name: str, model_version: str = "1") -> dict[str, str]:
         """Extract input data types from the local client config."""
         inputs = self._get_config_field(model_name, model_version, "input", [])
-        return {inp["name"]: inp["data_type"] for inp in inputs if "name" in inp and "data_type" in inp}
+        return {
+            inp["name"]: inp["data_type"] for inp in inputs if "name" in inp and "data_type" in inp
+        }
 
     def close(self):
         if self.remote_client:

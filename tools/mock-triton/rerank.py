@@ -25,9 +25,8 @@ answer for an input that is not actually a pair.
 
 from __future__ import annotations
 
-import numpy as np
-
 import embed
+import numpy as np
 
 # Cross-encoder logits for a trained reranker land roughly in [-10, 10]. Cosine
 # is in [-1, 1], so this maps a full-overlap pair to ~8 and a disjoint one to ~0

@@ -56,7 +56,6 @@ class CargoMessage(BaseModel):
     ver_last_modified: datetime
     delete_date: datetime | None = None
 
-
     @field_validator("created", "last_modified", "ver_last_modified", mode="before")
     @classmethod
     def parse_mandatory_date(cls, value: str) -> datetime:

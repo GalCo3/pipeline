@@ -16,6 +16,12 @@ from ..utils import execute_on_client
 logging.getLogger("elastic_transport").setLevel(logging.ERROR)
 
 
+# Elasticsearch document ids are strings on the wire, but the sources this
+# indexes carry integer ids and the client stringifies path parameters itself.
+# Accepting both keeps callers from sprinkling str() over every id.
+DocId = str | int
+
+
 class BaseElasticHandler:
     local_client: Elasticsearch
     remote_client: Elasticsearch | None = None
@@ -94,7 +100,7 @@ class BaseElasticHandler:
             return local_response
 
     def search_by_id(
-        self, index: str, doc_id: str, is_multisite: bool = False, *args, **kwargs
+        self, index: str, doc_id: DocId, is_multisite: bool = False, *args, **kwargs
     ) -> tuple[SiteResponse, SiteResponse | None]:
         """
         Search an elastic index for a specific id.
@@ -118,7 +124,7 @@ class BaseElasticHandler:
         return local_response, remote_response
 
     def delete_by_id(
-        self, index: str, doc_id: str, is_multisite: bool = False, *args, **kwargs
+        self, index: str, doc_id: DocId, is_multisite: bool = False, *args, **kwargs
     ) -> tuple[SiteResponse, SiteResponse | None]:
         """
         Delete from the elastic index a specific id.
@@ -172,7 +178,7 @@ class BaseElasticHandler:
     def update_by_id(
         self,
         index: str,
-        doc_id: str,
+        doc_id: DocId,
         body: dict,
         is_multisite: bool = False,
         *args,
@@ -236,7 +242,7 @@ class BaseElasticHandler:
     def index(
         self,
         index: str,
-        doc_id: str,
+        doc_id: DocId,
         body: dict,
         is_multisite: bool = False,
         *args,
@@ -346,7 +352,11 @@ class BaseElasticHandler:
             self.local_client.indices.create(
                 index=name, mappings=mappings, settings=settings, aliases=aliases
             )
-        if is_multisite and self.remote_client and not self.remote_client.indices.exists(index=name):
+        if (
+            is_multisite
+            and self.remote_client
+            and not self.remote_client.indices.exists(index=name)
+        ):
             self.remote_client.indices.create(
                 index=name, mappings=mappings, settings=settings, aliases=aliases
             )
