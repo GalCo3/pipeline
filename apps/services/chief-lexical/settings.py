@@ -6,6 +6,7 @@ from hermes.connections import (
     BaseElasticBasicConfig,
     BaseElasticCertConfig,
     BaseMongoConfig,
+    BaseProducerConfig,
 )
 
 
@@ -21,9 +22,13 @@ class ChiefLexicalSettings(BaseSettings):
     elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
     chief_config: ChiefConfig
+    # Publishes a trigger message to `semantic_topic` after every successful
+    # delete/update/index, for chief-semantic to consume.
+    producer_config: BaseProducerConfig
 
     index_name: str = "chief-lexical"
     dls_collection: str = "dls"
+    semantic_topic: str = "chief.semantic"
 
     model_config = SettingsConfigDict(
         env_file=".env",

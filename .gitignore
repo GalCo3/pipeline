@@ -40,6 +40,7 @@ Thumbs.db
 
 # Helm
 helm-charts/**/charts/*.tgz
+helm-charts/**/Chart.lock
 
 # Local build state — the tags file build-images.sh writes, plus the temp file
 # it stages it through. Any path.

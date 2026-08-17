@@ -8,8 +8,11 @@ from hermes.connections import (
     BaseElasticBasicConfig,
     BaseElasticCertConfig,
     BaseMongoConfig,
-    BaseProducerConfig,
-    BaseS3Config,
+)
+from hermes.semantic_enrichment import (
+    DEFAULT_CHUNK_OVERLAP_WORDS,
+    DEFAULT_CHUNK_SIZE_WORDS,
+    TritonConfig,
 )
 
 
@@ -20,16 +23,16 @@ class Settings(BaseSettings):
         extra="allow",
     )
     consumer_config: BaseConsumerConfig
-    cargo_config: BaseS3Config
     # Cert auth in real deployments; basic auth for local/compose runs.
     elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
-    # Publishes a trigger message to `semantic_topic` after every successful
-    # delete/update/index, for cargo-semantic to consume.
-    producer_config: BaseProducerConfig
-    index_name: str
+    triton_config: TritonConfig
+
+    lexical_index_name: str = "chief-lexical"
+    semantic_index_name: str = "chief-semantic"
     dls_collection: str = "dls"
-    semantic_topic: str = "cargo.semantic"
+    chunk_size: int = DEFAULT_CHUNK_SIZE_WORDS
+    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP_WORDS
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -8,6 +8,7 @@ from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
     BaseMongoHandler,
+    BasePlainProducerHandler,
     BaseS3Handler,
 )
 from hermes.observability import (
@@ -18,7 +19,13 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import delete_document, send_to_dls, site_error, with_indexed_at
+from hermes.utils import (
+    delete_document,
+    produce_semantic_trigger,
+    send_to_dls,
+    site_error,
+    with_indexed_at,
+)
 
 init_observability(service_name="cargo-lexical")
 logger = get_logger(__name__)
@@ -40,6 +47,7 @@ def _is_not_found(local_response, remote_response=None) -> bool:
 def _update_cargo_document_metadata(
     cargo_client: BaseS3Handler,
     elastic_handler: BaseElasticHandler,
+    producer_handler: BasePlainProducerHandler,
     settings,
     cargo_message: CargoMessage,
 ) -> str:
@@ -61,15 +69,21 @@ def _update_cargo_document_metadata(
                 remote_response,
                 f"Failed to update cargo-lexical document {cargo_message.id}",
             )
+            produce_semantic_trigger(
+                producer_handler, settings.semantic_topic, cargo_message.id, "update_metadata"
+            )
             logger.info("Updated cargo document metadata", doc_id=cargo_message.id)
             return MessageStatus.UPDATED
 
-    return _index_cargo_document(cargo_client, elastic_handler, settings, cargo_message)
+    return _index_cargo_document(
+        cargo_client, elastic_handler, producer_handler, settings, cargo_message
+    )
 
 
 def _index_cargo_document(
     cargo_client: BaseS3Handler,
     elastic_handler: BaseElasticHandler,
+    producer_handler: BasePlainProducerHandler,
     settings,
     cargo_message: CargoMessage,
 ) -> str:
@@ -98,6 +112,9 @@ def _index_cargo_document(
             remote_response,
             f"Failed to index cargo-lexical document {cargo_enriched_message.id}",
         )
+        produce_semantic_trigger(
+            producer_handler, settings.semantic_topic, cargo_enriched_message.id, "index"
+        )
     logger.info("Successfully indexed cargo document", doc_id=cargo_message.id)
     return MessageStatus.INDEXED
 
@@ -107,6 +124,7 @@ def main():
     consumer_handler = BaseConsumerHandler(settings.consumer_config)
     elastic_handler = BaseElasticHandler(settings.elastic_config)
     dls_handler = BaseMongoHandler(settings.mongo_config)
+    producer_handler = BasePlainProducerHandler(settings.producer_config)
     cargo_client = BaseS3Handler(settings.cargo_config)
 
     for message in consumer_handler.start_consuming():
@@ -120,18 +138,21 @@ def main():
                         status = delete_document(
                             elastic_handler, settings.index_name, str(cargo_message.id)
                         )
+                        produce_semantic_trigger(
+                            producer_handler, settings.semantic_topic, cargo_message.id, "delete"
+                        )
                     messages_processed.inc(labels={"status": status})
                     continue
 
                 if cargo_message.last_modified > cargo_message.ver_last_modified:
                     status = _update_cargo_document_metadata(
-                        cargo_client, elastic_handler, settings, cargo_message
+                        cargo_client, elastic_handler, producer_handler, settings, cargo_message
                     )
                     messages_processed.inc(labels={"status": status})
                     continue
 
                 status = _index_cargo_document(
-                    cargo_client, elastic_handler, settings, cargo_message
+                    cargo_client, elastic_handler, producer_handler, settings, cargo_message
                 )
                 messages_processed.inc(labels={"status": status})
         except CargoFileNotFoundError as e:

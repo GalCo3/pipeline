@@ -1,9 +1,9 @@
-fullnameOverride: chief-lexical
+fullnameOverride: chief-semantic
 replicaCount: 1
 
 image:
   registry: ""
-  repository: chief-lexical
+  repository: chief-semantic
   tag: local
   # Image is built straight into the Docker Desktop engine, so never pull.
   pullPolicy: IfNotPresent
@@ -12,20 +12,15 @@ image:
 service:
   enabled: false
 
-# Non-secret settings. Keys map onto services/chief-lexical/settings.py
+# Non-secret settings. Keys map onto services/chief-semantic/settings.py
 # (pydantic-settings, env_nested_delimiter="__").
 env:
   CONSUMER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
   CONSUMER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
-  CONSUMER_CONFIG__SOURCE_TOPICS: raw.chief
-  CONSUMER_CONFIG__GROUP_ID: chief-lexical
+  CONSUMER_CONFIG__SOURCE_TOPICS: chief.semantic
+  CONSUMER_CONFIG__GROUP_ID: chief-semantic
   CONSUMER_CONFIG__AUTO_OFFSET_RESET: earliest
   CONSUMER_CONFIG__LIVENESS_FILE_PATH: /tmp/heartbeat
-
-  # Publishes a trigger for chief-semantic after every delete/update/index.
-  PRODUCER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
-  PRODUCER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
-  SEMANTIC_TOPIC: chief.semantic
 
   ELASTIC_CONFIG__LOCAL_HOST: http://elasticsearch:9200
 
@@ -34,13 +29,14 @@ env:
   MONGO_CONFIG__PORT: "27017"
   MONGO_CONFIG__DATABASE: hermes
 
-  # Fetched per indexed command, formatted with the document id — the single
-  # `{}` is a str.format placeholder (see utils.extract_chief_command_content),
-  # not a helm one. Locally this is the chief-api mock under local-infra/backing.
-  CHIEF_CONFIG__DOC_PATH_TEMPLATE: http://chief-api:8080/documents/{}
-  CHIEF_CONFIG__TIMEOUT: "30"
+  # No local-infra Triton chart exists yet — this points at a host to stand
+  # up separately (or swap for a real deployment's Triton endpoint).
+  TRITON_CONFIG__URL: triton:8000
+  TRITON_CONFIG__MODEL_NAME: text-embedding
+  TRITON_CONFIG__EMBEDDING_DIM: "1024"
 
-  INDEX_NAME: chief-lexical
+  LEXICAL_INDEX_NAME: chief-lexical
+  SEMANTIC_INDEX_NAME: chief-semantic
   DLS_COLLECTION: dls
 
   # The injected sidecar, which forwards to the namespace collector.
@@ -52,8 +48,6 @@ secretEnv:
   ELASTIC_CONFIG__PASSWORD: changeme
   MONGO_CONFIG__AUTH__USERNAME: root
   MONGO_CONFIG__AUTH__PASSWORD: mongoadmin
-  # Sent as the x-chief-key header. The mock ignores it.
-  CHIEF_CONFIG__API_KEY: chief-dev-key
 
 # The consumer touches this file on every poll (see BaseConsumerHandler).
 livenessProbe:
@@ -68,12 +62,8 @@ livenessProbe:
 
 readinessProbe: {}
 
-# The sibling consumers sit at ~105Mi RSS and this one does no more than parse
-# HTML, so the request is sized to that rather than to their 256Mi. It matters
-# on a single-node dev cluster: the injected collector sidecar asks for another
-# 64Mi, and at 256Mi the pod no longer fits.
-# Sized from measured idle-consumer usage (~105Mi, ~3m) plus headroom; see
-# services/cargo-lexical/values.yaml for why the requests are kept tight.
+# Sized the same as chief-lexical to start — chunking/embedding a chief
+# document is cheaper than the Triton call itself, which happens off-pod.
 resources:
   requests:
     cpu: 50m
