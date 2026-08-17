@@ -1,5 +1,6 @@
 import logging
 from urllib.parse import urljoin
+
 import requests
 
 from ..config_models.triton import BaseTritonConfig, BaseTritonSiteConfig
@@ -10,10 +11,17 @@ logger = logging.getLogger(__name__)
 class TritonClientSession:
     """Synchronous HTTP session wrapper for Triton REST v2 API endpoints."""
 
-    def __init__(self, base_url: str, headers: dict[str, str], timeout: int):
+    def __init__(
+        self,
+        base_url: str,
+        headers: dict[str, str],
+        timeout: int,
+        verify_ssl: bool = False,
+    ):
         self.base_url = base_url if base_url.endswith("/") else f"{base_url}/"
         self.session = requests.Session()
         self.session.headers.update(headers)
+        self.session.verify = verify_ssl
         self.timeout = timeout
 
     def post(self, path: str, json_data: dict) -> dict:

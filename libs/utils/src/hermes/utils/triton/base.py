@@ -1,12 +1,13 @@
-import os
 import logging
+from pathlib import Path
+
 import numpy as np
 from transformers import AutoTokenizer
 
-from hermes.connections.config_models.triton import BaseTritonConfig
-from hermes.connections.handlers.triton import BaseTritonHandler
 from hermes.connections.config_models.s3 import BaseS3Config
+from hermes.connections.config_models.triton import BaseTritonConfig
 from hermes.connections.handlers.s3 import BaseS3Handler
+from hermes.connections.handlers.triton import BaseTritonHandler
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,65 @@ NUMPY_TO_TRITON_DTYPE = {
 }
 
 
+# A directory only counts as a usable tokenizer once one of these is in it.
+# An empty (or half-written) directory left behind by a failed download must
+# not shadow a later attempt, which is why existence of the directory alone is
+# never enough.
+TOKENIZER_MARKER_FILES = (
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json",
+    "vocab.txt",
+    "sentencepiece.bpe.model",
+    "spiece.model",
+)
+
+
+def _is_tokenizer_dir(path: Path) -> bool:
+    return any((path / name).is_file() for name in TOKENIZER_MARKER_FILES)
+
+
+def _download_tokenizer_from_s3(
+    s3_handler: BaseS3Handler,
+    tokenizer_name: str,
+    s3_bucket: str,
+    destination: Path,
+) -> bool:
+    """
+    Copies every object under `<tokenizer_name>/` into `destination`, flattened.
+
+    The trailing slash matters: without it a prefix like `all-MiniLM-L6` also
+    matches `all-MiniLM-L6-v2`, and the two would land in one directory.
+    """
+    prefix = f"{tokenizer_name.strip('/')}/"
+
+    res, _ = s3_handler.list_files_by_prefix(prefix=prefix, bucket=s3_bucket)
+    if not res.is_success:
+        logger.warning("Listing s3://%s/%s failed: %s", s3_bucket, prefix, res.error)
+        return False
+
+    keys = [
+        obj["Key"]
+        for obj in res.response.get("Contents", [])
+        if not obj["Key"].endswith("/")
+    ]
+    if not keys:
+        logger.warning("No tokenizer files under s3://%s/%s", s3_bucket, prefix)
+        return False
+
+    destination.mkdir(parents=True, exist_ok=True)
+    for key in keys:
+        file_resp, _ = s3_handler.get_file(key=key, bucket=s3_bucket)
+        if not file_resp.is_success:
+            logger.warning(
+                "Fetching s3://%s/%s failed: %s", s3_bucket, key, file_resp.error
+            )
+            continue
+        (destination / Path(key).name).write_bytes(file_resp.response["Body"].read())
+
+    return _is_tokenizer_dir(destination)
+
+
 def init_tokenizer(
     tokenizer_name_or_path: str,
     s3_config: BaseS3Config | None = None,
@@ -27,38 +87,37 @@ def init_tokenizer(
     local_downloads_folder: str = "./downloaded_tokenizers",
 ):
     """
-    Loads a HuggingFace tokenizer from local path, HuggingFace Hub,
-    or downloads it from S3 via BaseS3Handler if an S3 configuration is provided.
-    """
-    local_tokenizer_path = os.path.join(local_downloads_folder, tokenizer_name_or_path)
+    Loads a HuggingFace tokenizer from a previous download, a local path, S3
+    (via BaseS3Handler, when an S3 configuration is given), or the HuggingFace
+    Hub — in that order.
 
-    if os.path.exists(local_tokenizer_path):
+    In S3 a tokenizer is one flat "directory" of objects keyed
+    `<tokenizer_name>/<file>` in `s3_bucket`; the uploader that produces that
+    layout is tools/scripts/tokenizers/upload_tokenizer.py.
+    """
+    local_tokenizer_path = Path(local_downloads_folder) / tokenizer_name_or_path
+
+    if _is_tokenizer_dir(local_tokenizer_path):
         logger.info("Loading tokenizer from local download path: %s", local_tokenizer_path)
         return AutoTokenizer.from_pretrained(local_tokenizer_path)
 
-    if os.path.exists(tokenizer_name_or_path):
+    if Path(tokenizer_name_or_path).exists():
         logger.info("Loading tokenizer from specified path: %s", tokenizer_name_or_path)
         return AutoTokenizer.from_pretrained(tokenizer_name_or_path)
 
     if s3_config is not None:
-        logger.info("Downloading tokenizer '%s' from S3 bucket '%s'...", tokenizer_name_or_path, s3_bucket)
-        os.makedirs(local_tokenizer_path, exist_ok=True)
+        logger.info(
+            "Downloading tokenizer '%s' from S3 bucket '%s'...",
+            tokenizer_name_or_path,
+            s3_bucket,
+        )
         s3_handler = BaseS3Handler(s3_config)
-
-        res, _ = s3_handler.list_files_by_prefix(prefix=tokenizer_name_or_path, bucket=s3_bucket)
-        if res.is_success and "Contents" in res.response:
-            for obj in res.response["Contents"]:
-                key = obj["Key"]
-                filename = os.path.basename(key)
-                if not filename:
-                    continue
-                file_resp, _ = s3_handler.get_file(key=key, bucket=s3_bucket)
-                if file_resp.is_success:
-                    out_path = os.path.join(local_tokenizer_path, filename)
-                    with open(out_path, "wb") as f:
-                        f.write(file_resp.response["Body"].read())
-
-        if os.path.exists(os.path.join(local_tokenizer_path, "tokenizer_config.json")) or os.path.exists(os.path.join(local_tokenizer_path, "vocab.json")):
+        if _download_tokenizer_from_s3(
+            s3_handler=s3_handler,
+            tokenizer_name=tokenizer_name_or_path,
+            s3_bucket=s3_bucket,
+            destination=local_tokenizer_path,
+        ):
             return AutoTokenizer.from_pretrained(local_tokenizer_path)
 
     logger.info("Loading tokenizer from HuggingFace Hub: %s", tokenizer_name_or_path)

@@ -1,4 +1,5 @@
-# Local-dev only. Standalone MinIO with the cargo-lexical bucket pre-created.
+# Local-dev only. Standalone MinIO with the cargo-lexical and tokenizers
+# buckets pre-created.
 minio:
   fullnameOverride: minio
   mode: standalone
@@ -47,7 +48,10 @@ minio:
     rootUser: minioadmin
     rootPassword: minioadmin
 
-  defaultBuckets: cargo-lexical
+  # `tokenizers` holds one flat prefix per HuggingFace tokenizer, which is what
+  # hermes.utils.triton.init_tokenizer downloads from; fill it with
+  # tools/scripts/tokenizers/upload_tokenizer.py.
+  defaultBuckets: cargo-lexical,tokenizers
 
   persistence:
     enabled: true

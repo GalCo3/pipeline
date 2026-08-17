@@ -1,6 +1,6 @@
 apiVersion: v2
 name: minio
-description: Local-dev MinIO (standalone) wrapping the Bitnami chart, pre-creating the cargo-lexical bucket.
+description: Local-dev MinIO (standalone) wrapping the Bitnami chart, pre-creating the cargo-lexical and tokenizers buckets.
 type: application
 version: 0.1.0
 appVersion: "2025.7.23"

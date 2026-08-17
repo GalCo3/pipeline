@@ -25,6 +25,9 @@ the shared dev tooling config (`ruff`, `ty`); member packages do not repeat it.
     under `helm-charts/`.
   - `scripts/image-registry/` — moving a built image between hosts:
     `export-image.sh`, `load_image.sh`.
+  - `scripts/tokenizers/` — `upload_tokenizer.py`, which puts a HuggingFace
+    tokenizer into the `tokenizers` bucket in the flat `<name>/<file>` layout
+    `hermes.utils.triton.init_tokenizer` downloads from.
   - `demo-producer/` — dev-only Kafka/MinIO seeder image; its chart is
     `helm-charts/local-infra/tooling/demo-producer`.
   - `ci/` — CI helpers (`find_build.py`, called from `.gitlab-ci.yml`). It

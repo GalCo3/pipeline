@@ -24,7 +24,8 @@ helm-charts/
       mongodb/
         mongodb/            Official mongo:8.0, standalone, database `hermes`
         mongo-express/      Mongo Express web UI
-      minio/                Bitnami minio 17.0.21, standalone, bucket `cargo`
+      minio/                Bitnami minio 17.0.21, standalone, buckets
+                            `cargo-lexical` and `tokenizers`
       tika/                 Apache Tika server for legacy/image formats
       chief-api/            local mock of the chief document API
       keycloak/             dev-mode OIDC issuer, realm `dls-console` imported
