@@ -8,6 +8,7 @@ from hermes.connections import (
     BaseMongoHandler,
 )
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -40,7 +41,7 @@ def main():
                 logger.info("Processing chat message", doc_id=chat_message.id)
 
                 if chat_message.t:
-                    with message_duration.time(labels={"status": "deleted"}):
+                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
                         local_response, remote_response = elastic_handler.delete_by_id(
                             settings.index_name, chat_message.id, is_multisite=True
                         )
@@ -50,10 +51,10 @@ def main():
                             f"Failed to delete chat-messages-lexical document {chat_message.id}",
                         )
                     logger.info("Deleted chat message document", doc_id=chat_message.id)
-                    messages_processed.inc(labels={"status": "deleted"})
+                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
                     continue
 
-                with message_duration.time(labels={"status": "success"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     chat_enriched_message = ChatEnrichedMessage(
                         **chat_message.model_dump(mode="json"),
                         midur_ids=build_midur_ids(chat_message),
@@ -71,14 +72,14 @@ def main():
                         f"Failed to index chat-messages-lexical document {chat_message.id}",
                     )
                 logger.info("Successfully indexed chat message document", doc_id=chat_message.id)
-                messages_processed.inc(labels={"status": "success"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except Exception as e:
             logger.error(
                 "Failed to process chat message, sending to DLS",
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler,

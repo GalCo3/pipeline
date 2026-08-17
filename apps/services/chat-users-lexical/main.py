@@ -7,6 +7,7 @@ from hermes.connections import (
     BaseMongoHandler,
 )
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -42,7 +43,7 @@ def main():
 
                 # The source emits the full user record on every change, so an
                 # id-keyed index is both the create and the update path.
-                with message_duration.time(labels={"status": "success"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     local_response, remote_response = elastic_handler.index(
                         settings.index_name,
                         chat_user.id,
@@ -55,14 +56,14 @@ def main():
                         f"Failed to index chat-users-lexical document {chat_user.id}",
                     )
                 logger.info("Successfully indexed chat user document", doc_id=chat_user.id)
-                messages_processed.inc(labels={"status": "success"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except Exception as e:
             logger.error(
                 "Failed to process chat user message, sending to DLS",
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection

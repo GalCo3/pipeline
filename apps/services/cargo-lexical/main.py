@@ -10,6 +10,7 @@ from hermes.connections import (
     BaseS3Handler,
 )
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -43,7 +44,7 @@ def main():
                 logger.info("Processing cargo message", doc_id=cargo_message.id)
 
                 if cargo_message.delete_date is not None:
-                    with message_duration.time(labels={"status": "deleted"}):
+                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
                         local_response, remote_response = elastic_handler.delete_by_id(
                             settings.index_name, cargo_message.id, is_multisite=True
                         )
@@ -53,11 +54,11 @@ def main():
                             f"Failed to delete cargo-lexical document {cargo_message.id}",
                         )
                     logger.info("Deleted cargo document", doc_id=cargo_message.id)
-                    messages_processed.inc(labels={"status": "deleted"})
+                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
                     continue
 
                 if cargo_message.last_modified > cargo_message.ver_last_modified:
-                    with message_duration.time(labels={"status": "updated"}):
+                    with message_duration.time(labels={"status": MessageStatus.UPDATED}):
                         local_response, remote_response = elastic_handler.update_by_id(
                             settings.index_name,
                             cargo_message.id,
@@ -70,16 +71,16 @@ def main():
                             f"Failed to update cargo-lexical document {cargo_message.id}",
                         )
                     logger.info("Updated cargo document metadata", doc_id=cargo_message.id)
-                    messages_processed.inc(labels={"status": "updated"})
+                    messages_processed.inc(labels={"status": MessageStatus.UPDATED})
                     continue
 
-                with message_duration.time(labels={"status": "success"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     extraction_result = extract_cargo_files_text(
                         cargo_client, cargo_message.s3_key, cargo_message.s3_bucket
                     )
                     if extraction_result is None:
                         logger.warning("Skipped cargo text extraction", doc_id=cargo_message.id)
-                        messages_processed.inc(labels={"status": "skipped"})
+                        messages_processed.inc(labels={"status": MessageStatus.SKIPPED})
                         continue
 
                     cargo_enriched_message = CargoEnrichedMessage(
@@ -100,14 +101,14 @@ def main():
                         f"Failed to index cargo-lexical document {cargo_enriched_message.id}",
                     )
                 logger.info("Successfully indexed cargo document", doc_id=cargo_message.id)
-                messages_processed.inc(labels={"status": "success"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except CargoFileNotFoundError as e:
             logger.warning(
                 "Cargo file not found, sending message to DLS",
                 error=str(e),
                 topic=message.topic(),
             )
-            messages_processed.inc(labels={"status": "not_found"})
+            messages_processed.inc(labels={"status": MessageStatus.NOT_FOUND})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection
@@ -118,7 +119,7 @@ def main():
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection

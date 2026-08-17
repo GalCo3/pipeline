@@ -1,6 +1,19 @@
 from enum import StrEnum
 
 
+class MessageStatus(StrEnum):
+    """Standardized message processing status labels for telemetry metrics."""
+
+    INDEXED = "indexed"
+    UPDATED = "updated"
+    DELETED = "deleted"
+    SKIPPED = "skipped"
+    NOT_FOUND = "not_found"
+    ERROR = "error"
+
+
+
+
 class CircuitBreakerState(StrEnum):
     CLOSED = "CLOSED"
     OPEN = "OPEN"
@@ -18,3 +31,4 @@ class MetricUnit(StrEnum):
     MEGABYTES = "MBy"
     PERCENT = "%"
     DIMENSIONLESS = "1"
+

@@ -9,6 +9,7 @@ from hermes.connections import (
     BaseMongoHandler,
 )
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -41,7 +42,7 @@ def main():
                 logger.info("Processing chief message", doc_id=chief_message.id)
 
                 if chief_message.is_deleted:
-                    with message_duration.time(labels={"status": "deleted"}):
+                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
                         local_response, remote_response = elastic_handler.delete_by_id(
                             settings.index_name, chief_message.id, is_multisite=True
                         )
@@ -51,11 +52,11 @@ def main():
                             f"Failed to delete chief-lexical document {chief_message.id}",
                         )
                     logger.info("Deleted chief document", doc_id=chief_message.id)
-                    messages_processed.inc(labels={"status": "deleted"})
+                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
                     continue
 
                 if chief_message.metro_last_update_date > chief_message.content_last_update_date:
-                    with message_duration.time(labels={"status": "updated"}):
+                    with message_duration.time(labels={"status": MessageStatus.UPDATED}):
                         local_response, remote_response = elastic_handler.update_by_id(
                             settings.index_name,
                             chief_message.id,
@@ -68,10 +69,10 @@ def main():
                             f"Failed to update chief-lexical document {chief_message.id}",
                         )
                     logger.info("Updated chief document metadata", doc_id=chief_message.id)
-                    messages_processed.inc(labels={"status": "updated"})
+                    messages_processed.inc(labels={"status": MessageStatus.UPDATED})
                     continue
 
-                with message_duration.time(labels={"status": "indexed"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     command_content = extract_chief_command_content(
                         id=chief_message.id,
                         doc_path_template=settings.chief_config.doc_path_template,
@@ -101,14 +102,14 @@ def main():
                         f"Failed to index chief-lexical document {chief_enriched_message.id}",
                     )
                 logger.info("Successfully indexed chief document", doc_id=chief_message.id)
-                messages_processed.inc(labels={"status": "indexed"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except ChiefAPIError as e:
             logger.warning(
                 "Chief API error, sending message to DLS",
                 error=str(e),
                 topic=message.topic(),
             )
-            messages_processed.inc(labels={"status": "not_found"})
+            messages_processed.inc(labels={"status": MessageStatus.NOT_FOUND})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection
@@ -119,7 +120,7 @@ def main():
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection

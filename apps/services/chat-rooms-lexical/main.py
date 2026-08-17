@@ -7,6 +7,7 @@ from hermes.connections import (
     BaseMongoHandler,
 )
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -38,7 +39,7 @@ def main():
                 chat_room = ChatRoomMessage.model_validate(message.value())
                 logger.info("Processing chat room message", doc_id=chat_room.id)
 
-                with message_duration.time(labels={"status": "success"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     local_response, remote_response = elastic_handler.index(
                         settings.index_name,
                         chat_room.id,
@@ -51,14 +52,14 @@ def main():
                         f"Failed to index chat-rooms-lexical document {chat_room.id}",
                     )
                 logger.info("Successfully indexed chat room document", doc_id=chat_room.id)
-                messages_processed.inc(labels={"status": "success"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except Exception as e:
             logger.error(
                 "Failed to process chat room message, sending to DLS",
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection

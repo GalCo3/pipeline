@@ -21,11 +21,12 @@ from hermes.observability.metrics import (
     TelemetryHistogram,
 )
 from hermes.observability.task import instrument_task
-from hermes.observability.types import CircuitBreakerState, MetricUnit
+from hermes.observability.types import CircuitBreakerState, MessageStatus, MetricUnit
 
 __all__ = [
     "CircuitBreakerState",
     "LogContext",
+    "MessageStatus",
     "MetricUnit",
     "TelemetryCounter",
     "TelemetryFastAPIMiddleware",

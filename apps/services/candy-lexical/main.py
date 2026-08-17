@@ -7,6 +7,7 @@ from hermes.connections import (
     BaseMongoHandler,
 )
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -40,7 +41,7 @@ def main():
                 logger.info("Processing candy reports message", doc_id=doc_id)
 
                 if candy_reports_message.is_deleted:
-                    with message_duration.time(labels={"status": "deleted"}):
+                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
                         local_response, remote_response = elastic_handler.delete_by_id(
                             settings.index_name, doc_id, is_multisite=True
                         )
@@ -50,10 +51,10 @@ def main():
                             f"Failed to delete candy-lexical document {doc_id}",
                         )
                     logger.info("Deleted candy reports document", doc_id=doc_id)
-                    messages_processed.inc(labels={"status": "deleted"})
+                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
                     continue
 
-                with message_duration.time(labels={"status": "indexed"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     local_response, remote_response = elastic_handler.index(
                         settings.index_name,
                         doc_id,
@@ -66,14 +67,14 @@ def main():
                         f"Failed to index candy-lexical document {doc_id}",
                     )
                 logger.info("Successfully indexed candy reports document", doc_id=doc_id)
-                messages_processed.inc(labels={"status": "indexed"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except Exception as e:
             logger.error(
                 "Failed to process candy reports message, sending to DLS",
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection
