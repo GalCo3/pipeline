@@ -33,14 +33,20 @@ tag_of() {
 }
 
 # release[:image] under services/; image defaults to the release name.
+# The cargo-*-semantic releases need a Triton endpoint (TRITON_CONFIG__URL in
+# each chart's values.yaml) that this stack does not stand up itself — messages
+# land in the DLS until one is reachable.
 APPS=(
-    candy-lexical
+    candy-reports-lexical
     chat-messages-lexical
     chat-rooms-lexical
     chat-users-lexical
     chief-lexical
+    chief-semantic
     cargo-operational-lexical:cargo-lexical
     cargo-my-storage-lexical:cargo-lexical
+    cargo-operational-semantic:cargo-semantic
+    cargo-my-storage-semantic:cargo-semantic
     dls-console
 )
 
