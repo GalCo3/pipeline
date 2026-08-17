@@ -9,6 +9,7 @@ dependencies = [
     "python-dateutil>=2.9",
     "connections",
     "observability",
+    "numpy>=1.26.0",
 ]
 
 [tool.uv.sources]

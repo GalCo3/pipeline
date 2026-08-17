@@ -15,6 +15,7 @@ from hermes.connections.config_models.mongo import BaseMongoConfig, BasicAuth, M
 from hermes.connections.config_models.postgres import BasePostgresConfig
 from hermes.connections.config_models.s3 import BaseS3Config, BaseS3SiteConfig
 from hermes.connections.config_models.ssl import SSL
+from hermes.connections.config_models.triton import BaseTritonConfig, BaseTritonSiteConfig
 from hermes.connections.contexts.postgres import (
     PostgresContext,
     SimplePostgresContext,
@@ -38,6 +39,7 @@ from hermes.connections.factories.postgres import (
 from hermes.connections.factories.producer import create_kafka_producer
 from hermes.connections.factories.s3 import create_s3_clients, create_s3_raw_client
 from hermes.connections.factories.schema_registry import create_kafka_schema_registry_client
+from hermes.connections.factories.triton import create_triton_clients
 from hermes.connections.handlers.admin import BaseAdminHandler
 from hermes.connections.handlers.async_mongo import BaseAsyncMongoHandler
 from hermes.connections.handlers.consumer import BaseConsumerHandler
@@ -48,6 +50,7 @@ from hermes.connections.handlers.kafka_producers.plain_producer import BasePlain
 from hermes.connections.handlers.mongo import BaseMongoHandler
 from hermes.connections.handlers.s3 import BaseS3Handler
 from hermes.connections.handlers.schema_registry import BaseSchemaRegistryHandler
+from hermes.connections.handlers.triton import BaseTritonHandler
 from hermes.connections.models import SiteResponse
 from hermes.connections.serialization.wire_format import (
     PayloadInvalid,
@@ -89,6 +92,9 @@ __all__ = [
     "BaseS3SiteConfig",
     "BaseSchemaRegistryConfig",
     "BaseSchemaRegistryHandler",
+    "BaseTritonConfig",
+    "BaseTritonHandler",
+    "BaseTritonSiteConfig",
     "BasicAuth",
     "KafkaDeliveryError",
     "MongoSSL",
@@ -114,6 +120,7 @@ __all__ = [
     "create_s3_clients",
     "create_s3_raw_client",
     "create_simple_postgres_connection",
+    "create_triton_clients",
     "dict_to_kafka_header",
     "execute_on_client",
     "handle_postgres_exceptions",
