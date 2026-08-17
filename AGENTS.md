@@ -32,7 +32,8 @@ the shared dev tooling config (`ruff`, `ty`); member packages do not repeat it.
     `helm-charts/local-infra/tooling/demo-producer`.
   - `mock-triton/` — dev-only stand-in for the production Triton Inference
     Server, serving the KServe v2 API (HTTP, gRPC and metrics) with
-    deterministic vectors instead of ONNX; its chart is
+    deterministic 384-d vectors instead of ONNX — 384 because locally every
+    model tokenizes with all-MiniLM-L6-v2; its chart is
     `helm-charts/local-infra/backing/triton`.
   - `ci/` — CI helpers (`find_build.py`, called from `.gitlab-ci.yml`). It
     reads `uv.lock` to decide which apps a commit affects, and treats any

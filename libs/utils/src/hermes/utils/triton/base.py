@@ -58,11 +58,7 @@ def _download_tokenizer_from_s3(
         logger.warning("Listing s3://%s/%s failed: %s", s3_bucket, prefix, res.error)
         return False
 
-    keys = [
-        obj["Key"]
-        for obj in res.response.get("Contents", [])
-        if not obj["Key"].endswith("/")
-    ]
+    keys = [obj["Key"] for obj in res.response.get("Contents", []) if not obj["Key"].endswith("/")]
     if not keys:
         logger.warning("No tokenizer files under s3://%s/%s", s3_bucket, prefix)
         return False
@@ -71,9 +67,7 @@ def _download_tokenizer_from_s3(
     for key in keys:
         file_resp, _ = s3_handler.get_file(key=key, bucket=s3_bucket)
         if not file_resp.is_success:
-            logger.warning(
-                "Fetching s3://%s/%s failed: %s", s3_bucket, key, file_resp.error
-            )
+            logger.warning("Fetching s3://%s/%s failed: %s", s3_bucket, key, file_resp.error)
             continue
         (destination / Path(key).name).write_bytes(file_resp.response["Body"].read())
 
@@ -140,16 +134,55 @@ class TritonLM:
         self.model_name = model_name
         self.model_version = model_version
 
-        tokenizer_name = tokenizer_name_or_path if tokenizer_name_or_path is not None else model_name
+        tokenizer_name = (
+            tokenizer_name_or_path if tokenizer_name_or_path is not None else model_name
+        )
         self.tokenizer = init_tokenizer(
             tokenizer_name_or_path=tokenizer_name,
             s3_config=s3_config,
             local_downloads_folder=local_downloads_folder,
         )
+        self._accepted_inputs: set[str] | None = None
 
     def tokenize(self, text: str | list[str] | list[list[str]], **kwargs) -> dict[str, np.ndarray]:
         """Tokenizes input text into NumPy array dictionary."""
-        return dict(self.tokenizer(text, padding=True, truncation=True, return_tensors="np", **kwargs))
+        return dict(
+            self.tokenizer(text, padding=True, truncation=True, return_tensors="np", **kwargs)
+        )
+
+    def _drop_unaccepted_inputs(self, tokenized: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """
+        Keeps only the tensors the served model declares as inputs.
+
+        A tokenizer emits what its own architecture uses — a BERT one adds
+        `token_type_ids` — while an exported model keeps only the inputs its
+        graph reads. Triton rejects the whole request over one input it did not
+        declare ("unexpected inference input"), so the extras are dropped here
+        rather than surfacing as an inference failure.
+
+        The model config is fetched once per instance; if that fetch fails,
+        everything is sent and Triton stays the authority on what is valid.
+        """
+        if self._accepted_inputs is None:
+            try:
+                self._accepted_inputs = set(
+                    self.triton_handler.get_model_input_dtypes(self.model_name, self.model_version)
+                )
+            except RuntimeError:
+                logger.warning(
+                    "Could not read the input list of '%s'; sending every tokenizer output",
+                    self.model_name,
+                )
+                self._accepted_inputs = set()
+
+        if not self._accepted_inputs:
+            return tokenized
+
+        dropped = sorted(set(tokenized) - self._accepted_inputs)
+        if dropped:
+            logger.debug("Model '%s' does not take %s", self.model_name, ", ".join(dropped))
+
+        return {name: arr for name, arr in tokenized.items() if name in self._accepted_inputs}
 
     def _get_model_outputs(
         self, text_or_tokenized: str | list[str] | list[list[str]] | dict[str, np.ndarray]
@@ -160,6 +193,7 @@ class TritonLM:
             if isinstance(text_or_tokenized, (str, list))
             else text_or_tokenized
         )
+        tokenized_inputs = self._drop_unaccepted_inputs(tokenized_inputs)
 
         inputs = [
             {

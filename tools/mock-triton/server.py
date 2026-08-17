@@ -24,6 +24,9 @@ finding out in prod:
   * Every input is INT64 — the models take **token ids, not text**. There is no
     tokenizer in the model repository (raw onnxruntime_onnx, no ensemble, no
     python backend), so callers tokenize themselves, in dev exactly as in prod.
+    Locally that tokenizer is sentence-transformers/all-MiniLM-L6-v2, served out
+    of the `tokenizers` bucket by hermes.utils.triton.init_tokenizer — which is
+    why the embedder here returns 384-d vectors, MiniLM's hidden size.
   * A batch over the model's `max_batch_size` (16 for the embedder and the
     reranker, 4 for the classifier) is rejected, with Triton's own message.
   * An unknown model, a missing input, or a dtype/shape mismatch is rejected.
@@ -160,8 +163,7 @@ def run_inference(model_name: str, inputs: dict[str, np.ndarray]) -> dict[str, n
     batch = next(iter(inputs.values())).shape[0]
     if batch > config["max_batch_size"]:
         raise InferenceError(
-            f"inference request batch-size must be <= {config['max_batch_size']} "
-            f"for '{model_name}'"
+            f"inference request batch-size must be <= {config['max_batch_size']} for '{model_name}'"
         )
 
     # Every input these models take is one per token, so they arrive as parallel
@@ -186,18 +188,19 @@ def _select_outputs(
     """The outputs to return, in request order — or every output when none were asked for.
 
     Worth knowing when nothing is requested: `token_embeddings` is
-    [batch, seq, 1024] FP32, so a full 16 x 512 batch is 33 MB on the wire.
+    [batch, seq, 384] FP32, so a full 16 x 512 batch is 12 MB on the wire.
     Ask for `sentence_embedding` alone unless the token vectors are wanted.
     """
     if not requested:
-        return [(spec["name"], produced[spec["name"]]) for spec in MODELS[model_name]["metadata"]["outputs"]]
+        return [
+            (spec["name"], produced[spec["name"]])
+            for spec in MODELS[model_name]["metadata"]["outputs"]
+        ]
 
     selected = []
     for name in requested:
         if name not in produced:
-            raise InferenceError(
-                f"unexpected inference output '{name}' for model '{model_name}'"
-            )
+            raise InferenceError(f"unexpected inference output '{name}' for model '{model_name}'")
         selected.append((name, produced[name]))
     return selected
 

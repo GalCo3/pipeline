@@ -1,6 +1,11 @@
 """Deterministic stand-in for the retrieval_embedder ONNX model.
 
-The real model is a transformer: token ids in, one 1024-d vector per token
+Locally that role is filled by sentence-transformers/all-MiniLM-L6-v2, whose
+tokenizer the callers load out of the `tokenizers` bucket — hence the 384-d
+vectors below. Swapping the production model changes EMBEDDING_DIM and the
+matching dims in contract.json, and nothing else here.
+
+The real model is a transformer: token ids in, one 384-d vector per token
 (`token_embeddings`) plus a mean-pooled, L2-normalised sentence vector
 (`sentence_embedding`). Nothing here learns anything, but the two properties dev
 code actually depends on hold:
@@ -28,11 +33,12 @@ import numpy as np
 
 # Matches config.output[sentence_embedding].dims — the one number in here that
 # has to agree with contract.json, since the index mapping is built from it.
-EMBEDDING_DIM = 1024
+# 384 is all-MiniLM-L6-v2's hidden size.
+EMBEDDING_DIM = 384
 
 # token id -> unit vector, filled on first sight. A real vocabulary is ~30k-250k
-# entries and a dev run touches a small slice of it, so building lazily beats
-# materialising the whole table (250k x 1024 floats is a gigabyte).
+# entries (30522 for all-MiniLM-L6-v2) and a dev run touches a small slice of
+# it, so building lazily beats materialising the whole table.
 _VECTORS: dict[int, np.ndarray] = {}
 
 
@@ -64,8 +70,8 @@ def infer(input_ids: np.ndarray, attention_mask: np.ndarray) -> dict[str, np.nda
     """Both model outputs for one batch.
 
     `input_ids` and `attention_mask` are [batch, seq] INT64, exactly as the ONNX
-    model takes them. Returns FP32 arrays shaped [batch, seq, 1024] and
-    [batch, 1024].
+    model takes them. Returns FP32 arrays shaped [batch, seq, 384] and
+    [batch, 384].
     """
     batch, seq = input_ids.shape
 

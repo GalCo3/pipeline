@@ -27,7 +27,7 @@ import numpy as np
 
 import embed
 
-# The projection below is a cosine between two directions in 1024-d space, so it
+# The projection below is a cosine between two directions in embedding space, so it
 # sits within ~1/sqrt(dim) of zero; `sqrt(dim)` rescales it to roughly unit
 # variance, and this scale then spreads the logits over the few-units range a
 # trained two-class head produces — some messages near 50/50, some near certain.

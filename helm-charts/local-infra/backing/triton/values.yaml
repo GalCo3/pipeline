@@ -14,7 +14,9 @@
 # The models take **token ids, not text**: there is no tokenizer in the model
 # repository (raw onnxruntime_onnx, no ensemble), so callers tokenize before
 # calling, here exactly as in prod. The mock enforces INT64 inputs to keep that
-# honest.
+# honest. Locally every model tokenizes with
+# sentence-transformers/all-MiniLM-L6-v2 out of the `tokenizers` bucket (see
+# tools/scripts/tokenizers), and the embedder returns MiniLM's 384-d vectors.
 #
 # Named `triton` rather than `mock-triton` on purpose: the service name is the
 # DNS name consumers address, and it should read the same in both environments.

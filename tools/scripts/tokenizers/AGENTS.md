@@ -49,7 +49,9 @@ points at a Hub mirror.
 
 The tokenizer in use is `sentence-transformers/all-MiniLM-L6-v2` — WordPiece,
 so it ships `tokenizer.json`, `tokenizer_config.json`, `vocab.txt` and
-`special_tokens_map.json`, ~700KB total.
+`special_tokens_map.json`, ~700KB total. `tools/mock-triton` is matched to it:
+its `retrieval_embedder` returns MiniLM's 384-d vectors, and all three mock
+models expect ids from this vocabulary.
 
 The local MinIO chart pre-creates the `tokenizers` bucket
 (`helm-charts/local-infra/backing/minio`), so `--create-bucket` is only needed
