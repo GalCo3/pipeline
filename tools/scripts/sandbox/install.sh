@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installs the local stack into the `hermes` namespace, in dependency order.
-# usage: install.sh [--build] [--light]   (--light drops the releases in LIGHT_SKIP)
+# usage: install.sh [--build] [--light]   (--light drops the releases in LIGHT_SKIP,
+#                                          uninstalling them if they are already up)
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-hermes}"
@@ -43,7 +44,8 @@ APPS=(
     dls-console
 )
 
-# Dropped by --light; space-padded so `*" $release "*` matches whole names only.
+# Dropped by --light — skipped when absent, uninstalled when already installed;
+# space-padded so `*" $release "*` matches whole names only.
 # keycloak is dls-console's OIDC issuer, so a --light console cannot log in.
 LIGHT_SKIP=" grafana keycloak kibana mongo-express "
 
@@ -91,7 +93,16 @@ install() {
     local release="$1" chart="$2"
     shift 2
     if [[ "$LIGHT" == 1 && "$LIGHT_SKIP" == *" $release "* ]]; then
-        echo "==> $release (skipped, --light)"
+        # Skipping the install is not enough on a cluster that already had a
+        # full run: the release stays up holding its memory requests, which is
+        # the one thing --light exists to avoid. Uninstalling makes the flag
+        # mean the same on a fresh cluster and on a used one.
+        if helm status "$release" -n "$NAMESPACE" >/dev/null 2>&1; then
+            echo "==> $release (uninstalled, --light)"
+            helm uninstall "$release" -n "$NAMESPACE" >/dev/null
+        else
+            echo "==> $release (skipped, --light)"
+        fi
         return 0
     fi
     echo "==> $release"
