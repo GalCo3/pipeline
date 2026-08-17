@@ -5,7 +5,10 @@ import "server-only";
  *
  * Flat names on purpose: the Python services nest (`SECTION__FIELD`) because
  * each of their clients is a separate pydantic config, while this app holds one
- * Mongo client and one Kafka client for the whole process.
+ * Mongo client and one Kafka client for the whole process. The exception is
+ * Mongo's credentials and x509 material, which keep the services' own
+ * `MONGO_CONFIG__AUTH__*` spelling — one cluster's Secret is mounted into both,
+ * and a second spelling for the same values is a second thing to get wrong.
  *
  * `server-only` is the guard that matters — importing this from a client
  * component is a build error, so a broker address or a Mongo password can never
@@ -38,8 +41,10 @@ function bool(name: string, fallback: boolean): boolean {
 export type MongoTls = {
   /** trust bundle for the server's certificate */
   caPath: string | null;
-  /** ONE PEM holding the client certificate and its key, concatenated */
-  certKeyPath: string | null;
+  /** client certificate; holds the key too when `keyPath` is unset */
+  certPath: string | null;
+  /** the key as its own file, for material that ships cert and key apart */
+  keyPath: string | null;
 };
 
 /**
@@ -55,31 +60,42 @@ export type MongoTls = {
  * certificate with no CA is x509 against a server whose issuer node already
  * trusts. Requiring them together would reject both.
  *
- * `certKeyPath` is a single file, not a pair — the Node driver's
- * `tlsCertificateKeyFile` wants the certificate and the private key
- * concatenated into one PEM. Kafka's client is the one that takes them apart.
+ * `keyPath` is optional because both shapes exist in the wild: pymongo (and so
+ * the Python services) takes ONE PEM with the certificate and key concatenated,
+ * which is `certPath` alone; material mounted as a separate `.crt` and `.key`
+ * names both. `src/lib/mongo.ts` is where that fork turns into driver options.
  */
 function mongoTls(): MongoTls | null {
-  const caPath = process.env.MONGO_TLS_CA_PATH;
-  const certKeyPath = process.env.MONGO_TLS_CERT_KEY_PATH;
-  if (!caPath && !certKeyPath) return null;
-  return { caPath: caPath ?? null, certKeyPath: certKeyPath ?? null };
+  const caPath = process.env.MONGO_CONFIG__AUTH__LOCAL__CA_PATH;
+  const certPath = process.env.MONGO_CONFIG__AUTH__LOCAL__CERT_PATH;
+  const keyPath = process.env.MONGO_CONFIG__AUTH__LOCAL__KEY_PATH;
+  if (!caPath && !certPath && !keyPath) return null;
+  // A key with no certificate proves nothing and would hand the driver half a
+  // credential, so it is a config error rather than a silent server-TLS-only.
+  if (keyPath && !certPath) {
+    throw new Error("MONGO_CONFIG__AUTH__LOCAL__KEY_PATH needs MONGO_CONFIG__AUTH__LOCAL__CERT_PATH");
+  }
+  return { caPath: caPath ?? null, certPath: certPath ?? null, keyPath: keyPath ?? null };
 }
 
 function mongoUri(): string {
   const explicit = process.env.MONGO_URI;
   if (explicit) return explicit;
-  const host = str("MONGO_HOST", "localhost");
-  const port = num("MONGO_PORT", 27017);
+  const host = str("MONGO_CONFIG__LOCAL_HOST", "localhost");
+  const port = num("MONGO_CONFIG__PORT", 27017);
   // x509 keeps the identity in the certificate's subject, so credentials are
   // absent by design there and demanding them would make the mechanism
   // unreachable. Everywhere else they are still required — an unauthenticated
   // URI would otherwise be one unset variable away.
-  if (!process.env.MONGO_USERNAME && !process.env.MONGO_PASSWORD && mongoTls()?.certKeyPath) {
+  if (
+    !process.env.MONGO_CONFIG__AUTH__USERNAME &&
+    !process.env.MONGO_CONFIG__AUTH__PASSWORD &&
+    mongoTls()?.certPath
+  ) {
     return `mongodb://${host}:${port}/`;
   }
-  const user = encodeURIComponent(str("MONGO_USERNAME"));
-  const password = encodeURIComponent(str("MONGO_PASSWORD"));
+  const user = encodeURIComponent(str("MONGO_CONFIG__AUTH__USERNAME"));
+  const password = encodeURIComponent(str("MONGO_CONFIG__AUTH__PASSWORD"));
   // authSource=admin matches how the pipeline's Mongo is provisioned: the user
   // lives in `admin`, the data in `hermes`.
   return `mongodb://${user}:${password}@${host}:${port}/?authSource=admin`;
@@ -93,12 +109,14 @@ export type KafkaConfig = {
 };
 
 function kafkaSsl(): KafkaConfig["ssl"] {
-  const caPath = process.env.KAFKA_SSL_CA_PATH;
-  const certPath = process.env.KAFKA_SSL_CERT_PATH;
-  const keyPath = process.env.KAFKA_SSL_KEY_PATH;
+  const caPath = process.env.CONSUMER_CONFIG__SSL__CA_PATH;
+  const certPath = process.env.CONSUMER_CONFIG__SSL__CERT_PATH;
+  const keyPath = process.env.CONSUMER_CONFIG__SSL__KEY_PATH;
   if (!caPath && !certPath && !keyPath) return null;
   if (!caPath || !certPath || !keyPath) {
-    throw new Error("KAFKA_SSL_CA_PATH, KAFKA_SSL_CERT_PATH and KAFKA_SSL_KEY_PATH go together");
+    throw new Error(
+      "CONSUMER_CONFIG__SSL__CA_PATH, __CERT_PATH and __KEY_PATH go together",
+    );
   }
   return { caPath, certPath, keyPath };
 }
@@ -117,12 +135,12 @@ export const config = {
     const tls = mongoTls();
     return {
       uri,
-      database: str("MONGO_DATABASE", "hermes"),
+      database: str("MONGO_CONFIG__DATABASE", "hermes"),
       // The collection the services write to (`settings.dls_collection`). One
       // shared collection for the whole pipeline — `source_topic` says who
       // wrote the document, so per-service collections would only fragment the
       // reads.
-      collection: str("MONGO_DLS_COLLECTION", "dls"),
+      collection: str("DLS_COLLECTION", "dls"),
       tls,
       // Mongo reads the username off the certificate's subject, so x509 is
       // precisely the case where a client certificate is present and the URI
@@ -131,7 +149,7 @@ export const config = {
       // the first, and disagreeing switches are how "it authenticated as
       // nobody" happens. A hand-written MONGO_URI stating its own mechanism is
       // left alone — it has credentials, or it says `authMechanism` itself.
-      x509: Boolean(tls?.certKeyPath) && !uri.includes("@"),
+      x509: Boolean(tls?.certPath) && !uri.includes("@"),
     };
   },
   /**
@@ -143,13 +161,28 @@ export const config = {
    * needing credentials.
    */
   get storeLabel(): string {
-    return `${str("MONGO_DATABASE", "hermes")}.${str("MONGO_DLS_COLLECTION", "dls")}`;
+    return `${str("MONGO_CONFIG__DATABASE", "hermes")}.${str("DLS_COLLECTION", "dls")}`;
   },
+  /**
+   * SSL by default, matching the Python services' KafkaConfig — a deployed
+   * broker speaks TLS, so the unset case has to be the safe one. Plaintext is
+   * then a thing an operator writes down (every chart does, for the local
+   * broker) rather than what a forgotten variable silently produces.
+   */
   get kafka(): KafkaConfig {
+    const securityProtocol = str("CONSUMER_CONFIG__SECURITY_PROTOCOL", "SSL");
+    const ssl = kafkaSsl();
+    // Same refusal the Python side makes: SSL with no material would connect
+    // as plaintext or fail deep inside librdkafka, and neither says why.
+    if (securityProtocol === "SSL" && !ssl) {
+      throw new Error(
+        "CONSUMER_CONFIG__SECURITY_PROTOCOL=SSL needs CONSUMER_CONFIG__SSL__CA_PATH, __CERT_PATH and __KEY_PATH",
+      );
+    }
     return {
-      brokers: str("KAFKA_BROKERS", "localhost:9092"),
-      securityProtocol: str("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-      ssl: kafkaSsl(),
+      brokers: str("CONSUMER_CONFIG__BOOTSTRAP_SERVERS", "localhost:9092"),
+      securityProtocol,
+      ssl,
       produceTimeoutMs: num("KAFKA_PRODUCE_TIMEOUT", 15) * 1000,
     };
   },

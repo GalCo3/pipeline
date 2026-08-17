@@ -34,22 +34,28 @@ env:
   # The read path: the pipeline's own dead letter store, written by every
   # service through hermes.utils.send_to_dls. The database and collection names
   # are load-bearing — point them elsewhere and the console is simply empty.
-  MONGO_HOST: mongodb
-  MONGO_PORT: "27017"
-  MONGO_DATABASE: hermes
-  MONGO_DLS_COLLECTION: dls
+  MONGO_CONFIG__LOCAL_HOST: mongodb
+  MONGO_CONFIG__PORT: "27017"
+  MONGO_CONFIG__DATABASE: hermes
+  DLS_COLLECTION: dls
   # The local Mongo speaks plaintext, so no TLS block here. Against a real
   # cluster, mount the material and name the paths — see the commented
   # `volumes`/`volumeMounts` at the bottom of this file:
-  #   MONGO_TLS_CA_PATH: /etc/ssl/mongo/ca.pem
-  #   MONGO_TLS_CERT_KEY_PATH: /etc/ssl/mongo/client.pem
-  # With a client certificate and no MONGO_USERNAME/MONGO_PASSWORD in
+  #   MONGO_CONFIG__AUTH__LOCAL__CA_PATH: /etc/ssl/mongo/ca.pem
+  #   MONGO_CONFIG__AUTH__LOCAL__CERT_PATH: /etc/ssl/mongo/client.pem
+  #   # only when the key is not concatenated into the certificate above:
+  #   MONGO_CONFIG__AUTH__LOCAL__KEY_PATH: /etc/ssl/mongo/client.key
+  # With a client certificate and no MONGO_CONFIG__AUTH__USERNAME/_PASSWORD in
   # `secretEnv`, the console authenticates as MONGODB-X509 against `$external`.
 
   # The write path. Plain JSON: the pipeline's topics carry no Schema Registry
   # framing, so a replay is a plain produce and nothing here fetches a schema.
-  KAFKA_BROKERS: kafka:9092
-  KAFKA_SECURITY_PROTOCOL: PLAINTEXT
+  CONSUMER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
+  # Spelled out because the app defaults to SSL (as the Python services do) and
+  # refuses SSL without CONSUMER_CONFIG__SSL__CA_PATH/__CERT_PATH/__KEY_PATH.
+  # The local broker has no TLS; a real one drops this line and names the three
+  # paths instead.
+  CONSUMER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
   KAFKA_PRODUCE_TIMEOUT: "15"
 
   # Lag is the consuming service's own group on the topic it consumes, and the
@@ -84,8 +90,8 @@ env:
 # session cookie; the Keycloak secret is what makes this a confidential client,
 # and neither ever reaches the browser — the page holds a session cookie only.
 secretEnv:
-  MONGO_USERNAME: root
-  MONGO_PASSWORD: mongoadmin
+  MONGO_CONFIG__AUTH__USERNAME: root
+  MONGO_CONFIG__AUTH__PASSWORD: mongoadmin
   AUTH_SECRET: dev-only-session-secret-change-me
   AUTH_KEYCLOAK_SECRET: dev-console-secret
 
@@ -124,9 +130,10 @@ resources:
 podSecurityContext: {}
 containerSecurityContext: {}
 
-# Certificates for a TLS Mongo (and the same pattern for Kafka's KAFKA_SSL_*
-# paths). Nothing to mount locally, so this is off; uncomment together with the
-# MONGO_TLS_* keys in `env` above. The Secret is not created by this chart — it
+# Certificates for a TLS Mongo (and the same pattern for Kafka's
+# CONSUMER_CONFIG__SSL__* paths). Nothing to mount locally, so this is off;
+# uncomment together with the MONGO_CONFIG__AUTH__LOCAL__* keys in `env` above.
+# The Secret is not created by this chart — it
 # is cluster material, not app config.
 #
 # 0400 and readOnly because the driver only reads them, and an arbitrary

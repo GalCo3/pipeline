@@ -20,8 +20,12 @@ service consumer fails ──▶ hermes.dls (MongoDB) ──▶ dls-console ─�
 - **Auth is server-side.** next-auth holds the client secret and does the code
   exchange in-process; the browser gets a session cookie and never an access
   token.
-- **Config is flat.** `MONGO_HOST`, not `MONGO__LOCAL_HOST`: there is one Mongo
-  client and one Kafka client here, so there is nothing to nest.
+- **Mongo and Kafka keys are the Python services' keys.**
+  `MONGO_CONFIG__LOCAL_HOST`, `CONSUMER_CONFIG__BOOTSTRAP_SERVERS`,
+  `DLS_COLLECTION` — pydantic-settings spelling, nested with `__`, so one
+  cluster's ConfigMap and Secret feed this app and the services alike. Only this
+  app's own settings (`AUTH_*`, `LAG_*`, `DEV_*`) are flat, having no Python
+  counterpart to agree with.
 - **Kafka is `@confluentinc/kafka-javascript`** — the same librdkafka the Python
   services use, so broker TLS and config keys (`ssl.ca.location`, …) carry over
   unchanged.
@@ -307,10 +311,12 @@ Two deployment notes worth keeping:
 - **The IdP's CA must be pointed at, not just mounted.** Node ships its own trust
   store, so an internal-CA SSO needs `NODE_EXTRA_CA_CERTS`.
 - **Three separate trust paths, and they do not substitute for each other.**
-  `NODE_EXTRA_CA_CERTS` is the IdP's TLS only. Mongo reads `MONGO_TLS_CA_PATH` /
-  `MONGO_TLS_CERT_KEY_PATH` (that second one is a single PEM: certificate and
-  key concatenated), Kafka reads its own `KAFKA_SSL_*` triple. Setting the wrong
-  one fails as a certificate error that names the right file.
+  `NODE_EXTRA_CA_CERTS` is the IdP's TLS only. Mongo reads
+  `MONGO_CONFIG__AUTH__LOCAL__CA_PATH` / `__CERT_PATH` (one PEM with the key
+  concatenated, as pymongo takes it) and optionally `__KEY_PATH` when the key is
+  a separate file; Kafka reads its own `CONSUMER_CONFIG__SSL__*` triple, where
+  the key is always separate. Setting the wrong one fails as a certificate error
+  that names the right file.
 
 `.env.example` is the source of truth for configuration. Against the local
 Keycloak: realm `dls-console`, client `dls-console` with secret

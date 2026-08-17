@@ -1,5 +1,7 @@
 import "server-only";
 
+import { readFileSync } from "node:fs";
+
 import { MongoClient, type Db, type MongoClientOptions } from "mongodb";
 
 import { config } from "@/lib/config";
@@ -31,10 +33,20 @@ declare global {
 function tlsOptions(): MongoClientOptions {
   const { tls, x509 } = config.mongo;
   if (!tls) return {};
+  // Two shapes of client material, one driver. `tlsCertificateKeyFile` is a
+  // single PEM holding certificate *and* key — what pymongo takes, so what the
+  // Python services' mounts look like. When the key arrives as its own file the
+  // driver has no path option for the pair, so the files are read here and
+  // handed to the TLS socket as `cert`/`key` buffers instead.
+  const clientCert = tls.certPath
+    ? tls.keyPath
+      ? { cert: readFileSync(tls.certPath), key: readFileSync(tls.keyPath) }
+      : { tlsCertificateKeyFile: tls.certPath }
+    : {};
   return {
     tls: true,
     ...(tls.caPath ? { tlsCAFile: tls.caPath } : {}),
-    ...(tls.certKeyPath ? { tlsCertificateKeyFile: tls.certKeyPath } : {}),
+    ...clientCert,
     ...(x509 ? { authMechanism: "MONGODB-X509" as const, authSource: "$external" } : {}),
   };
 }
