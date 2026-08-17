@@ -8,26 +8,38 @@
       "_captions_line": {
         "type": "keyword",
         "script": {
-          "lang": "painless",
-          "source": "emit('נ\"צ-שם\"' + params[\"_source\"][\"name\"] + ' ' + params[\"_source\"][\"path\"])"
+          "source": "emit('נ\"צ-שם\"' + params[\"_source\"][\"name\"] + ' ' + params[\"_source\"][\"path\"])",
+          "lang": "painless"
         }
       },
       "_source_link": {
         "type": "keyword",
         "script": {
-          "lang": "painless",
-          "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])"
+          "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])",
+          "lang": "painless"
         }
       },
       "_title_line": {
         "type": "keyword",
         "script": {
-          "lang": "painless",
-          "source": "emit(params[\"_source\"][\"id\"]+'-'+params[\"_source\"][\"name\"]+'-'+params[\"_source\"][\"description\"]+'-'+'var_emit(params[\"_source\"][\"holder\"])')"
+          "source": "emit(params[\"_source\"][\"id\"]+'-'+params[\"_source\"][\"name\"]+'-'+params[\"_source\"][\"description\"]+'-'+'var_emit(params[\"_source\"][\"holder\"])')",
+          "lang": "painless"
         }
       }
     },
     "properties": {
+      "_high__": {
+        "type": "alias",
+        "path": "name"
+      },
+      "_low_0": {
+        "type": "alias",
+        "path": "text_content"
+      },
+      "_low_1": {
+        "type": "alias",
+        "path": "path"
+      },
       "created": {
         "type": "date"
       },
@@ -35,11 +47,16 @@
         "type": "date"
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "doc_date_field": {
         "type": "alias",
         "path": "ver_last_modified"
+      },
+      "highlighted_field": {
+        "type": "alias",
+        "path": "text_content"
       },
       "holder": {
         "type": "keyword"
@@ -47,36 +64,16 @@
       "id": {
         "type": "integer"
       },
-      "is_verified": {
-        "type": "boolean"
-      },
-      "labels": {
-        "properties": {
-          "created": {
-            "type": "date"
-          },
-          "group_id": {
-            "type": "integer"
-          },
-          "group_name": {
-            "type": "keyword"
-          },
-          "label_id": {
-            "type": "integer"
-          },
-          "label_name": {
-            "type": "keyword"
-          }
-        }
-      },
       "last_modified": {
         "type": "date"
       },
       "name": {
-        "type": "text"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "path": {
-        "type": "text"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "path_id": {
         "type": "keyword"
@@ -84,69 +81,77 @@
       "path_list": {
         "type": "keyword"
       },
-      "reality_id": {
-        "type": "keyword"
-      },
-      "reality_type": {
-        "type": "keyword"
-      },
       "s3_bucket": {
-        "type": "keyword"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "s3_key": {
-        "type": "keyword"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "text_content": {
         "type": "text",
+        "term_vector": "with_positions_offsets",
         "analyzer": "default",
-        "search_analyzer": "idf_acronyms_search_analyzer",
-        "term_vector": "with_positions_offsets"
+        "search_analyzer": "idf_acronyms_search_analyzer"
       },
       "type": {
         "type": "keyword"
       },
       "ver_last_modified": {
         "type": "date"
+      },
+      "reality_type": {
+        "type": "keyword"
       }
     }
   },
   "settings": {
-    "analysis": {
-      "char_filter": {
-        "dot_to_space": {
-          "type": "pattern_replace",
-          "pattern": "[}{.,!?;:\\u005b-\\u0060]",
-          "replacement": " "
+    "index": {
+      "routing": {
+        "allocation": {
+          "include": {
+            "_tier_preference": "data_content"
+          }
         }
       },
-      "filter": {
-        "idf_acronyms_filter": {
-          "type": "synonym_graph",
-          "updateable": "true",
-          "synonyms_set": "idf_acronyms"
-        }
-      },
-      "analyzer": {
-        "default": {
-          "type": "custom",
-          "tokenizer": "whitespace",
-          "char_filter": [
-            "dot_to_space"
-          ],
-          "filter": [
-            "lowercase"
-          ]
+      "analysis": {
+        "filter": {
+          "idf_acronyms_filter": {
+            "type": "synonym_graph",
+            "updateable": "true",
+            "synonyms_set": "idf_acronyms"
+          }
         },
-        "idf_acronyms_search_analyzer": {
-          "type": "custom",
-          "tokenizer": "whitespace",
-          "char_filter": [
-            "dot_to_space"
-          ],
-          "filter": [
-            "lowercase",
-            "idf_acronyms_filter"
-          ]
+        "analyzer": {
+          "default": {
+            "filter": [
+              "lowercase"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
+          },
+          "idf_acronyms_search_analyzer": {
+            "filter": [
+              "lowercase",
+              "idf_acronyms_filter"
+            ],
+            "char_filter": [
+              "dot_to_space"
+            ],
+            "type": "custom",
+            "tokenizer": "whitespace"
+          }
+        },
+        "char_filter": {
+          "dot_to_space": {
+            "pattern": "[}{.,!?;:\\u005b-\\u0060]",
+            "type": "pattern_replace",
+            "replacement": " "
+          }
         }
       }
     }

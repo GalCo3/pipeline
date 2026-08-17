@@ -8,22 +8,15 @@
       "_captions_line": {
         "type": "keyword",
         "script": {
-          "lang": "painless",
-          "source": "emit(\"מזהה~שם קובץ~תיאור~בעלים\")"
-        }
-      },
-      "_source_link": {
-        "type": "keyword",
-        "script": {
-          "lang": "painless",
-          "source": "emit('https://cargo.idf.cts/#/shortcut/file/' + params[\"_source\"][\"id\"])"
+          "source": "emit(\"מזהה~שם קובץ~תיאור~בעלים\")",
+          "lang": "painless"
         }
       },
       "_title_line": {
         "type": "keyword",
         "script": {
-          "lang": "painless",
-          "source": "emit(params[\"_source\"][\"id\"] + '~' + params[\"_source\"][\"name\"]+ '~' + params[\"_source\"][\"description\"] + '~' + params[\"_source\"][\"holder\"])"
+          "source": "emit(params[\"_source\"][\"id\"] + '~' + params[\"_source\"][\"name\"]+ '~' + params[\"_source\"][\"description\"] + '~' + params[\"_source\"][\"holder\"])",
+          "lang": "painless"
         }
       }
     },
@@ -31,24 +24,53 @@
       "created": {
         "type": "date"
       },
-      "delete_date": {
-        "type": "date"
+      "is_verified": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "path_id": {
+        "type": "text"
+      },
+      "path_list": {
+        "type": "text"
+      },
+      "text_content": {
+        "type": "text",
+        "search_analyzer": "idf_acronyms_search_analyzer",
+        "term_vector": "with_positions_offsets"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "path": {
+        "type": "text"
+      },
+      "name": {
+        "type": "text"
+      },
+      "reality_id": {
+        "type": "keyword"
       },
       "description": {
         "type": "text"
+      },
+      "delete_date": {
+        "type": "date"
+      },
+      "holder": {
+        "type": "keyword"
+      },
+      "ver_last_modified": {
+        "type": "date"
       },
       "doc_date_field": {
         "type": "alias",
         "path": "ver_last_modified"
       },
-      "holder": {
-        "type": "keyword"
-      },
-      "id": {
-        "type": "integer"
-      },
-      "is_verified": {
-        "type": "boolean"
+      "last_modified": {
+        "type": "date"
       },
       "labels": {
         "properties": {
@@ -69,94 +91,61 @@
           }
         }
       },
-      "last_modified": {
-        "type": "date"
-      },
-      "name": {
-        "type": "text"
-      },
-      "path": {
-        "type": "text"
-      },
-      "path_id": {
-        "type": "keyword"
-      },
-      "path_list": {
-        "type": "keyword"
-      },
-      "reality_id": {
-        "type": "keyword"
-      },
-      "reality_type": {
+      "s3_key": {
         "type": "keyword"
       },
       "s3_bucket": {
         "type": "keyword"
-      },
-      "s3_key": {
-        "type": "keyword"
-      },
-      "text_content": {
-        "type": "text",
-        "analyzer": "default",
-        "search_analyzer": "idf_acronyms_search_analyzer",
-        "term_vector": "with_positions_offsets"
-      },
-      "type": {
-        "type": "keyword"
-      },
-      "ver_last_modified": {
-        "type": "date"
       }
     }
   },
   "settings": {
     "analysis": {
-      "char_filter": {
-        "dot_to_space": {
-          "type": "pattern_replace",
-          "pattern": "\\\\.",
-          "replacement": " "
-        }
-      },
       "filter": {
         "idf_acronyms_filter": {
           "type": "synonym_graph",
-          "updateable": "true",
+          "updateable": true,
           "synonyms_set": "idf_acronyms"
         }
       },
       "analyzer": {
         "default": {
-          "type": "custom",
-          "tokenizer": "whitespace",
+          "filter": [
+            "lowercase"
+          ],
           "char_filter": [
             "dot_to_space"
           ],
-          "filter": [
-            "lowercase"
-          ]
+          "type": "custom",
+          "tokenizer": "whitespace"
         },
         "dot_split_analyzer": {
-          "type": "custom",
-          "tokenizer": "whitespace",
-          "char_filter": [
-            "dot_to_space"
-          ],
           "filter": [
             "lowercase"
-          ]
-        },
-        "idf_acronyms_search_analyzer": {
-          "type": "custom",
-          "tokenizer": "whitespace",
+          ],
           "char_filter": [
             "dot_to_space"
           ],
+          "type": "custom",
+          "tokenizer": "whitespace"
+        },
+        "idf_acronyms_search_analyzer": {
           "filter": [
             "lowercase",
             "idf_acronyms_filter"
-          ]
+          ],
+          "char_filter": [
+            "dot_to_space"
+          ],
+          "type": "custom",
+          "tokenizer": "whitespace"
+        }
+      },
+      "char_filter": {
+        "dot_to_space": {
+          "pattern": "\\\\.",
+          "type": "pattern_replace",
+          "replacement": " "
         }
       }
     }
