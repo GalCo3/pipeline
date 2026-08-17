@@ -469,7 +469,7 @@ configFiles:
                   type: keyword
                   ignore_above: 256
             order:
-              type: long
+              type: keyword
             user_id:
               type: keyword
             # ChiefCommandContent keeps a date it could not parse as the raw
