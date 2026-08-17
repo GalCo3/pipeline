@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { api } from "@/lib/client";
-import { cx, relAge, serviceOf } from "@/lib/format";
+import { compactNum, cx, fullNum, relAge, serviceOf } from "@/lib/format";
 import type { Status } from "@/lib/types";
 import { GroupRow } from "@/components/GroupRow";
 import {
@@ -114,22 +114,26 @@ export default function OverviewPage() {
                       {topic.sourceTopic}
                     </p>
                     <p className="truncate text-sm leading-6 text-muted-foreground">
-                      {serviceOf(topic.sourceTopic)} · {topic.count} failure
+                      {serviceOf(topic.sourceTopic)} · {fullNum(topic.count)} failure
                       {topic.count === 1 ? "" : "s"} · last {relAge(topic.lastSeenAt)} ago
                     </p>
                   </div>
-                  <Chip icon={Layers} title="distinct error groups" className="w-14 justify-center">
-                    {topic.groups}
+                  <Chip
+                    icon={Layers}
+                    title={`distinct error groups · ${fullNum(topic.groups)}`}
+                    className="w-20 justify-center"
+                  >
+                    {compactNum(topic.groups)}
                   </Chip>
                   {/* Lag is the consuming service's own group, and it is
                       best-effort: a dash means Kafka could not answer, not zero. */}
                   <Chip
                     icon={Radio}
                     tone={topic.lag && topic.lag > 0 ? "warning" : "neutral"}
-                    title="consumer lag on this topic"
-                    className="w-14 justify-center"
+                    title={`consumer lag on this topic · ${fullNum(topic.lag)}`}
+                    className="w-20 justify-center"
                   >
-                    {topic.lag ?? "—"}
+                    {compactNum(topic.lag)}
                   </Chip>
                   <CountsBar counts={topic.counts} />
                   <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -180,8 +184,8 @@ const STATUS_ABBR: Record<Status, string> = {
  * first read possible without hovering every chip for its tooltip. Hidden below
  * `sm`, where the columns wrap anyway.
  *
- * Every width here is paired with one in the row beneath it (`w-14` chips,
- * `w-10` counts, `w-14` age, `w-4` chevron): the header is only honest as long
+ * Every width here is paired with one in the row beneath it (`w-20` chips,
+ * `w-14` counts, `w-14` age, `w-4` chevron): the header is only honest as long
  * as the two agree, so change them together.
  */
 function ColumnHeader({ lens }: { lens: "topics" | "errors" }) {
@@ -190,13 +194,13 @@ function ColumnHeader({ lens }: { lens: "topics" | "errors" }) {
       <span className="min-w-0 flex-1">
         <Eyebrow>{lens === "topics" ? "Topic" : "Error"}</Eyebrow>
       </span>
-      <Eyebrow className="block w-14 text-center">
+      <Eyebrow className="block w-20 text-center">
         {lens === "topics" ? "Groups" : "Seen"}
       </Eyebrow>
-      <Eyebrow className="block w-14 text-center">{lens === "topics" ? "Lag" : "Topics"}</Eyebrow>
+      <Eyebrow className="block w-20 text-center">{lens === "topics" ? "Lag" : "Topics"}</Eyebrow>
       <span className="flex items-center gap-3">
         {(Object.keys(STATUS_META) as Status[]).map((status) => (
-          <span key={status} title={STATUS_META[status].label} className="label-caps block w-10">
+          <span key={status} title={STATUS_META[status].label} className="label-caps block w-14">
             {STATUS_ABBR[status]}
           </span>
         ))}
@@ -232,13 +236,17 @@ function Stat({
     tone === "warning" ? "text-warning" : tone === "success" ? "text-success" : "text-foreground";
   const edge =
     tone === "warning" ? "bg-warning" : tone === "success" ? "bg-success" : "bg-muted-foreground/40";
+  // The headline stays exact — this is the number an operator quotes — so the
+  // type shrinks instead of the number, once the digits stop fitting the card.
+  const text = fullNum(value);
+  const size = text.length <= 6 ? "text-5xl" : text.length <= 10 ? "text-4xl" : "text-3xl";
   return (
     <Card className="flex items-stretch gap-4 p-5">
       <span aria-hidden className={cx("w-1 shrink-0 rounded-full", edge)} />
       <div className="min-w-0">
         <Eyebrow>{label}</Eyebrow>
-        <p className={cx("mt-1.5 font-display text-5xl font-semibold tabular-nums leading-none", color)}>
-          {value}
+        <p className={cx("mt-1.5 font-display font-semibold tabular-nums leading-none", size, color)}>
+          {text}
           {tone === "warning" && value > 0 && (
             <AlertTriangle className="ml-2.5 inline h-6 w-6 align-baseline" />
           )}

@@ -21,6 +21,41 @@ export function relAge(iso: string | null | undefined): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
+/** Thousands-separated exact count, e.g. `2,287,867`. */
+export function fullNum(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  return value.toLocaleString("en-US");
+}
+
+/**
+ * Count shortened to fit a fixed-width column, e.g. `5,980`, `151k`, `2.1M`.
+ *
+ * The list columns are sized for a glance, not for an audit: a raw 49887885 is
+ * wider than any column that still leaves room for the topic name, so it used to
+ * spill over its neighbour. Below 10k the exact number still fits, so it is kept
+ * — the shortening only starts where the digits stop being readable anyway. The
+ * exact value stays one hover away on the `title` of every caller.
+ */
+export function compactNum(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  const sign = value < 0 ? "-" : "";
+  const n = Math.abs(value);
+  if (n < 10_000) return sign + n.toLocaleString("en-US");
+  for (const [limit, suffix] of [
+    [1e12, "T"],
+    [1e9, "B"],
+    [1e6, "M"],
+    [1e3, "k"],
+  ] as Array<[number, string]>) {
+    if (n < limit) continue;
+    const scaled = n / limit;
+    // One decimal only while it buys precision — "9.9M" reads, "151.2k" does not
+    // fit and does not matter at that size.
+    return sign + (scaled < 10 ? scaled.toFixed(1) : Math.round(scaled).toString()) + suffix;
+  }
+  return sign + n.toLocaleString("en-US");
+}
+
 export function prettyJson(value: unknown): string {
   try {
     return JSON.stringify(value, null, 2);

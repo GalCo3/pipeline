@@ -4,7 +4,7 @@ import { ArrowRight, Network, Repeat } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { relAge } from "@/lib/format";
+import { compactNum, fullNum, relAge } from "@/lib/format";
 import type { GroupSummary } from "@/lib/types";
 import { Chip, CountsBar } from "@/components/ui";
 
@@ -62,15 +62,15 @@ export function GroupRow({
         </div>
         <Chip
           icon={Repeat}
-          title="occurrences — one DLS document per failure"
-          className="w-14 justify-center"
+          title={`occurrences — one DLS document per failure · ${fullNum(group.count)}`}
+          className="w-20 justify-center"
         >
-          {group.count}
+          {compactNum(group.count)}
         </Chip>
         {/* The slot is always there so the column stays straight down the list;
             only a genuinely cross-cutting error fills it — a "1" here would be
             noise on every row of a topic-scoped list. */}
-        <span className="w-14 shrink-0 text-center">
+        <span className="w-20 shrink-0 text-center">
           {group.topicCount !== undefined && group.topicCount > 1 && (
             <Chip icon={Network} tone="info" title="source topics this error spans">
               {group.topicCount}

@@ -7,7 +7,7 @@
 import { Loader2, type LucideIcon } from "lucide-react";
 import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react";
 
-import { cx } from "@/lib/format";
+import { compactNum, cx, fullNum } from "@/lib/format";
 import type { Status, StatusCounts } from "@/lib/types";
 import { STATUS_META } from "@/components/status";
 
@@ -160,22 +160,27 @@ export function StatusEdge({ status, className }: { status: Status; className?: 
 /** Compact NEW/REPLAYED/DISCARDED tally, zero-counts dimmed rather than hidden. */
 export function CountsBar({ counts }: { counts: StatusCounts }) {
   return (
-    <span className="inline-flex items-center gap-3 tabular-nums">
-      {(Object.keys(STATUS_META) as Status[]).map((status) => (
-        <span
-          key={status}
-          title={STATUS_META[status].label}
-          // Fixed width, tabular figures: three of these sit in a column down a
-          // list, and a two-digit count must not shove the next one sideways.
-          className={cx(
-            "inline-flex w-10 items-center gap-1.5 text-sm font-medium",
-            counts[status] ? "text-foreground" : "text-muted-foreground/40",
-          )}
-        >
-          <span className={cx("h-2 w-2 shrink-0 rounded-full", STATUS_META[status].dot)} />
-          {counts[status] ?? 0}
-        </span>
-      ))}
+    <span className="inline-flex shrink-0 items-center gap-3 tabular-nums">
+      {(Object.keys(STATUS_META) as Status[]).map((status) => {
+        const count = counts[status] ?? 0;
+        return (
+          <span
+            key={status}
+            title={`${STATUS_META[status].label} · ${fullNum(count)}`}
+            // Fixed width, tabular figures: three of these sit in a column down
+            // a list, and one row's count must not shove the next one sideways.
+            // The count is shortened rather than allowed to outgrow the box —
+            // millions of dead letters is an ordinary reading here.
+            className={cx(
+              "inline-flex w-14 shrink-0 items-center gap-1.5 text-sm font-medium",
+              count ? "text-foreground" : "text-muted-foreground/40",
+            )}
+          >
+            <span className={cx("h-2 w-2 shrink-0 rounded-full", STATUS_META[status].dot)} />
+            {compactNum(count)}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -209,7 +214,7 @@ export function Chip({
     <span
       title={title}
       className={cx(
-        "inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium tabular-nums",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium tabular-nums",
         mono && "font-mono",
         CHIP_TONE[tone],
         className,
@@ -312,7 +317,8 @@ export function Pagination({
   return (
     <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
       <span className="tabular-nums">
-        {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
+        {fullNum((page - 1) * pageSize + 1)}–{fullNum(Math.min(page * pageSize, total))} of{" "}
+        {fullNum(total)}
       </span>
       <span className="flex items-center gap-2">
         <Button size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
