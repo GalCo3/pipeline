@@ -1,3 +1,4 @@
+from elasticsearch import NotFoundError
 from exceptions import CargoFileNotFoundError
 from models import CargoEnrichedMessage, CargoMessage
 from settings import get_settings
@@ -30,6 +31,101 @@ message_duration = TelemetryHistogram(
 )
 
 
+def _is_not_found(response, remote_response=None) -> bool:
+    return isinstance(response.error, NotFoundError) or (
+        remote_response is not None and isinstance(remote_response.error, NotFoundError)
+    )
+
+
+def _delete_cargo_document(
+    elastic_handler: BaseElasticHandler,
+    settings,
+    cargo_message: CargoMessage,
+) -> str:
+    with message_duration.time(labels={"status": MessageStatus.DELETED}):
+        local_response, remote_response = elastic_handler.delete_by_id(
+            settings.index_name, cargo_message.id, is_multisite=True
+        )
+        if _is_not_found(local_response, remote_response):
+            logger.warning("Cargo document not found for deletion", doc_id=cargo_message.id)
+            return MessageStatus.NOT_FOUND
+
+        site_error(
+            local_response,
+            remote_response,
+            f"Failed to delete cargo-lexical document {cargo_message.id}",
+        )
+    logger.info("Deleted cargo document", doc_id=cargo_message.id)
+    return MessageStatus.DELETED
+
+
+def _update_cargo_document_metadata(
+    cargo_client: BaseS3Handler,
+    elastic_handler: BaseElasticHandler,
+    settings,
+    cargo_message: CargoMessage,
+) -> str:
+    with message_duration.time(labels={"status": MessageStatus.UPDATED}):
+        local_response, remote_response = elastic_handler.update_by_id(
+            settings.index_name,
+            cargo_message.id,
+            {"doc": with_indexed_at(cargo_message.model_dump(mode="json"))},
+            is_multisite=True,
+        )
+        if _is_not_found(local_response, remote_response):
+            logger.info(
+                "Cargo document missing for metadata update, falling back to index",
+                doc_id=cargo_message.id,
+            )
+        else:
+            site_error(
+                local_response,
+                remote_response,
+                f"Failed to update cargo-lexical document {cargo_message.id}",
+            )
+            logger.info("Updated cargo document metadata", doc_id=cargo_message.id)
+            return MessageStatus.UPDATED
+
+    return _index_cargo_document(
+        cargo_client, elastic_handler, settings, cargo_message
+    )
+
+
+def _index_cargo_document(
+    cargo_client: BaseS3Handler,
+    elastic_handler: BaseElasticHandler,
+    settings,
+    cargo_message: CargoMessage,
+) -> str:
+    with message_duration.time(labels={"status": MessageStatus.INDEXED}):
+        extraction_result = extract_cargo_files_text(
+            cargo_client, cargo_message.s3_key, cargo_message.s3_bucket
+        )
+        if extraction_result is None:
+            logger.warning("Skipped cargo text extraction", doc_id=cargo_message.id)
+            return MessageStatus.SKIPPED
+
+        cargo_enriched_message = CargoEnrichedMessage(
+            **cargo_message.model_dump(mode="json"),
+            text_content=extraction_result.text,
+            type=extraction_result.mime_type,
+        )
+
+        local_response, remote_response = elastic_handler.index(
+            settings.index_name,
+            cargo_enriched_message.id,
+            with_indexed_at(cargo_enriched_message.model_dump(mode="json")),
+            is_multisite=True,
+        )
+        site_error(
+            local_response,
+            remote_response,
+            f"Failed to index cargo-lexical document {cargo_enriched_message.id}",
+        )
+    logger.info("Successfully indexed cargo document", doc_id=cargo_message.id)
+    return MessageStatus.INDEXED
+
+
 def main():
     settings = get_settings()
     consumer_handler = BaseConsumerHandler(settings.consumer_config)
@@ -44,64 +140,23 @@ def main():
                 logger.info("Processing cargo message", doc_id=cargo_message.id)
 
                 if cargo_message.delete_date is not None:
-                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
-                        local_response, remote_response = elastic_handler.delete_by_id(
-                            settings.index_name, cargo_message.id, is_multisite=True
-                        )
-                        site_error(
-                            local_response,
-                            remote_response,
-                            f"Failed to delete cargo-lexical document {cargo_message.id}",
-                        )
-                    logger.info("Deleted cargo document", doc_id=cargo_message.id)
-                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
+                    status = _delete_cargo_document(
+                        elastic_handler, settings, cargo_message
+                    )
+                    messages_processed.inc(labels={"status": status})
                     continue
 
                 if cargo_message.last_modified > cargo_message.ver_last_modified:
-                    with message_duration.time(labels={"status": MessageStatus.UPDATED}):
-                        local_response, remote_response = elastic_handler.update_by_id(
-                            settings.index_name,
-                            cargo_message.id,
-                            {"doc": with_indexed_at(cargo_message.model_dump(mode="json"))},
-                            is_multisite=True,
-                        )
-                        site_error(
-                            local_response,
-                            remote_response,
-                            f"Failed to update cargo-lexical document {cargo_message.id}",
-                        )
-                    logger.info("Updated cargo document metadata", doc_id=cargo_message.id)
-                    messages_processed.inc(labels={"status": MessageStatus.UPDATED})
+                    status = _update_cargo_document_metadata(
+                        cargo_client, elastic_handler, settings, cargo_message
+                    )
+                    messages_processed.inc(labels={"status": status})
                     continue
 
-                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
-                    extraction_result = extract_cargo_files_text(
-                        cargo_client, cargo_message.s3_key, cargo_message.s3_bucket
-                    )
-                    if extraction_result is None:
-                        logger.warning("Skipped cargo text extraction", doc_id=cargo_message.id)
-                        messages_processed.inc(labels={"status": MessageStatus.SKIPPED})
-                        continue
-
-                    cargo_enriched_message = CargoEnrichedMessage(
-                        **cargo_message.model_dump(mode="json"),
-                        text_content=extraction_result.text,
-                        type=extraction_result.mime_type,
-                    )
-
-                    local_response, remote_response = elastic_handler.index(
-                        settings.index_name,
-                        cargo_enriched_message.id,
-                        with_indexed_at(cargo_enriched_message.model_dump(mode="json")),
-                        is_multisite=True,
-                    )
-                    site_error(
-                        local_response,
-                        remote_response,
-                        f"Failed to index cargo-lexical document {cargo_enriched_message.id}",
-                    )
-                logger.info("Successfully indexed cargo document", doc_id=cargo_message.id)
-                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
+                status = _index_cargo_document(
+                    cargo_client, elastic_handler, settings, cargo_message
+                )
+                messages_processed.inc(labels={"status": status})
         except CargoFileNotFoundError as e:
             logger.warning(
                 "Cargo file not found, sending message to DLS",
