@@ -53,3 +53,5 @@ helm-charts/**/charts/*.tgz
 *.tar.gz
 # xz also
 *.tar.xz
+# zst too
+*.tar.zst
