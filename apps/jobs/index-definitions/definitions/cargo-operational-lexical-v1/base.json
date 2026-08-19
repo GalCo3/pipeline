@@ -85,7 +85,7 @@
         "type": "keyword"
       },
       "reality_id": {
-        "type": "keyword"
+        "type": "integer"
       },
       "reality_type": {
         "type": "keyword"

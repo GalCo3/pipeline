@@ -149,7 +149,7 @@
         "term_vector": "with_positions_offsets"
       },
       "reality_id": {
-        "type": "keyword"
+        "type": "integer"
       },
       "reality_type": {
         "type": "keyword"
