@@ -10,7 +10,7 @@ from hermes.utils import parse_date_value
 class CandyReportsMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: int
+    id: str
     creating_user_name: str = Field(alias="creatingUserName")
     actual_user_name: str | None = Field(default=None, alias="actualUserName")
     description: str
