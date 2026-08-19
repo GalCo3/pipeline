@@ -128,6 +128,31 @@
       "reality_type": {
         "type": "keyword"
       },
+      "reality_id": {
+        "type": "keyword"
+      },
+      "is_verified": {
+        "type": "boolean"
+      },
+      "labels": {
+        "properties": {
+          "created": {
+            "type": "date"
+          },
+          "group_id": {
+            "type": "integer"
+          },
+          "group_name": {
+            "type": "keyword"
+          },
+          "label_id": {
+            "type": "integer"
+          },
+          "label_name": {
+            "type": "keyword"
+          }
+        }
+      },
       "id": {
         "type": "integer"
       }

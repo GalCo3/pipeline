@@ -35,8 +35,11 @@ in_pod() {
 }
 
 # Every consumer deployment: a live member keeps its consumer group non-empty,
-# which makes the group deletion below fail.
-CONSUMERS=(candy-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+# which makes the group deletion below fail. The semantic consumers belong here
+# as much as the lexical ones — left running, they hold a subscription to a
+# topic this script deletes, and rejoin the recreated topic with no partitions
+# assigned, so they silently consume nothing until something restarts them.
+CONSUMERS=(candy-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical cargo-operational-semantic cargo-my-storage-semantic chief-semantic)
 
 echo "==> Stopping consumers"
 for consumer in "${CONSUMERS[@]}"; do

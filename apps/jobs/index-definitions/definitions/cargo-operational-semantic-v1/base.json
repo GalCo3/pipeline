@@ -151,6 +151,9 @@
       "reality_id": {
         "type": "keyword"
       },
+      "reality_type": {
+        "type": "keyword"
+      },
       "s3_bucket": {
         "type": "text",
         "term_vector": "with_positions_offsets"

@@ -6,18 +6,17 @@ requires-python = ">=3.14"
 dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
-    "boto3>=1.35",
     "connections",
-    "text-extraction",
     "observability",
     "utils",
+    "semantic-enrichment",
 ]
 
 [tool.uv.sources]
 connections = { workspace = true }
-text-extraction = { workspace = true }
 observability = { workspace = true }
 utils = { workspace = true }
+semantic-enrichment = { workspace = true }
 
 [tool.uv]
 package = false

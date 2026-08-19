@@ -51,8 +51,13 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 # 0 = produce the demo batch once and exit; >0 = keep re-producing every N seconds.
 INTERVAL_SECONDS = float(os.environ.get("INTERVAL_SECONDS", "0"))
 # Keeps document ids and S3 keys distinct across re-runs of the job, so a rerun
-# adds documents instead of overwriting the previous batch.
-RUN_SEED = int(os.environ.get("RUN_SEED", "") or zlib.crc32(socket.gethostname().encode()) % 90_000)
+# adds documents instead of overwriting the previous batch. Bounded by
+# SEED_MODULUS because build_ids has to stay inside the id mapping's range —
+# see the note there.
+SEED_MODULUS = 2_000
+RUN_SEED = (
+    int(os.environ.get("RUN_SEED", "") or zlib.crc32(socket.gethostname().encode())) % SEED_MODULUS
+)
 
 CARGO_SOURCES = {"cargo-operational-lexical", "cargo-my-storage-lexical"}
 
@@ -269,8 +274,13 @@ def build_ids(examples: list[dict], ordinal: int, run_id: int) -> list[int]:
     id — how the update and delete routes address a document an earlier example
     in the same batch just indexed, instead of an id Elasticsearch never saw.
     """
+    # The cargo indices map `id` as an integer, so every id has to fit in a
+    # signed 32-bit int. With RUN_SEED < 2_000 and the batch counter wrapped at
+    # 100 the largest id is 1_999_991_999, just under the 2_147_483_647 ceiling.
+    # The wrap only matters to a long-running INTERVAL_SECONDS job: batch 101
+    # re-uses batch 1's ids and so overwrites those documents.
     ids = [
-        RUN_SEED * 1_000_000 + run_id * 10_000 + ordinal * 100 + index
+        RUN_SEED * 1_000_000 + (run_id % 100) * 10_000 + ordinal * 100 + index
         for index in range(1, len(examples) + 1)
     ]
     by_name = {example["name"]: index for index, example in enumerate(examples)}

@@ -22,6 +22,11 @@ env:
   CONSUMER_CONFIG__AUTO_OFFSET_RESET: earliest
   CONSUMER_CONFIG__LIVENESS_FILE_PATH: /tmp/heartbeat
 
+  # Publishes a trigger for chief-semantic after every delete/update/index.
+  PRODUCER_CONFIG__BOOTSTRAP_SERVERS: kafka:9092
+  PRODUCER_CONFIG__SECURITY_PROTOCOL: PLAINTEXT
+  SEMANTIC_TOPIC: chief.semantic
+
   ELASTIC_CONFIG__LOCAL_HOST: http://elasticsearch:9200
 
   # Dead-letter store for messages the service cannot process.

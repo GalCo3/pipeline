@@ -75,7 +75,7 @@
         "msg": "@bob please sync with #logistics on the Ashdod slot.",
         "from": "alice",
         "ts": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "u": {
           "_id": "user-alice-001",
           "username": "alice",
@@ -198,7 +198,7 @@
         "msg": "No room id, so midur_ids stays absent. Numeric id, Z-suffixed timestamps, explicit nulls.",
         "from": null,
         "ts": "{{past_z}}",
-        "updatedAt_": "{{now_z}}",
+        "_updatedAt": "{{now_z}}",
         "file": null,
         "description": null,
         "u": null,

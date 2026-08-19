@@ -51,6 +51,7 @@ import embed
 import grpc
 import numpy as np
 import rerank
+import text_embed
 from google.protobuf import json_format
 from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
 
@@ -80,6 +81,52 @@ NUMPY_DTYPES = {
     "FP64": np.float64,
 }
 
+# BYTES is deliberately not in NUMPY_DTYPES: it has no fixed itemsize, so it
+# cannot be handed to np.frombuffer like the rest. It arrives as its own wire
+# encoding (below) and lives in a numpy object array once decoded. The config
+# spelling for it is TYPE_STRING, not TYPE_BYTES.
+BYTES_DATATYPE = "BYTES"
+BYTES_CONFIG_TYPE = "STRING"
+
+
+def _wire_datatype(array: np.ndarray) -> str:
+    """The wire datatype name for an array, BYTES included."""
+    if array.dtype.type in (np.object_, np.bytes_, np.str_):
+        return BYTES_DATATYPE
+    return next(k for k, v in NUMPY_DTYPES.items() if v == array.dtype.type)
+
+
+def _decode_bytes_tensor(raw: bytes) -> list[bytes]:
+    """Split a BYTES tensor's payload into its elements.
+
+    Each element is a 4-byte little-endian length followed by that many bytes,
+    which is what tritonclient's `set_data_from_numpy` writes for an object
+    array and what Triton itself returns.
+    """
+    elements: list[bytes] = []
+    offset = 0
+    while offset < len(raw):
+        if offset + 4 > len(raw):
+            raise InferenceError("truncated BYTES tensor: no room for an element length")
+        length = int.from_bytes(raw[offset : offset + 4], "little")
+        offset += 4
+        if offset + length > len(raw):
+            raise InferenceError(
+                f"truncated BYTES tensor: element claims {length} bytes, "
+                f"{len(raw) - offset} remain"
+            )
+        elements.append(raw[offset : offset + length])
+        offset += length
+    return elements
+
+
+def _bytes_array(flat: list[Any], shape: list[int]) -> np.ndarray:
+    """A [*shape] object array of bytes, however the elements arrived."""
+    encoded = [v.encode("utf-8") if isinstance(v, str) else bytes(v) for v in flat]
+    array = np.empty(len(encoded), dtype=object)
+    array[:] = encoded
+    return array.reshape(shape)
+
 # The stand-in behind each model in the contract. A contract entry with no
 # implementation here is a bug, not a configuration: `_model_or_error` only lets
 # through names that have metadata and config, and having those means the model
@@ -88,6 +135,7 @@ IMPLEMENTATIONS = {
     "retrieval_embedder": embed.infer,
     "cargo_reranker": rerank.infer,
     "chat-reports-classifier": classify.infer,
+    "text-embedding": text_embed.infer,
 }
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -144,9 +192,13 @@ def run_inference(model_name: str, inputs: dict[str, np.ndarray]) -> dict[str, n
         spec = expected.get(name)
         if spec is None:
             raise InferenceError(f"unexpected inference input '{name}' for model '{model_name}'")
-        # config dtypes are the TYPE_ prefixed spelling; the wire uses the bare one.
+        # config dtypes are the TYPE_ prefixed spelling; the wire uses the bare
+        # one, except for strings, which the config calls STRING and the wire
+        # calls BYTES.
         wanted = spec["data_type"].removeprefix("TYPE_")
-        actual = next(k for k, v in NUMPY_DTYPES.items() if v == tensor.dtype.type)
+        if wanted == BYTES_CONFIG_TYPE:
+            wanted = BYTES_DATATYPE
+        actual = _wire_datatype(tensor)
         if actual != wanted:
             raise InferenceError(
                 f"unexpected datatype {actual} for inference input '{name}', expecting {wanted}"
@@ -300,11 +352,23 @@ class HTTPHandler(BaseHTTPRequestHandler):
         inputs: dict[str, np.ndarray] = {}
         offset = 0
         for tensor in request.get("inputs", []):
-            dtype = NUMPY_DTYPES.get(tensor["datatype"])
-            if dtype is None:
-                raise InferenceError(f"unsupported datatype {tensor['datatype']}")
-
+            datatype = tensor["datatype"]
             size = (tensor.get("parameters") or {}).get("binary_data_size")
+
+            if datatype == BYTES_DATATYPE:
+                if size is None:
+                    array = _bytes_array(tensor["data"], tensor["shape"])
+                else:
+                    flat = _decode_bytes_tensor(binary[offset : offset + size])
+                    array = _bytes_array(flat, tensor["shape"])
+                    offset += size
+                inputs[tensor["name"]] = array
+                continue
+
+            dtype = NUMPY_DTYPES.get(datatype)
+            if dtype is None:
+                raise InferenceError(f"unsupported datatype {datatype}")
+
             if size is None:
                 array = np.asarray(tensor["data"], dtype=dtype).reshape(tensor["shape"])
             else:
@@ -341,7 +405,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
         for name, array in _select_outputs(model_name, produced, requested):
             entry: dict[str, Any] = {
                 "name": name,
-                "datatype": next(k for k, v in NUMPY_DTYPES.items() if v == array.dtype.type),
+                "datatype": _wire_datatype(array),
                 "shape": list(array.shape),
             }
             if binary_by_name.get(name, default_binary):
@@ -442,16 +506,30 @@ class GRPCService(service_pb2_grpc.GRPCInferenceServiceServicer):
     def ModelInfer(self, request, context):
         inputs: dict[str, np.ndarray] = {}
         for position, tensor in enumerate(request.inputs):
+            # raw_input_contents is what tritonclient sends; the typed `contents`
+            # field is the fallback for hand-built requests.
+            raw = (
+                request.raw_input_contents[position]
+                if position < len(request.raw_input_contents)
+                else None
+            )
+
+            if tensor.datatype == BYTES_DATATYPE:
+                flat = (
+                    _decode_bytes_tensor(raw)
+                    if raw is not None
+                    else list(tensor.contents.bytes_contents)
+                )
+                inputs[tensor.name] = _bytes_array(flat, list(tensor.shape))
+                continue
+
             dtype = NUMPY_DTYPES.get(tensor.datatype)
             if dtype is None:
                 context.abort(
                     grpc.StatusCode.INVALID_ARGUMENT,
                     f"unsupported datatype {tensor.datatype}",
                 )
-            # raw_input_contents is what tritonclient sends; the typed `contents`
-            # field is the fallback for hand-built requests.
-            if position < len(request.raw_input_contents):
-                raw = request.raw_input_contents[position]
+            if raw is not None:
                 array = np.frombuffer(raw, dtype=dtype).reshape(list(tensor.shape))
             else:
                 flat = _typed_contents(tensor.contents, tensor.datatype)
@@ -477,7 +555,7 @@ class GRPCService(service_pb2_grpc.GRPCInferenceServiceServicer):
             response.outputs.append(
                 service_pb2.ModelInferResponse.InferOutputTensor(
                     name=name,
-                    datatype=next(k for k, v in NUMPY_DTYPES.items() if v == array.dtype.type),
+                    datatype=_wire_datatype(array),
                     shape=list(array.shape),
                 )
             )

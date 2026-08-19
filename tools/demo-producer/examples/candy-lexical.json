@@ -23,7 +23,8 @@
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "mirageAction": "create",
-        "militaryDistrictId": 1
+        "militaryDistrictId": 1,
+        "militaryDistrictName": "north"
       }
     },
     {
@@ -43,7 +44,8 @@
         "cellHierarchy": "south/beer-sheva/cell-07",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
-        "militaryDistrictId": 3
+        "militaryDistrictId": 3,
+        "militaryDistrictName": "south"
       }
     },
     {
@@ -69,7 +71,8 @@
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "mirageAction": null,
-        "militaryDistrictId": 2
+        "militaryDistrictId": 2,
+        "militaryDistrictName": "center"
       }
     },
     {
@@ -89,7 +92,8 @@
         "cellHierarchy": "north/acre/cell-03",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
-        "militaryDistrictId": 1
+        "militaryDistrictId": 1,
+        "militaryDistrictName": "north"
       }
     },
     {
@@ -111,7 +115,8 @@
         "cellHierarchy": "south/eilat/cell-21",
         "creationDate": "{{past_z}}",
         "lastUpdateTimeToTransfer": "{{now_z}}",
-        "militaryDistrictId": 3
+        "militaryDistrictId": 3,
+        "militaryDistrictName": "south"
       }
     },
     {
@@ -131,7 +136,8 @@
         "cellHierarchy": "",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
-        "militaryDistrictId": 2
+        "militaryDistrictId": 2,
+        "militaryDistrictName": "center"
       }
     },
     {
@@ -155,7 +161,8 @@
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "mirageAction": "update",
-        "militaryDistrictId": 1
+        "militaryDistrictId": 1,
+        "militaryDistrictName": "north"
       }
     },
     {
@@ -175,7 +182,8 @@
         "cellHierarchy": "center/ramla/cell-09",
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
-        "militaryDistrictId": 2
+        "militaryDistrictId": 2,
+        "militaryDistrictName": "center"
       }
     },
     {
@@ -199,7 +207,8 @@
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "mirageAction": "delete",
-        "militaryDistrictId": 1
+        "militaryDistrictId": 1,
+        "militaryDistrictName": "north"
       }
     },
     {
@@ -226,7 +235,8 @@
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "mirageAction": "delete",
-        "militaryDistrictId": 3
+        "militaryDistrictId": 3,
+        "militaryDistrictName": "south"
       }
     },
     {
@@ -247,6 +257,7 @@
         "creationDate": "{{past}}",
         "lastUpdateTimeToTransfer": "{{now}}",
         "militaryDistrictId": 3,
+        "militaryDistrictName": "south",
         "unexpectedField": "not part of the model"
       }
     }

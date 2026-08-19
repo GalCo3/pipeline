@@ -11,7 +11,7 @@
         "classificationLevel": 1,
         "classificationColor": "green",
         "ts": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "description": "General operations channel.",
         "topic": "Daily cargo coordination"
       }
@@ -26,7 +26,7 @@
         "classificationLevel": 3,
         "classificationColor": "red",
         "ts": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "description": "Restricted planning group.",
         "topic": "Ashdod slot planning"
       }
@@ -39,7 +39,7 @@
         "name": "alice,bob",
         "room_type": "d",
         "ts": "{{past}}",
-        "updatedAt_": "{{past}}"
+        "_updatedAt": "{{past}}"
       }
     },
     {
@@ -52,7 +52,7 @@
         "classificationLevel": 2,
         "classificationColor": "yellow",
         "ts": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "description": "Team parent room with child channels.",
         "topic": "Fleet logistics"
       }
@@ -65,7 +65,7 @@
         "name": "livechat-8821",
         "room_type": "l",
         "ts": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "topic": "Inbound carrier question"
       }
     },
@@ -95,7 +95,7 @@
         "classificationLevel": 1,
         "classificationColor": "green",
         "ts": "{{past}}",
-        "updatedAt_": "{{future}}",
+        "_updatedAt": "{{future}}",
         "description": "Archived after rename; the source re-emits the whole room on every change.",
         "topic": "Archive"
       }
@@ -110,7 +110,7 @@
         "classificationLevel": null,
         "classificationColor": null,
         "ts": null,
-        "updatedAt_": null,
+        "_updatedAt": null,
         "description": null,
         "topic": null
       }
@@ -125,7 +125,7 @@
         "classificationLevel": 2,
         "classificationColor": "yellow",
         "ts": "{{past_z}}",
-        "updatedAt_": "{{now_z}}",
+        "_updatedAt": "{{now_z}}",
         "description": "חדר תיאום מבצעי",
         "topic": "תיאום יומי"
       }

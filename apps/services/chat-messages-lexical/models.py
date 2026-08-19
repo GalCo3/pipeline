@@ -36,7 +36,7 @@ class ChatMessageChannel(BaseModel):
 class ChatMessageTriangle(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    id: str | None = None
+    id: str | None = Field(default=None, alias="_id")
     name: str | None = None
     clearance: int | None = None
 

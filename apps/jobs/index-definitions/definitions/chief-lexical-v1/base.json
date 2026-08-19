@@ -67,7 +67,8 @@
       "command_content": {
         "properties": {
           "create_date": {
-            "type": "date"
+            "type": "date",
+            "ignore_malformed": true
           },
           "full_name": {
             "type": "text",
@@ -79,7 +80,8 @@
             "type": "keyword"
           },
           "last_update_date": {
-            "type": "date"
+            "type": "date",
+            "ignore_malformed": true
           },
           "name": {
             "type": "text",

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: cargo-my-storage-semantic
+description: Cargo semantic enrichment service for my-storage cargo — same image as cargo-semantic, consumes cargo-my-storage-lexical's semantic trigger topic and indexes to cargo-my-storage-semantic.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../library/hermes-common

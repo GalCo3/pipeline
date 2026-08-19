@@ -7,6 +7,7 @@ from hermes.connections import (
     BaseConsumerHandler,
     BaseElasticHandler,
     BaseMongoHandler,
+    BasePlainProducerHandler,
 )
 from hermes.observability import (
     MessageStatus,
@@ -16,7 +17,13 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import delete_document, send_to_dls, site_error, with_indexed_at
+from hermes.utils import (
+    delete_document,
+    produce_semantic_trigger,
+    send_to_dls,
+    site_error,
+    with_indexed_at,
+)
 
 init_observability(service_name="chief-lexical")
 logger = get_logger(__name__)
@@ -34,6 +41,7 @@ def main():
     consumer_handler = BaseConsumerHandler(settings.consumer_config)
     elastic_handler = BaseElasticHandler(settings.elastic_config)
     dls_handler = BaseMongoHandler(settings.mongo_config)
+    producer_handler = BasePlainProducerHandler(settings.producer_config)
 
     for message in consumer_handler.start_consuming():
         try:
@@ -45,6 +53,9 @@ def main():
                     with message_duration.time(labels={"status": MessageStatus.DELETED}):
                         status = delete_document(
                             elastic_handler, settings.index_name, chief_message.id
+                        )
+                        produce_semantic_trigger(
+                            producer_handler, settings.semantic_topic, chief_message.id, "delete"
                         )
                     messages_processed.inc(labels={"status": status})
                     continue
@@ -101,7 +112,6 @@ def main():
             logger.warning(
                 "Chief API error, sending message to DLS",
                 error=str(e),
-                topic=message.topic(),
             )
             messages_processed.inc(labels={"status": MessageStatus.NOT_FOUND})
             messages_sent_to_dls.inc()
@@ -111,7 +121,6 @@ def main():
         except Exception as e:
             logger.error(
                 "Failed to process chief message, sending to DLS",
-                error=str(e),
                 exc_info=True,
             )
             messages_processed.inc(labels={"status": MessageStatus.ERROR})

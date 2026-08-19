@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir \
     numpy==1.26.4
 
 WORKDIR /app
-COPY contract.json classify.py embed.py rerank.py server.py ./
+COPY contract.json classify.py embed.py rerank.py text_embed.py server.py ./
 
 RUN chgrp -R 0 /app && chmod -R g=u /app
 

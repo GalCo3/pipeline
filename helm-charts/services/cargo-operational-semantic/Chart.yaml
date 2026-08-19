@@ -1,0 +1,10 @@
+apiVersion: v2
+name: cargo-operational-semantic
+description: Cargo semantic enrichment service for operational cargo — same image as cargo-semantic, consumes cargo-operational-lexical's semantic trigger topic and indexes to cargo-operational-semantic.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: hermes-common
+    version: 0.1.0
+    repository: file://../../library/hermes-common

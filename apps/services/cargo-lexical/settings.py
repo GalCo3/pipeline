@@ -8,6 +8,7 @@ from hermes.connections import (
     BaseElasticBasicConfig,
     BaseElasticCertConfig,
     BaseMongoConfig,
+    BaseProducerConfig,
     BaseS3Config,
 )
 
@@ -23,8 +24,12 @@ class Settings(BaseSettings):
     # Cert auth in real deployments; basic auth for local/compose runs.
     elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
+    # Publishes a trigger message to `semantic_topic` after every successful
+    # delete/update/index, for cargo-semantic to consume.
+    producer_config: BaseProducerConfig
     index_name: str
     dls_collection: str = "dls"
+    semantic_topic: str = "cargo.semantic"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

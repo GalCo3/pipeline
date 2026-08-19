@@ -44,4 +44,10 @@ def send_to_dls(
     )
 
     dls_handler.insert_one(database, collection, record.model_dump())
-    logger.info("Message sent to dead letter store", error=str(error))
+    logger.warning(
+        "Message sent to dead letter store",
+        topic=message.topic(),
+        partition=message.partition(),
+        offset=message.offset(),
+        error=str(error),
+    )

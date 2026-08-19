@@ -33,7 +33,8 @@
   "repository_index": [
     { "name": "cargo_reranker", "version": "1", "state": "READY" },
     { "name": "chat-reports-classifier", "version": "1", "state": "READY" },
-    { "name": "retrieval_embedder", "version": "1", "state": "READY" }
+    { "name": "retrieval_embedder", "version": "1", "state": "READY" },
+    { "name": "text-embedding", "version": "1", "state": "READY" }
   ],
 
   "models": {
@@ -290,6 +291,73 @@
         "instance_group": [
           {
             "name": "retrieval_embedder_0",
+            "kind": "KIND_GPU",
+            "count": 10,
+            "gpus": [0],
+            "secondary_devices": [],
+            "profile": [],
+            "passive": false,
+            "host_policy": ""
+          }
+        ],
+        "default_model_filename": "model.onnx",
+        "cc_model_filenames": {},
+        "metric_tags": {},
+        "parameters": { "arena_extend_strategy": { "string_value": "1" } },
+        "model_warmup": []
+      }
+    },
+
+    "text-embedding": {
+      "metadata": {
+        "name": "text-embedding",
+        "versions": ["1"],
+        "platform": "onnxruntime_onnx",
+        "inputs": [{ "name": "TEXT", "datatype": "BYTES", "shape": [-1, 1] }],
+        "outputs": [{ "name": "EMBEDDING", "datatype": "FP32", "shape": [-1, 1024] }]
+      },
+
+      "config": {
+        "name": "text-embedding",
+        "platform": "onnxruntime_onnx",
+        "backend": "onnxruntime",
+        "runtime": "",
+        "version_policy": { "latest": { "num_versions": 1 } },
+        "max_batch_size": 32,
+        "input": [
+          {
+            "name": "TEXT",
+            "data_type": "TYPE_STRING",
+            "format": "FORMAT_NONE",
+            "dims": [1],
+            "is_shape_tensor": false,
+            "allow_ragged_batch": false,
+            "optional": false,
+            "is_non_linear_format_io": false
+          }
+        ],
+        "output": [
+          {
+            "name": "EMBEDDING",
+            "data_type": "TYPE_FP32",
+            "dims": [1024],
+            "label_filename": "",
+            "is_shape_tensor": false,
+            "is_non_linear_format_io": false
+          }
+        ],
+        "batch_input": [],
+        "batch_output": [],
+        "optimization": {
+          "priority": "PRIORITY_DEFAULT",
+          "input_pinned_memory": { "enable": true },
+          "output_pinned_memory": { "enable": true },
+          "gather_kernel_buffer_threshold": 0,
+          "eager_batching": false
+        },
+        "instance_group": [
+          {
+            "name": "text-embedding_0",
             "kind": "KIND_GPU",
             "count": 10,
             "gpus": [0],
