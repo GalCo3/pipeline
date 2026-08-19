@@ -60,7 +60,6 @@ def main():
         except Exception as e:
             logger.error(
                 "Failed to process chat user message, sending to DLS",
-                error=str(e),
                 exc_info=True,
             )
             messages_processed.inc(labels={"status": MessageStatus.ERROR})

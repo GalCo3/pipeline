@@ -3,8 +3,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from hermes.connections import BaseElasticHandler, BasePlainProducerHandler
+from hermes.observability import get_logger
 
 from .site import site_error
+
+logger = get_logger(__name__)
 
 SemanticAction = Literal["delete", "update_metadata", "index"]
 
@@ -51,6 +54,7 @@ def produce_semantic_trigger(
         topic=topic, key=key, value={"id": doc_id, "action": action}, headers={}
     )
     producer_handler.flush()
+    logger.info("Produced semantic trigger", topic=topic, doc_id=doc_id, action=action)
 
 
 def delete_chunks(

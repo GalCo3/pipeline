@@ -148,7 +148,6 @@ def main():
             logger.warning(
                 "Cargo source document not found, sending to DLS",
                 error=str(e),
-                topic=message.topic(),
             )
             messages_processed.inc(labels={"status": MessageStatus.NOT_FOUND})
             messages_sent_to_dls.inc()
@@ -158,7 +157,6 @@ def main():
         except Exception as e:
             logger.error(
                 "Failed to process cargo semantic message, sending to DLS",
-                error=str(e),
                 exc_info=True,
             )
             messages_processed.inc(labels={"status": MessageStatus.ERROR})
