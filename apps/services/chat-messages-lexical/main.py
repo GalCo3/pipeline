@@ -15,7 +15,7 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import send_to_dls, site_error, with_indexed_at
+from hermes.utils import delete_document, send_to_dls, site_error, with_indexed_at
 
 init_observability(service_name="chat-messages-lexical")
 logger = get_logger(__name__)
@@ -42,16 +42,10 @@ def main():
 
                 if chat_message.t:
                     with message_duration.time(labels={"status": MessageStatus.DELETED}):
-                        local_response, remote_response = elastic_handler.delete_by_id(
-                            settings.index_name, chat_message.id, is_multisite=True
+                        status = delete_document(
+                            elastic_handler, settings.index_name, chat_message.id
                         )
-                        site_error(
-                            local_response,
-                            remote_response,
-                            f"Failed to delete chat-messages-lexical document {chat_message.id}",
-                        )
-                    logger.info("Deleted chat message document", doc_id=chat_message.id)
-                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
+                    messages_processed.inc(labels={"status": status})
                     continue
 
                 with message_duration.time(labels={"status": MessageStatus.INDEXED}):

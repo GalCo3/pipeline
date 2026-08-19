@@ -18,7 +18,7 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import send_to_dls, site_error, with_indexed_at
+from hermes.utils import delete_document, send_to_dls, site_error, with_indexed_at
 
 init_observability(service_name="cargo-lexical")
 logger = get_logger(__name__)
@@ -31,32 +31,10 @@ message_duration = TelemetryHistogram(
 )
 
 
-def _is_not_found(response, remote_response=None) -> bool:
-    return isinstance(response.error, NotFoundError) or (
+def _is_not_found(local_response, remote_response=None) -> bool:
+    return isinstance(local_response.error, NotFoundError) or (
         remote_response is not None and isinstance(remote_response.error, NotFoundError)
     )
-
-
-def _delete_cargo_document(
-    elastic_handler: BaseElasticHandler,
-    settings,
-    cargo_message: CargoMessage,
-) -> str:
-    with message_duration.time(labels={"status": MessageStatus.DELETED}):
-        local_response, remote_response = elastic_handler.delete_by_id(
-            settings.index_name, cargo_message.id, is_multisite=True
-        )
-        if _is_not_found(local_response, remote_response):
-            logger.warning("Cargo document not found for deletion", doc_id=cargo_message.id)
-            return MessageStatus.NOT_FOUND
-
-        site_error(
-            local_response,
-            remote_response,
-            f"Failed to delete cargo-lexical document {cargo_message.id}",
-        )
-    logger.info("Deleted cargo document", doc_id=cargo_message.id)
-    return MessageStatus.DELETED
 
 
 def _update_cargo_document_metadata(
@@ -86,9 +64,7 @@ def _update_cargo_document_metadata(
             logger.info("Updated cargo document metadata", doc_id=cargo_message.id)
             return MessageStatus.UPDATED
 
-    return _index_cargo_document(
-        cargo_client, elastic_handler, settings, cargo_message
-    )
+    return _index_cargo_document(cargo_client, elastic_handler, settings, cargo_message)
 
 
 def _index_cargo_document(
@@ -140,9 +116,10 @@ def main():
                 logger.info("Processing cargo message", doc_id=cargo_message.id)
 
                 if cargo_message.delete_date is not None:
-                    status = _delete_cargo_document(
-                        elastic_handler, settings, cargo_message
-                    )
+                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
+                        status = delete_document(
+                            elastic_handler, settings.index_name, str(cargo_message.id)
+                        )
                     messages_processed.inc(labels={"status": status})
                     continue
 
