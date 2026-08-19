@@ -5,10 +5,6 @@
   "mappings": {
     "dynamic": "strict",
     "properties": {
-      "__high_0": {
-        "type": "alias",
-        "path": "description"
-      },
       "actual_date": {
         "type": "date"
       },
@@ -38,19 +34,11 @@
         "term_vector": "with_positions_offsets",
         "analyzer": "ena"
       },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "date"
-      },
       "event_id": {
         "type": "integer"
       },
       "frame": {
         "type": "keyword"
-      },
-      "highlighted_field": {
-        "type": "alias",
-        "path": "description"
       },
       "id": {
         "type": "keyword"

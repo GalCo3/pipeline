@@ -5,26 +5,6 @@
   "mappings": {
     "dynamic": "strict",
     "properties": {
-      "__low_0": {
-        "type": "alias",
-        "path": "name"
-      },
-      "__not_for_display__0": {
-        "type": "alias",
-        "path": "__empty__"
-      },
-      "__not_for_display__1": {
-        "type": "alias",
-        "path": "__empty__"
-      },
-      "__not_for_display__2": {
-        "type": "alias",
-        "path": "__empty__"
-      },
-      "__not_for_display__3": {
-        "type": "alias",
-        "path": "__empty__"
-      },
       "classification_color": {
         "type": "keyword"
       },
@@ -36,14 +16,6 @@
         "term_vector": "with_positions_offsets",
         "analyzer": "default",
         "search_analyzer": "idf_acronyms_search_analyzer"
-      },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "updated_at"
-      },
-      "highlighted_field": {
-        "type": "alias",
-        "path": "description"
       },
       "id": {
         "type": "keyword"

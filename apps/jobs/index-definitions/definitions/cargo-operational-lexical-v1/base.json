@@ -37,10 +37,6 @@
       "description": {
         "type": "text"
       },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "ver_last_modified"
-      },
       "holder": {
         "type": "keyword"
       },

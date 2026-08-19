@@ -34,22 +34,6 @@
       "__embedding_version": {
         "type": "keyword"
       },
-      "__high__0": {
-        "type": "alias",
-        "path": "name"
-      },
-      "__low__0": {
-        "type": "alias",
-        "path": "chunk_content"
-      },
-      "__low__1": {
-        "type": "alias",
-        "path": "path"
-      },
-      "__medium__0": {
-        "type": "alias",
-        "path": "__empty__"
-      },
       "__metadata_fields": {
         "type": "keyword"
       },
@@ -68,20 +52,12 @@
       "created": {
         "type": "date"
       },
-      "date": {
-        "type": "alias",
-        "path": "last_modified"
-      },
       "delete_date": {
         "type": "date"
       },
       "description": {
         "type": "text",
         "term_vector": "with_positions_offsets"
-      },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "ver_last_modified"
       },
       "embedding": {
         "type": "dense_vector",
@@ -112,10 +88,6 @@
             "type": "keyword"
           }
         }
-      },
-      "highlighted_field": {
-        "type": "alias",
-        "path": "chunk_content"
       },
       "holder": {
         "type": "keyword"
