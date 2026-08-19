@@ -10,6 +10,7 @@ from utils import (
 
 from hermes.connections import BaseConsumerHandler, BaseElasticHandler, BaseMongoHandler
 from hermes.observability import (
+    MessageStatus,
     TelemetryCounter,
     TelemetryHistogram,
     get_logger,
@@ -76,14 +77,14 @@ def main():
                 )
 
                 if trigger.action == "delete":
-                    with message_duration.time(labels={"status": "deleted"}):
+                    with message_duration.time(labels={"status": MessageStatus.DELETED}):
                         delete_chunks(elastic_handler, settings.semantic_index_name, doc_id)
                     logger.info("Deleted cargo chunks", doc_id=doc_id)
-                    messages_processed.inc(labels={"status": "deleted"})
+                    messages_processed.inc(labels={"status": MessageStatus.DELETED})
                     continue
 
                 if trigger.action == "update_metadata":
-                    with message_duration.time(labels={"status": "metadata"}):
+                    with message_duration.time(labels={"status": MessageStatus.UPDATED}):
                         lexical_document = fetch_lexical_document(elastic_handler, settings, doc_id)
                         chunk_document = fetch_first_chunk(elastic_handler, settings, doc_id)
 
@@ -92,7 +93,7 @@ def main():
                                 "No existing cargo chunks for metadata update, sending to DLS",
                                 doc_id=doc_id,
                             )
-                            messages_processed.inc(labels={"status": "metadata_missing_chunks"})
+                            messages_processed.inc(labels={"status": MessageStatus.METADATA_MISSING_CHUNKS})
                             messages_sent_to_dls.inc()
                             send_to_dls(
                                 dls_handler,
@@ -109,7 +110,7 @@ def main():
 
                         if not changed_fields:
                             logger.warning("No metadata changes for cargo document", doc_id=doc_id)
-                            messages_processed.inc(labels={"status": "metadata_noop"})
+                            messages_processed.inc(labels={"status": MessageStatus.METADATA_NOOP})
                         elif changed_fields.keys() & EMBEDDED_FIELDS:
                             chunk_and_embed_document(
                                 elastic_handler,
@@ -123,7 +124,7 @@ def main():
                                 doc_id=doc_id,
                                 fields=list(changed_fields),
                             )
-                            messages_processed.inc(labels={"status": "metadata_reembedded"})
+                            messages_processed.inc(labels={"status": MessageStatus.METADATA_REEMBEDDED})
                         else:
                             _patch_metadata(
                                 elastic_handler,
@@ -136,20 +137,20 @@ def main():
                                 doc_id=doc_id,
                                 fields=list(changed_fields),
                             )
-                            messages_processed.inc(labels={"status": "metadata_patched"})
+                            messages_processed.inc(labels={"status": MessageStatus.METADATA_PATCHED})
                     continue
 
-                with message_duration.time(labels={"status": "indexed"}):
+                with message_duration.time(labels={"status": MessageStatus.INDEXED}):
                     chunk_and_embed_document(elastic_handler, embedding_handler, settings, doc_id)
                 logger.info("Successfully indexed cargo chunks", doc_id=doc_id)
-                messages_processed.inc(labels={"status": "indexed"})
+                messages_processed.inc(labels={"status": MessageStatus.INDEXED})
         except SourceDocumentNotFoundError as e:
             logger.warning(
                 "Cargo source document not found, sending to DLS",
                 error=str(e),
                 topic=message.topic(),
             )
-            messages_processed.inc(labels={"status": "not_found"})
+            messages_processed.inc(labels={"status": MessageStatus.NOT_FOUND})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection
@@ -160,7 +161,7 @@ def main():
                 error=str(e),
                 exc_info=True,
             )
-            messages_processed.inc(labels={"status": "error"})
+            messages_processed.inc(labels={"status": MessageStatus.ERROR})
             messages_sent_to_dls.inc()
             send_to_dls(
                 dls_handler, message, e, settings.mongo_config.database, settings.dls_collection

@@ -11,6 +11,13 @@ class MessageStatus(StrEnum):
     NOT_FOUND = "not_found"
     ERROR = "error"
 
+    # Semantic Metadata Processing Statuses
+    METADATA_MISSING_CHUNKS = "metadata_missing_chunks"
+    METADATA_NOOP = "metadata_noop"
+    METADATA_REEMBEDDED = "metadata_reembedded"
+    METADATA_PATCHED = "metadata_patched"
+
+
 
 class CircuitBreakerState(StrEnum):
     CLOSED = "CLOSED"
