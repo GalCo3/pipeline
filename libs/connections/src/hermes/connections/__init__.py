@@ -11,6 +11,7 @@ from hermes.connections.config_models.kafka import (
     BaseProducerConfig,
     BaseSchemaRegistryConfig,
 )
+from hermes.connections.config_models.llm import BaseLLMConfig
 from hermes.connections.config_models.mongo import BaseMongoConfig, BasicAuth, MongoSSL, X509Auth
 from hermes.connections.config_models.postgres import BasePostgresConfig
 from hermes.connections.config_models.s3 import BaseS3Config, BaseS3SiteConfig
@@ -31,6 +32,7 @@ from hermes.connections.exceptions import (
 from hermes.connections.factories.admin import create_kafka_admin_client
 from hermes.connections.factories.consumer import create_kafka_consumer
 from hermes.connections.factories.elastic import create_elastic_clients
+from hermes.connections.factories.llm import create_llm_session
 from hermes.connections.factories.mongo import create_async_mongo_clients, create_mongo_clients
 from hermes.connections.factories.postgres import (
     create_postgres_connection_pool,
@@ -47,6 +49,7 @@ from hermes.connections.handlers.elastic import BaseElasticHandler
 from hermes.connections.handlers.kafka_producers.avro_producer import BaseAvroProducerHandler
 from hermes.connections.handlers.kafka_producers.base_producer import BaseProducerHandler
 from hermes.connections.handlers.kafka_producers.plain_producer import BasePlainProducerHandler
+from hermes.connections.handlers.llm import BaseLLMHandler
 from hermes.connections.handlers.mongo import BaseMongoHandler
 from hermes.connections.handlers.s3 import BaseS3Handler
 from hermes.connections.handlers.schema_registry import BaseSchemaRegistryHandler
@@ -81,6 +84,8 @@ __all__ = [
     "BaseElasticHandler",
     "BaseElasticJWTConfig",
     "BaseKafkaSecurityConfig",
+    "BaseLLMConfig",
+    "BaseLLMHandler",
     "BaseMongoConfig",
     "BaseMongoHandler",
     "BasePlainProducerHandler",
@@ -115,6 +120,7 @@ __all__ = [
     "create_kafka_consumer",
     "create_kafka_producer",
     "create_kafka_schema_registry_client",
+    "create_llm_session",
     "create_mongo_clients",
     "create_postgres_connection_pool",
     "create_s3_clients",

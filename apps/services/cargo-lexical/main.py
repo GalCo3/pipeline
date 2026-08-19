@@ -1,8 +1,6 @@
 from elasticsearch import NotFoundError
-from exceptions import CargoFileNotFoundError
 from models import CargoEnrichedMessage, CargoMessage
 from settings import get_settings
-from utils import extract_cargo_files_text
 
 from hermes.connections import (
     BaseConsumerHandler,
@@ -18,7 +16,14 @@ from hermes.observability import (
     init_observability,
     kafka_context,
 )
-from hermes.utils import delete_document, send_to_dls, site_error, with_indexed_at
+from hermes.utils import (
+    CargoFileNotFoundError,
+    delete_document,
+    extract_cargo_files_text,
+    send_to_dls,
+    site_error,
+    with_indexed_at,
+)
 
 init_observability(service_name="cargo-lexical")
 logger = get_logger(__name__)

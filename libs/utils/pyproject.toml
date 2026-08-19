@@ -9,6 +9,7 @@ dependencies = [
     "python-dateutil>=2.9",
     "connections",
     "observability",
+    "text-extraction",
     "numpy>=1.26.0",
     "transformers>=4.46.0",
 ]
@@ -16,6 +17,7 @@ dependencies = [
 [tool.uv.sources]
 connections = { workspace = true }
 observability = { workspace = true }
+text-extraction = { workspace = true }
 
 [dependency-groups]
 dev = [

@@ -42,6 +42,7 @@ APPS=(
     cargo-operational-lexical:cargo-lexical
     cargo-my-storage-lexical:cargo-lexical
     dls-console
+    labels-api
 )
 
 # Dropped by --light — skipped when absent, uninstalled when already installed;

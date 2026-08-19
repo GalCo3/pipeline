@@ -1,3 +1,4 @@
+from hermes.utils.cargo import CargoFileNotFoundError, extract_cargo_files_text
 from hermes.utils.dates import parse_date_value
 from hermes.utils.dls import DLSRecord, send_to_dls
 from hermes.utils.elastic import delete_document
@@ -13,6 +14,7 @@ from hermes.utils.triton import (
 )
 
 __all__ = [
+    "CargoFileNotFoundError",
     "INDEXED_AT_FIELD",
     "DLSRecord",
     "TritonCrossEncoder",
@@ -21,6 +23,7 @@ __all__ = [
     "TritonReranker",
     "TritonTokenClassificationLM",
     "delete_document",
+    "extract_cargo_files_text",
     "parse_date_value",
     "send_to_dls",
     "site_error",

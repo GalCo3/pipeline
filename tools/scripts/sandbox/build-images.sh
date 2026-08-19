@@ -90,7 +90,7 @@ build_image() {
 # Every service with a consumer image. cargo-lexical no longer has a chart of
 # its own — cargo-operational-lexical and cargo-my-storage-lexical are the
 # deployed consumers, both running this same image under their own topic/index.
-IMAGE_SOURCES=(candy-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+IMAGE_SOURCES=(candy-lexical cargo-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical labels-api)
 
 # Node apps: one image, one chart named after the directory. dls-console serves
 # both its UI and its API, so it is a single image like any consumer.
@@ -126,6 +126,9 @@ echo "demo-producer:$DEMO_PRODUCER_TAG" >> "$TAGS_FILE_TMP"
 MOCK_TRITON_TAG="$(build_image mock-triton "$REPO_ROOT/tools/mock-triton")"
 echo "    mock-triton -> $MOCK_TRITON_TAG"
 echo "mock-triton:$MOCK_TRITON_TAG" >> "$TAGS_FILE_TMP"
+MOCK_LLM_TAG="$(build_image mock-llm "$REPO_ROOT/tools/mock-llm")"
+echo "    mock-llm -> $MOCK_LLM_TAG"
+echo "mock-llm:$MOCK_LLM_TAG" >> "$TAGS_FILE_TMP"
 INDEX_DEFINITIONS_TAG="$(build_image index-definitions -f "$REPO_ROOT/apps/Dockerfile" --build-arg GROUP=jobs \
     --build-arg NAME=index-definitions "$REPO_ROOT")"
 echo "    index-definitions -> $INDEX_DEFINITIONS_TAG"
