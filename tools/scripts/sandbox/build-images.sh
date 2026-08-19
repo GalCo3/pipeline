@@ -91,7 +91,7 @@ build_image() {
 # have a chart of their own — cargo-{operational,my-storage}-{lexical,semantic}
 # are the deployed consumers, each running one of these images under its own
 # topic/index.
-IMAGE_SOURCES=(candy-reports-lexical cargo-lexical cargo-semantic chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical chief-semantic)
+IMAGE_SOURCES=(candy-lexical cargo-lexical cargo-semantic chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical chief-semantic)
 
 # Node apps: one image, one chart named after the directory. dls-console serves
 # both its UI and its API, so it is a single image like any consumer.

@@ -37,7 +37,7 @@ tag_of() {
 # each chart's values.yaml) that this stack does not stand up itself — messages
 # land in the DLS until one is reachable.
 APPS=(
-    candy-reports-lexical
+    candy-lexical
     chat-messages-lexical
     chat-rooms-lexical
     chat-users-lexical
