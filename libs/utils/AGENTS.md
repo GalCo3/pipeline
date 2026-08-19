@@ -14,6 +14,11 @@ See the workspace-level [AGENTS.md](../../AGENTS.md) for shared tooling commands
   Per-service collections were tried and reverted — the triage UI is
   cross-service, so a split turns every listing into a `$unionWith` fan-out and
   makes the document identity `(collection, _id)` instead of `_id`.
+- `dates.py` — `parse_date_value`, the single date entry point for every service's
+  `field_validator`. Sources disagree (epoch millis, offset-bearing ISO, bare ISO), so it
+  normalises to a **naive UTC** datetime at second resolution — every document then
+  serialises as `yyyy-mm-ddThh:mm:ss`, which the `date` mappings accept as UTC under the
+  default `strict_date_optional_time`. A bare input is read as UTC, not local time.
 - `site.py` — `site_error`, raises from a multi-site `(SiteResponse, SiteResponse | None)`
   pair (see `connections` `AGENTS.md`) if either side failed.
 - `indexing.py` — `with_indexed_at`, stamps a document with the time the pipeline handed

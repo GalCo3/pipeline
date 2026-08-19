@@ -1,5 +1,5 @@
 from hermes.utils.cargo import CargoFileNotFoundError, extract_cargo_files_text
-from hermes.utils.dates import parse_date_value
+from hermes.utils.dates import parse_date_value, to_utc_naive
 from hermes.utils.dls import DLSRecord, send_to_dls
 from hermes.utils.elastic import delete_document
 from hermes.utils.indexing import INDEXED_AT_FIELD, with_indexed_at
@@ -44,5 +44,6 @@ __all__ = [
     "send_to_dls",
     "site_error",
     "softmax",
+    "to_utc_naive",
     "with_indexed_at",
 ]

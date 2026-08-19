@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from hermes.utils.dates import to_utc_naive
+
 INDEXED_AT_FIELD = "indexed_at"
 
 
@@ -15,4 +17,4 @@ def with_indexed_at(document: dict, field: str = INDEXED_AT_FIELD) -> dict:
     :param field: The field to stamp under.
     :return: A copy of `document` carrying the timestamp.
     """
-    return {**document, field: datetime.now(UTC).isoformat()}
+    return {**document, field: to_utc_naive(datetime.now(UTC)).isoformat()}
