@@ -108,6 +108,9 @@ def configure_telemetry(
     Pushes traces, logs, and metrics natively via OTLP gRPC to the local sidecar collector.
     Fails silently to ensure telemetry failures never crash the host application.
     """
+    if isinstance(trace.get_tracer_provider(), TracerProvider):
+        return
+
     try:
         resource = Resource.create({"service.name": service_name})
         endpoint = resolve_otlp_endpoint(otlp_endpoint)

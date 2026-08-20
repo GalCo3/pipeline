@@ -310,19 +310,23 @@ name = "cargo-semantic"
 version = "1.0.0"
 source = { virtual = "apps/services/cargo-semantic" }
 dependencies = [
+    { name = "boto3" },
     { name = "connections" },
     { name = "observability" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "text-extraction" },
     { name = "utils" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "boto3", specifier = ">=1.35" },
     { name = "connections", editable = "libs/connections" },
     { name = "observability", editable = "libs/observability" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "text-extraction", editable = "libs/text-extraction" },
     { name = "utils", editable = "libs/utils" },
 ]
 

@@ -1,3 +1,3 @@
-from hermes.utils import SourceDocumentNotFoundError
+from hermes.utils import CargoFileNotFoundError, SourceDocumentNotFoundError
 
-__all__ = ["SourceDocumentNotFoundError"]
+__all__ = ["CargoFileNotFoundError", "SourceDocumentNotFoundError"]

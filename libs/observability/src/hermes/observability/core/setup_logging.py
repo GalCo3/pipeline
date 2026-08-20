@@ -18,10 +18,17 @@ from hermes.observability.utils import is_production_environment
 
 
 def _silence_third_party_loggers(is_production: bool) -> None:
-    """Silences noisy third-party loggers if in production environment."""
-    if is_production:
-        for logger_name in NOISY_LOGGERS:
-            logging.getLogger(logger_name).setLevel(logging.WARNING)
+    """Silences noisy third-party loggers in production environments."""
+    if not is_production:
+        return
+
+    for logger_name in NOISY_LOGGERS:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.WARNING)
+        if "access" in logger_name:
+            logger.disabled = True
+            logger.handlers = [logging.NullHandler()]
+            logger.propagate = False
 
 
 def _get_shared_processors() -> list[Processor]:
@@ -56,7 +63,9 @@ def _create_root_logger_handler(
 ) -> logging.Handler:
     """Creates a logging Handler formatted using ProcessorFormatter and adaptive renderer."""
     renderer = (
-        structlog.processors.JSONRenderer() if is_production else structlog.dev.ConsoleRenderer()
+        structlog.processors.JSONRenderer(ensure_ascii=False)
+        if is_production
+        else structlog.dev.ConsoleRenderer()
     )
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,

@@ -86,8 +86,15 @@ HIGH_CARDINALITY_KEYS: Final[set[str]] = {
     "request_id",
 }
 
-# Default HTTP paths to exclude from access logging (health checks, readiness checks, metrics)
-DEFAULT_EXCLUDED_PATHS: Final[set[str]] = {"/health", "/ready", "/metrics"}
+DEFAULT_EXCLUDED_PATHS: Final[set[str]] = {
+    "/health",
+    "/ready",
+    "/metrics",
+    "/docs",
+    "/openapi.json",
+    "/favicon.ico",
+    "/static",
+}
 
 # Default string encoding
 DEFAULT_ENCODING: Final[str] = "utf-8"

@@ -52,7 +52,9 @@ class TelemetryFastAPIMiddleware(BaseHTTPMiddleware):
                 binds[f"header_{h.replace('-', '_')}"] = val
         bind_contextvars(**binds)
 
-        is_logged = self.enable_access_logs and path not in self.excluded_paths
+        is_logged = self.enable_access_logs and not any(
+            path == p or path.startswith(p + "/") for p in self.excluded_paths
+        )
         try:
             response: Response = await call_next(request)
             response.headers["X-Correlation-ID"] = cid

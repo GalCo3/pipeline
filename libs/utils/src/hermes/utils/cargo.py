@@ -35,9 +35,12 @@ def extract_cargo_files_text(
         # SiteResponse.error is loosely typed (Exception | str | None), so the
         # botocore error code is only reachable through a real ClientError.
         error = response.error
-        if isinstance(error, ClientError) and error.response["Error"]["Code"] == "NoSuchKey":
-            logger.warning("Cargo file not found in S3", status=HTTPStatus.NOT_FOUND)
-            raise CargoFileNotFoundError("Cargo file not found in S3")
+        if isinstance(error, ClientError) and error.response["Error"]["Code"] in (
+            "NoSuchKey",
+            "NoSuchBucket",
+        ):
+            logger.warning("Cargo file or bucket not found in S3", status=HTTPStatus.NOT_FOUND)
+            raise CargoFileNotFoundError("Cargo file or bucket not found in S3")
 
         if isinstance(error, Exception):
             raise error
