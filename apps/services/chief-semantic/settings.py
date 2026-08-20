@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     mongo_config: BaseMongoConfig
     triton_config: BaseTritonConfig
     # Only for a tokenizer pulled from the `tokenizers` bucket.
-    s3_config: BaseS3Config | None = None
+    tokenizer_s3_config: BaseS3Config | None = None
 
     lexical_index_name: str = "chief-lexical"
     semantic_index_name: str = "chief-semantic"

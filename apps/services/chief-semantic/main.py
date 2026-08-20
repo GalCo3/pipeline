@@ -46,7 +46,7 @@ def main():
         model_name=settings.embedding_model_name,
         model_version=settings.embedding_model_version,
         tokenizer_name_or_path=settings.tokenizer_name_or_path,
-        s3_config=settings.s3_config,
+        s3_config=settings.tokenizer_s3_config,
     )
     # Chunk with the tokenizer the embedder loaded, so limits match.
     chunker = SentenceChunker(

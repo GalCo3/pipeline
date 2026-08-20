@@ -37,7 +37,7 @@ env:
   EMBEDDING_MODEL_NAME: retrieval_embedder
 
   TOKENIZER_NAME_OR_PATH: all-MiniLM-L6-v2
-  S3_CONFIG__LOCAL_SITE__ENDPOINT: http://minio:9000
+  TOKENIZER_S3_CONFIG__LOCAL_SITE__ENDPOINT: http://minio:9000
 
   LEXICAL_INDEX_NAME: cargo-operational-lexical
   SEMANTIC_INDEX_NAME: cargo-operational-semantic
@@ -52,8 +52,8 @@ secretEnv:
   ELASTIC_CONFIG__PASSWORD: changeme
   MONGO_CONFIG__AUTH__USERNAME: root
   MONGO_CONFIG__AUTH__PASSWORD: mongoadmin
-  S3_CONFIG__LOCAL_SITE__ACCESS_KEY: minioadmin
-  S3_CONFIG__LOCAL_SITE__SECRET_KEY: minioadmin
+  TOKENIZER_S3_CONFIG__LOCAL_SITE__ACCESS_KEY: minioadmin
+  TOKENIZER_S3_CONFIG__LOCAL_SITE__SECRET_KEY: minioadmin
 
 # The consumer touches this file on every poll (see BaseConsumerHandler).
 livenessProbe:
