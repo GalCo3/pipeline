@@ -79,7 +79,7 @@ def init_tokenizer(
     tokenizer_name_or_path: str,
     s3_config: BaseS3Config | None = None,
     s3_bucket: str = "tokenizers",
-    local_downloads_folder: str = "./downloaded_tokenizers",
+    local_downloads_folder: str = "/tmp/downloaded_tokenizers",
 ):
     """
     Loads a HuggingFace tokenizer from a previous download, a local path, S3
@@ -129,7 +129,7 @@ class TritonLM:
         model_version: str = "1",
         tokenizer_name_or_path: str | None = None,
         s3_config: BaseS3Config | None = None,
-        local_downloads_folder: str = "./downloaded_tokenizers",
+        local_downloads_folder: str = "/tmp/downloaded_tokenizers",
     ):
         self.triton_handler = BaseTritonHandler(config)
         self.model_name = model_name
