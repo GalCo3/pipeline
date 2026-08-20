@@ -42,19 +42,14 @@ See the workspace-level [AGENTS.md](../../AGENTS.md) for shared tooling commands
   tokenizer of its own, so callers tokenize — that is why every wrapper here owns
   one, and why a service chunks with the same tokenizer it embeds with. This is
   the **only** Triton entry point for services; don't build a second client.
-- `semantic.py` — shared between the `*-lexical`/`*-semantic` service pairs:
-  `SemanticTriggerMessage`/`produce_semantic_trigger` for the lexical side to publish
-  delete/update_metadata/index triggers, and `build_chunk_documents`/`replace_chunks`/
-  `delete_chunks`/`diff_metadata_fields` for the semantic side to turn chunks+embeddings
-  into indexed documents and decide whether a metadata change requires re-embedding.
-  `fetch_lexical_document`/`fetch_first_chunk`/`denormalized_fields`/
-  `chunk_and_embed_document`/`patch_chunk_metadata` are the semantic side's whole
-  read-write flow: the two `*-semantic` services differ only in their indices,
-  their text field and which fields stay off a chunk, so they pass those in rather
-  than each keeping a copy of the flow. `SourceDocumentNotFoundError` is what
-  `fetch_lexical_document` raises for a trigger whose lexical document is gone.
-  Chunking (`chunking.py`) and embedding (`triton/`) live beside it — this module
-  only orchestrates Elasticsearch writes around them.
+- `semantic/` — the `*-lexical`/`*-semantic` pair's shared machinery, split by side:
+  `triggers.py` (`SemanticTriggerMessage`/`produce_semantic_trigger`, published by the
+  lexical side), `documents.py` (reading the lexical document and chunk 0,
+  `diff_metadata_fields` to decide whether a metadata change needs re-embedding,
+  `SourceDocumentNotFoundError`) and `chunks.py` (`chunk_and_embed_document`,
+  `replace_chunks`/`delete_chunks`/`patch_chunk_metadata`). The two `*-semantic`
+  services differ only in their indices, their text field and which fields stay
+  off a chunk, so they pass those in rather than each keeping a copy of the flow.
 
 ## Conventions
 

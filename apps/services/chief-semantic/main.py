@@ -48,8 +48,7 @@ def main():
         tokenizer_name_or_path=settings.tokenizer_name_or_path,
         s3_config=settings.s3_config,
     )
-    # Chunk with the tokenizer the embedder already loaded, so a chunk that
-    # measures within the limit is the same one the model sees.
+    # Chunk with the tokenizer the embedder loaded, so limits match.
     chunker = SentenceChunker(
         tokenizer=embedder.tokenizer.tokenize,
         chunk_size=settings.chunk_size,

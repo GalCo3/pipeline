@@ -148,18 +148,15 @@ class TritonLM:
 
     @property
     def model_tag(self) -> str:
-        """Identifies the served model a result came from, e.g. to stamp onto the
-        documents built out of that result."""
+        """Identifies the served model a result came from."""
         return f"{self.model_name}:{self.model_version}"
 
     def max_batch_size(self) -> int:
         """
         The `max_batch_size` the served model declares, read once per instance.
 
-        Triton rejects a request with more rows than that outright, so callers
-        batch on this number rather than one of their own. A model with batching
-        disabled declares 0, and a failed config fetch is reported as 0 too —
-        both meaning "send it in one request and let Triton be the authority".
+        0 means unbatched — the model disabled batching, or its config could not
+        be read and Triton stays the authority on what it accepts.
         """
         if self._max_batch_size is None:
             try:

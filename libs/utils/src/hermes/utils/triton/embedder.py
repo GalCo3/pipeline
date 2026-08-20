@@ -17,15 +17,10 @@ class TritonEmbedder(TritonLM):
 
     def embed_batched(self, texts: list[str], batch_size: int | None = None) -> list[list[float]]:
         """
-        Embed many texts as several requests the served model accepts.
+        Embed many texts as several requests the served model accepts, in order.
 
-        Every row of one request is padded to the longest sequence in it, so
-        batching also keeps one long text from padding out an entire corpus.
-
-        :param texts: The texts to embed, in order.
         :param batch_size: Rows per request; defaults to the model's own
             `max_batch_size`, and 0 sends everything in one request.
-        :return: One embedding vector per input text, in the same order.
         """
         if not texts:
             return []

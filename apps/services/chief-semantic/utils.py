@@ -1,9 +1,7 @@
-# ChiefEnrichedMessage.cleaned_text is `name` followed by the fetched command
-# content — `name` is the only ChiefMessage field baked into the embedded text,
-# everything else on the message is pure metadata.
+# cleaned_text is `name` followed by the command content, so `name` is the only
+# message field baked into the embedded text.
 TEXT_FIELD = "cleaned_text"
 EMBEDDED_FIELDS = {"name"}
 
-# Fields written by chief-lexical that never belong on a chunk document (large
-# text bodies, pipeline-internal bookkeeping).
+# Never belong on a chunk document: text bodies, pipeline bookkeeping.
 EXCLUDED_FIELDS = {TEXT_FIELD, "command_content", "indexed_at"}

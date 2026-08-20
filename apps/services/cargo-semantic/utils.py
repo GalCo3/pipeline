@@ -1,8 +1,6 @@
-# CargoEnrichedMessage.text_content is the raw extracted file text — nothing from
-# CargoMessage is prefixed into it, so no field is baked into the embedded text.
+# text_content is the raw extracted file text; no message field is prefixed in.
 TEXT_FIELD = "text_content"
 EMBEDDED_FIELDS: set[str] = set()
 
-# Fields written by cargo-lexical that never belong on a chunk document (large
-# text bodies, pipeline-internal bookkeeping).
+# Never belong on a chunk document: text bodies, pipeline bookkeeping.
 EXCLUDED_FIELDS = {TEXT_FIELD, "indexed_at"}
