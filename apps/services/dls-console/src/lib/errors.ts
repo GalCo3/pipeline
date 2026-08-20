@@ -31,6 +31,15 @@ export function ensureNew(doc: { status?: string | null }): void {
   if (status !== "NEW") throw notNew(status);
 }
 
+export const notDiscarded = (status: string) =>
+  new ActionError(409, `message is ${status}, not DISCARDED`, "skipped");
+
+/** Guard: undiscard only applies to DISCARDED messages. */
+export function ensureDiscarded(doc: { status?: string | null }): void {
+  const status = doc.status ?? "NEW";
+  if (status !== "DISCARDED") throw notDiscarded(status);
+}
+
 /**
  * A DLS document with no `source_topic` — nothing to replay it onto.
  *

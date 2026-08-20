@@ -13,6 +13,58 @@ export const STATUSES: Status[] = ["NEW", "REPLAYED", "DISCARDED"];
 
 export type StatusCounts = Record<Status, number>;
 
+/** Columns the message list can be sorted by — one shared list for the client's headers and the API's allowlist. */
+export const MESSAGE_SORT_KEYS = [
+  "errorType",
+  "errorMessage",
+  "sourceTopic",
+  "partition",
+  "offset",
+  "failedAt",
+  "id",
+] as const;
+export type MessageSortKey = (typeof MESSAGE_SORT_KEYS)[number];
+export type MessageSort = { key: MessageSortKey; dir: "asc" | "desc" };
+
+/** Every operator the message grid's column filter menus can send — string, number and date columns each use their own subset. */
+export type MessageFilterOperator =
+  | "contains"
+  | "doesNotContain"
+  | "equals"
+  | "doesNotEqual"
+  | "startsWith"
+  | "endsWith"
+  | "isEmpty"
+  | "isNotEmpty"
+  | "isAnyOf"
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "is"
+  | "not"
+  | "after"
+  | "onOrAfter"
+  | "before"
+  | "onOrBefore";
+
+/** Every column the filter menus can target — the sortable columns, plus `status` (shown, filterable, but not a sort key). */
+export type MessageFilterField = MessageSortKey | "status";
+
+export type MessageFilterItem = {
+  field: MessageFilterField;
+  operator: MessageFilterOperator;
+  value?: unknown;
+};
+
+/** One per column filter menu, ANDed or ORed together — the grid's own filter model, shaped for the API/URL instead of a UI library's types. */
+export type MessageFilterModel = {
+  items: MessageFilterItem[];
+  logicOperator?: "and" | "or";
+};
+
 export type Page<T> = {
   items: T[];
   total: number;
@@ -38,13 +90,13 @@ export type MessageSummary = {
   sourceTopic: string | null;
   fingerprint: string | null;
   status: Status;
+  partition: number | null;
+  offset: number | null;
   error: ErrorInfo;
   failedAt: string | null;
 };
 
 export type MessageDetail = MessageSummary & {
-  partition: number | null;
-  offset: number | null;
   errorStack: string | null;
   /** the decoded message the consumer choked on — no raw bytes, no headers */
   payload: unknown;
@@ -59,8 +111,6 @@ export type TopicSummary = {
   count: number;
   firstSeenAt: string | null;
   lastSeenAt: string | null;
-  /** the consuming service's own lag on this topic; null if unavailable */
-  lag: number | null;
 };
 
 export type GroupSummary = {
@@ -77,14 +127,9 @@ export type GroupSummary = {
   topicCount?: number;
 };
 
-export type HistoryItem = MessageSummary & {
-  resolvedAt: string | null;
-  resolvedBy: string | null;
-};
-
 export type AuditEntry = {
   id: string;
-  action: "REPLAY" | "EDIT_REPLAY" | "DISCARD" | "CLEAR_HISTORY";
+  action: "REPLAY" | "EDIT_REPLAY" | "DISCARD" | "UNDISCARD";
   actor: string;
   at: string;
   bulkId: string | null;
@@ -109,7 +154,7 @@ export type ReplayResult = {
 
 export type DiscardResult = { status: "DISCARDED" };
 
-export type ClearHistoryResult = { deleted: number };
+export type UndiscardResult = { status: "NEW" };
 
 /** One of the three selectors — error group, whole topic, or a selection. */
 export type BulkTarget = {
@@ -168,7 +213,7 @@ export type BulkResultItem = {
 
 export type BulkStatus = {
   bulkId: string;
-  action: "REPLAY" | "DISCARD";
+  action: "REPLAY" | "DISCARD" | "UNDISCARD";
   state: "RUNNING" | "DONE";
   total: number;
   ok: number;

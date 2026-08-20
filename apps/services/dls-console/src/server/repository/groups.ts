@@ -1,88 +1,66 @@
 import "server-only";
 
+import type { Document } from "mongodb";
+
 import type { GroupSummary } from "@/lib/types";
 import { countsGroup, dls, seenGroup, shapeGroup } from "@/server/repository/helpers";
 
 /**
- * Error-group aggregation over two different identities:
+ * Error-group aggregation over two different identities, both surfaced on the
+ * one merged overview screen now:
  *
- * - The topic screen (within one source topic) groups on the topic-scoped
- *   `fingerprint`.
- * - Home "by error" (across all topics) groups on the topic-independent
- *   `errorFingerprint`, so one error hitting N topics collapses to one row.
+ * - Scoped to a topic filter, groups on the topic-scoped `fingerprint` (`fp:`).
+ * - Unscoped (no topic filter), groups on the topic-independent
+ *   `errorFingerprint` (`efp:`), so one error hitting N topics collapses to
+ *   one row instead of N.
  *
  * The grouping key is projected back as `fingerprint` in both cases, so the UI
- * keys/expands/bulk-acts on a single field. A topic-screen value only ever lives
- * in one topic (bulk stays topic-scoped); a home value spans topics (bulk spans
- * topics). See `messages.messageFilter` for the either-field match that makes
- * the shared key resolve correctly.
+ * keys/expands/bulk-acts on a single field regardless of which one produced
+ * the row. See `messages.messageFilter` for the either-field match that makes
+ * that shared key resolve correctly when a group is expanded.
  */
 
 /** Everything but `_id` — the caller supplies the identity to fold on. */
-function groupAccumulators() {
+function groupAccumulators(): Record<string, unknown> {
   return {
     errorType: { $first: "$errorType" },
-    // The normalized text, not the raw one: the raw sample of a group whose
-    // members differ only by an interpolated id would show one arbitrary id as
-    // if it were the error.
+    // The normalized text, not the raw one: the sample of a group whose
+    // members differ only by an interpolated id would otherwise show one
+    // arbitrary id as if it were the error.
     messageSample: { $first: "$errorNormalized" },
-    // An error can span topics; track how many so the home view can flag a
-    // cross-cutting failure.
+    // Cross-topic view only: how many source topics this error spans.
     topics: { $addToSet: "$source_topic" },
     ...countsGroup(),
     ...seenGroup(),
   };
 }
 
-function groupStage(key: string) {
-  return { _id: `$${key}`, ...groupAccumulators() };
+function shapeCrossTopicGroup(doc: Document): GroupSummary {
+  return {
+    ...shapeGroup(doc),
+    topicCount: (doc.topics as unknown[] | undefined)?.length ?? 0,
+  };
 }
 
+/** Error groups within one source topic, keyed on the topic-scoped `fingerprint`. */
 export async function groupsInTopic(sourceTopic: string): Promise<GroupSummary[]> {
   const docs = await dls()
     .aggregate([
       { $match: { source_topic: sourceTopic } },
-      { $group: groupStage("fingerprint") },
+      { $group: { _id: "$fingerprint", ...groupAccumulators() } },
       { $sort: { lastSeenAt: -1 } },
     ])
     .toArray();
   return docs.map(shapeGroup);
 }
 
-/**
- * One group by its key, for the group screen's own header.
- *
- * The key belongs to either namespace, so this matches both fields the way
- * `messages.messageFilter` does and groups the survivors into a single row —
- * `$group` on a constant rather than on the key itself, because a cross-topic
- * `efp:` value lives in `errorFingerprint` while a topic-scoped `fp:` lives in
- * `fingerprint`, and grouping on one field would split or drop the other.
- *
- * Independent of the screen's status filter on purpose: the header describes the
- * group, and it would be absurd for the error class to vanish because the
- * operator switched to a filter that currently matches nothing.
- */
-export async function groupByKey(fingerprint: string): Promise<GroupSummary | null> {
-  const docs = await dls()
-    .aggregate([
-      { $match: { $or: [{ fingerprint }, { errorFingerprint: fingerprint }] } },
-      { $group: { _id: { $literal: fingerprint }, ...groupAccumulators() } },
-    ])
-    .toArray();
-  if (!docs.length) return null;
-  return {
-    ...shapeGroup(docs[0]),
-    topicCount: (docs[0].topics as unknown[] | undefined)?.length ?? 0,
-  };
-}
-
-/** Error groups across every source topic — the home "by error" grouping. */
+/** Error groups across every source topic, keyed on `errorFingerprint`. */
 export async function allGroups(): Promise<GroupSummary[]> {
   const docs = await dls()
-    .aggregate([{ $group: groupStage("errorFingerprint") }, { $sort: { lastSeenAt: -1 } }])
+    .aggregate([
+      { $group: { _id: "$errorFingerprint", ...groupAccumulators() } },
+      { $sort: { lastSeenAt: -1 } },
+    ])
     .toArray();
-  return docs.map((doc) => ({
-    ...shapeGroup(doc),
-    topicCount: (doc.topics as unknown[] | undefined)?.length ?? 0,
-  }));
+  return docs.map(shapeCrossTopicGroup);
 }

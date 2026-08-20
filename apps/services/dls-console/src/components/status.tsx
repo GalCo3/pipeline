@@ -5,7 +5,7 @@
 // "Dispatch" rule: green is the single "cleared" note, so REPLAYED (a completed
 // forward action) is the only green; NEW draws attention in amber; DISCARDED
 // recedes to graphite. Destructive red stays reserved for failures.
-import { Archive, CheckCircle2, CircleDot, type LucideIcon } from "lucide-react";
+import { Archive, CircleDot, RotateCw, type LucideIcon } from "lucide-react";
 
 import type { Status } from "@/lib/types";
 
@@ -33,7 +33,7 @@ export const STATUS_META: Record<Status, StatusMeta> = {
   },
   REPLAYED: {
     label: "Replayed",
-    Icon: CheckCircle2,
+    Icon: RotateCw,
     badge: "bg-success/10 text-success ring-success/25",
     dot: "bg-success",
     text: "text-success",

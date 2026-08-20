@@ -7,7 +7,7 @@ import { ensureStamped } from "@/server/repository/stamp";
 
 export const dynamic = "force-dynamic";
 
-/** Error groups across every topic — the home "by error" grouping (efp:*). */
+/** Error groups across every topic — the merged overview's cross-topic grouping (efp:). */
 export const GET = route(async () => {
   await requireSession();
   await ensureStamped();

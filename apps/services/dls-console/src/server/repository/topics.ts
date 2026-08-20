@@ -12,12 +12,12 @@ import {
 /**
  * Overview aggregation: one row per source topic.
  *
- * Keyed on `source_topic` because it is what replay targets, what consumer lag
- * is measured against, and — since each service consumes its own topic — which
- * service failed. There is no `service` field on a DLS record, and there should
- * not be one: the topic already says it.
+ * Keyed on `source_topic` because it is what replay targets, and — since each
+ * service consumes its own topic — which service failed. There is no
+ * `service` field on a DLS record, and there should not be one: the topic
+ * already says it.
  */
-export async function topicsSummary(): Promise<Omit<TopicSummary, "lag">[]> {
+export async function topicsSummary(): Promise<TopicSummary[]> {
   const docs = await dls()
     .aggregate([
       {

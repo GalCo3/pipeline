@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { ActionError } from "@/lib/errors";
 import type { BulkEdit, BulkTarget } from "@/lib/types";
-import { discard } from "@/server/actions/discard";
+import { discard, undiscard } from "@/server/actions/discard";
 import { replay } from "@/server/actions/replay";
 import { appendResult, createBulk, finishBulk, resolveTarget } from "@/server/repository/bulk";
 
@@ -19,7 +19,7 @@ import { appendResult, createBulk, finishBulk, resolveTarget } from "@/server/re
 
 /** Resolve the target, persist a RUNNING bulk, return the ticket. */
 export async function start(input: {
-  action: "REPLAY" | "DISCARD";
+  action: "REPLAY" | "DISCARD" | "UNDISCARD";
   actor: string;
   target: BulkTarget;
 }): Promise<{ bulkId: string; messageIds: string[] }> {
@@ -43,7 +43,7 @@ export async function start(input: {
  */
 export async function run(input: {
   bulkId: string;
-  action: "REPLAY" | "DISCARD";
+  action: "REPLAY" | "DISCARD" | "UNDISCARD";
   actor: string;
   messageIds: string[];
   reason?: string | null;
@@ -65,7 +65,7 @@ export async function run(input: {
 async function runOne(
   input: {
     bulkId: string;
-    action: "REPLAY" | "DISCARD";
+    action: "REPLAY" | "DISCARD" | "UNDISCARD";
     actor: string;
     reason?: string | null;
     edit?: BulkEdit | null;
@@ -79,6 +79,10 @@ async function runOne(
         bulkId: input.bulkId,
       });
       return { outcome: "ok", detail: { producedOffset: result.producedOffset } };
+    }
+    if (input.action === "UNDISCARD") {
+      await undiscard(messageId, input.actor, { bulkId: input.bulkId });
+      return { outcome: "ok", detail: {} };
     }
     await discard(messageId, input.actor, { reason: input.reason, bulkId: input.bulkId });
     return { outcome: "ok", detail: {} };

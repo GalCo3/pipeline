@@ -51,11 +51,23 @@ export async function markDiscarded(messageId: string, actor: string): Promise<b
 }
 
 /**
- * Append one audit document. `messageId` is null for global actions
- * (CLEAR_HISTORY), which belong to no single message.
+ * DISCARDED -> NEW. The one reversible transition: puts a discarded message
+ * back in the operator's queue by clearing the resolution fields entirely
+ * rather than setting `status: "NEW"` — absence already means NEW everywhere
+ * else in the app (see `statusFilter`), so this restores the document to
+ * exactly the shape it had before it was ever touched.
  */
+export async function markUndiscarded(messageId: string): Promise<boolean> {
+  const result = await dls().updateOne(
+    { _id: objectId(messageId)!, ...statusFilter("DISCARDED") },
+    { $unset: { status: "", resolvedAt: "", resolvedBy: "" } },
+  );
+  return result.matchedCount === 1;
+}
+
+/** Append one audit document for a single message action. */
 export async function insertAudit(
-  messageId: string | null,
+  messageId: string,
   entry: {
     action: string;
     actor: string;
@@ -66,7 +78,7 @@ export async function insertAudit(
   },
 ): Promise<void> {
   await audit().insertOne({
-    messageId: messageId === null ? null : objectId(messageId),
+    messageId: objectId(messageId),
     action: entry.action,
     actor: entry.actor,
     at: now(),

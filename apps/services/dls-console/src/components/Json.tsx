@@ -46,10 +46,12 @@ export function PayloadEditor({
   value,
   onChange,
   rows = 16,
+  placeholder,
 }: {
   value: string;
   onChange: (text: string, parsed: unknown | undefined) => void;
   rows?: number;
+  placeholder?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +60,7 @@ export function PayloadEditor({
       <textarea
         rows={rows}
         value={value}
+        placeholder={placeholder}
         spellCheck={false}
         onChange={(e) => {
           const text = e.target.value;

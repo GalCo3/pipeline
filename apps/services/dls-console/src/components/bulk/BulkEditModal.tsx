@@ -7,7 +7,7 @@ import { api } from "@/lib/client";
 import type { BulkEdit, BulkTarget } from "@/lib/types";
 import { Modal } from "@/components/Modal";
 import { FieldsEditor } from "@/components/Fields";
-import { RecordOverridesFields, useRecordOverrides } from "@/components/RecordOverrides";
+import { HeadersField, TargetTopicField, useRecordOverrides } from "@/components/RecordOverrides";
 import { Button, Eyebrow, Spinner } from "@/components/ui";
 
 /**
@@ -85,6 +85,20 @@ export function BulkEditModal({
               : " Only values identical across every one of them can be edited."}
           </p>
 
+          <TargetTopicField
+            state={overrides}
+            placeholder={
+              data.targetVaries
+                ? "messages replay to their own source topic"
+                : (data.targetTopic ?? "")
+            }
+            hint={
+              data.targetVaries
+                ? "This group spans topics. Left empty, each message goes back to the topic it failed on."
+                : "Left empty, every message goes back to the topic it failed on."
+            }
+          />
+
           {canEdit && (
             <div>
               <Eyebrow>Shared payload fields</Eyebrow>
@@ -105,20 +119,7 @@ export function BulkEditModal({
             </div>
           )}
 
-          <RecordOverridesFields
-            state={overrides}
-            showKey={false}
-            topicPlaceholder={
-              data.targetVaries
-                ? "messages replay to their own source topic"
-                : (data.targetTopic ?? "")
-            }
-            topicHint={
-              data.targetVaries
-                ? "This group spans topics. Left empty, each message goes back to the topic it failed on."
-                : "Left empty, every message goes back to the topic it failed on."
-            }
-          />
+          <HeadersField state={overrides} />
         </div>
       )}
     </Modal>

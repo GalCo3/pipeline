@@ -186,9 +186,6 @@ export const config = {
       produceTimeoutMs: num("KAFKA_PRODUCE_TIMEOUT", 15) * 1000,
     };
   },
-  get lag() {
-    return { groupIdTemplate: str("LAG_GROUP_ID_TEMPLATE", "{service}-service") };
-  },
   /**
    * OIDC, confidential client. Names mirror dlq-triage's `AUTH__OIDC_*` block
    * (flattened, as everything here is) so one realm's client spells the same
@@ -233,9 +230,4 @@ export const config = {
 /** `cargo-lexical.files` -> `cargo-lexical`. */
 export function serviceOf(sourceTopic: string): string {
   return sourceTopic.split(".", 1)[0];
-}
-
-/** `cargo-lexical.files` -> `cargo-lexical-service`. */
-export function groupIdFor(sourceTopic: string): string {
-  return config.lag.groupIdTemplate.replace("{service}", serviceOf(sourceTopic));
 }

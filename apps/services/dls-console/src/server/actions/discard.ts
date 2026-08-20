@@ -1,9 +1,9 @@
 import "server-only";
 
-import { ensureNew, notFound, notNew } from "@/lib/errors";
-import type { DiscardResult } from "@/lib/types";
+import { ensureDiscarded, ensureNew, notDiscarded, notFound, notNew } from "@/lib/errors";
+import type { DiscardResult, UndiscardResult } from "@/lib/types";
 import { loadMessage } from "@/server/repository/messages";
-import { insertAudit, markDiscarded } from "@/server/repository/transitions";
+import { insertAudit, markDiscarded, markUndiscarded } from "@/server/repository/transitions";
 
 /**
  * Discard — soft-delete + audit. Never removes the document.
@@ -32,4 +32,32 @@ export async function discard(
     bulkId: options.bulkId,
   });
   return { status: "DISCARDED" };
+}
+
+/**
+ * Undiscard — the one reversible transition, single-message only. Puts a
+ * discarded message back in the operator's NEW queue; the discard's own
+ * audit entry (and any reason it carried) stays put as the historical record.
+ */
+export async function undiscard(
+  messageId: string,
+  actor: string,
+  options: { bulkId?: string | null } = {},
+): Promise<UndiscardResult> {
+  const doc = await loadMessage(messageId);
+  if (!doc) throw notFound();
+  ensureDiscarded(doc);
+
+  if (!(await markUndiscarded(messageId))) {
+    throw notDiscarded(doc.status ?? "NEW"); // lost a concurrent transition race
+  }
+
+  await insertAudit(messageId, {
+    action: "UNDISCARD",
+    actor,
+    result: "OK",
+    detail: {},
+    bulkId: options.bulkId,
+  });
+  return { status: "NEW" };
 }

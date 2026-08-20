@@ -34,11 +34,15 @@ export function useBulk() {
     replay: (target: BulkTarget, edit?: BulkEdit | null) => launch(api.bulkReplay(target, edit)),
     discard: (target: BulkTarget, reason?: string | null) =>
       launch(api.bulkDiscard(target, reason)),
+    undiscard: (target: BulkTarget) => launch(api.bulkUndiscard(target)),
+    /** Hides the progress card. The run itself, if still going, keeps going server-side. */
     close: () => setBulkId(null),
-    finished: () => {
-      setBulkId(null);
-      // Everything on screen counted the messages this just resolved.
-      queryClient.invalidateQueries();
-    },
+    /**
+     * Everything on screen counted the messages this run just resolved — called
+     * as soon as the run reaches DONE (see `BulkProgressBar`'s own effect), not
+     * on dismiss, so the list is current whether or not anyone ever clicks
+     * Dismiss on the card.
+     */
+    refresh: () => queryClient.invalidateQueries(),
   };
 }

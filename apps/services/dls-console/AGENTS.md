@@ -24,7 +24,7 @@ service consumer fails ──▶ hermes.dls (MongoDB) ──▶ dls-console ─�
   `MONGO_CONFIG__LOCAL_HOST`, `CONSUMER_CONFIG__BOOTSTRAP_SERVERS`,
   `DLS_COLLECTION` — pydantic-settings spelling, nested with `__`, so one
   cluster's ConfigMap and Secret feed this app and the services alike. Only this
-  app's own settings (`AUTH_*`, `LAG_*`, `DEV_*`) are flat, having no Python
+  app's own settings (`AUTH_*`, `DEV_*`) are flat, having no Python
   counterpart to agree with.
 - **Kafka is `@confluentinc/kafka-javascript`** — the same librdkafka the Python
   services use, so broker TLS and config keys (`ssl.ca.location`, …) carry over
@@ -40,9 +40,9 @@ with the recipe and the stamp pass re-derives everything.
 ## Key invariants — read before coding
 
 - **Mongo is the read path, Kafka the write path.** The console browses, groups
-  and counts from `hermes.dls` only. It touches Kafka to produce a replay and to
-  read consumer-lag metadata. **It never consumes** — joining a consumer group
-  would move the pipeline's own offsets.
+  and counts from `hermes.dls` only. It touches Kafka to produce a replay and,
+  for the health probe, to check the broker is reachable. **It never
+  consumes** — joining a consumer group would move the pipeline's own offsets.
 - **The DLS document belongs to the pipeline.**
   `libs/utils/src/hermes/utils/dls.py` is the contract; this app may add triage
   fields beside it but never rewrites `original_message`, `source_topic`,
@@ -106,10 +106,14 @@ survives a restart.
 
 ### State machine
 
-`NEW → REPLAYED` (replay / edit & replay) or `NEW → DISCARDED` (discard); both
-terminal and read-only in the UI. Transitions guard on "still NEW" *in the update
-filter*, so two concurrent actions cannot both resolve a document — the loser
-matches nothing and reports 409.
+`NEW → REPLAYED` (replay / edit & replay) or `NEW → DISCARDED` (discard);
+REPLAYED is terminal and read-only in the UI. DISCARDED alone has a way back:
+`DISCARDED → NEW` (undiscard) clears the resolution fields entirely rather than
+writing `status: "NEW"` — absence already means NEW everywhere else, so the
+document lands back in exactly the shape it had before it was ever touched.
+Transitions guard on "still NEW" (or, for undiscard, "still DISCARDED") *in the
+update filter*, so two concurrent actions cannot both resolve/restore the same
+document — the loser matches nothing and reports 409.
 
 A replayed message that fails again is written by the service as a **new
 document**; it carries `x-dls-replay-of` on the Kafka record, but the DLS record
@@ -124,9 +128,10 @@ timestamps, hex digests, addresses, **opaque alphanumeric ids**, then bare
 numbers — in that order, or the number sweep shreds the others), recover the
 exception class from the last traceback line,
 then hash twice: `fingerprint = sha1(type + normalized + source_topic)` (`fp:`,
-drives the topic screen) and `errorFingerprint = sha1(type + normalized)`
-(`efp:`, collapses one error spanning N topics into one row). Group lookups and
-bulk-by-group match either key.
+the overview's topic-scoped "groups" lens) and `errorFingerprint =
+sha1(type + normalized)` (`efp:`, the unscoped one — collapses one error
+spanning N topics into one row). Group lookups and bulk-by-group match either
+key.
 
 The writer mask is what makes `efp:` do anything at all here: every service
 interpolates its own name into the message (`Failed to index cargo-lexical
@@ -172,17 +177,17 @@ above it.
 
 | Method & path | Purpose |
 | --- | --- |
-| `GET /topics` | Overview: per-source-topic counts by status, distinct error groups, document count, consumer lag, first/last seen |
-| `GET /topics/{sourceTopic}/groups` | Error groups in a topic (`fp:`) |
-| `GET /groups` | Error groups across every topic (`efp:`) |
-| `GET /groups/{fingerprint}/messages` | Messages in a group — paginated, `status`-filterable |
-| `GET /messages?sourceTopic=&fingerprint=&status=&q=&page=` | Generic listing |
-| `GET /messages/{id}` | Full document: payload, error + stack, partition/offset |
+| `GET /topics` | Overview's "topics" lens: per-source-topic counts by status, distinct error groups, document count, first/last seen |
+| `GET /topics/{sourceTopic}/groups` | Overview's "groups" lens, scoped to one topic (`fp:`) |
+| `GET /groups` | Overview's "groups" lens, unscoped — every error across every topic (`efp:`) |
+| `GET /messages?sourceTopic=&fingerprint=&status=&q=&page=&pageSize=` | Generic listing — the "messages" lens and an expanded group both go through this one route |
+| `GET /messages/{id}` | Full document: payload, error + stack, partition/offset — also what the overview's id-lookup box calls to confirm an id before navigating to it |
 | `GET /messages/{id}/audit` | Audit trail for one message |
 | `GET /messages/{id}/neighbours?fingerprint=` | Prev/next within the group — the serial review loop |
 | `POST /messages/{id}/replay` | Replay; body `{payload?, targetTopic?, key?, headers?}` — `payload` makes it edit & replay |
 | `POST /messages/{id}/discard` | Soft-delete, body `{reason?}` |
-| `GET /history`, `DELETE /history` | Resolved messages; Clear-history purge |
+| `GET /operations` | History: one row per operation (single action or whole bulk run), newest first |
+| `DELETE /history` | Clear-history purge of every resolved message |
 | `POST /bulk/replay`, `POST /bulk/discard` | `{target: {fingerprint} \| {sourceTopic} \| {messageIds[]}, edit?/reason?}` → `202 {bulkId}` |
 | `POST /bulk/shared` | Synchronous — the shared payload keys a bulk edit may touch |
 | `GET /bulk/{bulkId}` | Progress: `{state: RUNNING\|DONE, total, ok, failed, skipped, results[]}` |
@@ -212,6 +217,10 @@ beside the untouched `original_message`.
 **Discard** — `status=DISCARDED`, `resolvedAt/By`, audit with the optional
 reason. The consumer already committed the offset when it dead-lettered.
 
+**Undiscard** — guard DISCARDED; `$unset` `status`/`resolvedAt`/`resolvedBy` (back
+to the field-absent-means-NEW default) + audit. Single-message only, no Kafka
+side effect — same reasoning as discard, just the other direction.
+
 **Bulk** — target an error group, a whole topic, or an explicit selection. Only
 `NEW` messages are eligible; the rest are skipped and reported. One `bulkId`
 stamps every resulting audit entry. Without a redirect each message replays to
@@ -239,52 +248,107 @@ entry.
 
 ## UI
 
-Drill-down: **overview → topic or error group → one message + actions**, plus a
-**History** screen. The overview has two lenses over the same store because the
-operator arrives with one of two questions: "by topic" answers *which service is
-bleeding*, "by error" answers *what is actually broken*.
+Drill-down: **overview → one message + actions**, plus a **History** screen.
+There used to be a separate topic screen (`/topics/{sourceTopic}`); it is
+folded into the overview now (`src/app/page.tsx`), because the operator's
+questions — *which service is bleeding*, *what is actually broken*, *find me
+one message* — are all views over the same store, not different screens. The
+whole thing is one URL: `topic`, `lens`, `status`, `q`, `page` and `pageSize`
+are query params, never a `useState` that isn't also reflected in the address
+bar, so an operator can paste their exact current view — a topic, a status
+filter, a page — to someone else. `Breadcrumbs` (`components/Breadcrumbs.tsx`)
+still carries Overview → topic → message on the message screen, since that one
+is still its own route; the topic link there points at `/?topic=…`.
 
-The overview is three tiers and stays three: headline, four counts, one list.
-There is deliberately no "most frequent errors" panel beside the list — it
-ranked rows the list already held, so it read as a second thing to scan rather
-than a shortcut, and the aggregation behind it is gone with it (`/stats` returns
-totals and a topic count, nothing more). Type is sized for a wall screen: `Panel`
-lists run at body size with mono sub-lines, and the numeric columns are
-fixed-width and tabular so counts line up down a list instead of drifting with
-the text beside them. Each list carries a column header — the right-hand columns
-are icons and dots, fast to scan once known and opaque until then.
+`lens` (a `Segmented`, not a route) picks what the overview lists below the
+headline counts:
+- **topics** — one row per source topic (`GET /topics`). Picking one sets
+  `topic` and switches to `groups`.
+- **groups** — error groups, collapsible in place (`components/
+  GroupSection.tsx`). Scoped to `topic` when it's set (`GET /topics/
+  {sourceTopic}/groups`, `fp:`); unscoped, it's every error across every topic
+  collapsed by `errorFingerprint` (`GET /groups`, `efp:`) — one bug that hits
+  four topics reads as one row, not four. Same component either way: a
+  message's own `sourceTopic` drives its link, never a topic threaded down
+  from the caller, since a cross-topic group's members don't share one.
+- **messages** — a flat, paginated, searchable list (`GET /messages`), scoped
+  to `topic` when set, otherwise every message in the store.
 
-The group screen carries the same two bulk entry points as the topic screen:
-**Bulk edit & replay** over every NEW member, and per-row checkboxes feeding a
-fixed selection bar for a subset. Both open the one bulk modal — a group is a
-target like any other, and having to leave the group to bulk-act on it was the
-gap.
+The overview is three tiers and stays three: headline, three counts (NEW /
+REPLAYED / DISCARDED — no topic-count card competing with the list beneath it),
+one list. There is deliberately no "most frequent errors" panel beside the
+list — it ranked rows the list already held, so it read as a second thing to
+scan rather than a shortcut, and the aggregation behind it is gone with it
+(`/stats` returns totals and a topic count, nothing more — the topic count
+itself is no longer rendered as its own card). Type is sized for a wall
+screen: `Panel` lists run at body size with mono sub-lines, and the numeric
+columns are fixed-width and tabular so counts line up down a list instead of
+drifting with the text beside them. Status words are spelled out in full (New
+/ Replayed / Discarded) rather than abbreviated, on every screen that lists
+them.
+
+Expanding a group loads its messages (`GET /messages?fingerprint=`) on
+demand, paginated, with the same per-row checkboxes and the same fixed
+selection bar the flat message list uses. There is deliberately no per-group
+Replay/Discard button on the header row — acting on a group means expanding
+it and selecting from the same checkboxes every other list offers, so there
+is exactly one bulk-action path in the UI rather than a shortcut that
+duplicates it. The badge next to the collapse chevron is the group's message
+count, visible without expanding — a plain number rather than an icon, since
+an icon there read as claiming something else about the group.
+
+The id-lookup box on the overview's header is a shortcut, not a filter: it
+calls `GET /messages/{id}` to confirm the id exists before navigating to
+`/messages/{id}`, and reports "no message with that id" inline rather than
+routing to a 404. It is not part of the query-param state — landing on that
+one message is the point, not sharing "I looked up an id".
 
 The message screen's header leads with the **payload's own id**
 (`id`/`ID`/`Id`/`iD`/`_id` — case is not agreed across producers), then the Mongo
 **`doc`** id the API keys on. Both are labelled: unlabelled, two hex-ish strings
 side by side read as the same thing said twice. `partition` / `offset` belong to
 the Coordinates panel and the header does not repeat them as a `part:offset`
-chip.
+chip. Message-list rows (flat list, expanded group, History) show that same
+Mongo id too, since it is what an operator pastes to open the message directly.
 
-Filters default to `NEW` — resolved messages live on History. Status colors are
-consistent everywhere (NEW = attention/amber, REPLAYED = success/green,
-DISCARDED = muted), and color is never the only signal: each status pairs a glyph
-with its hue. Destructive and bulk actions always confirm and always show
-per-message results — silent partial failure is a bug. **Discard confirms
-twice**: the dialog, then a five-second countdown after the operator commits,
-cancellable for as long as it runs. Replay is recoverable — the message goes
-back to its topic and re-dead-letters if it fails again — but a discard is a
-terminal state with no undo in the UI, so the second gate is where a mis-aimed
-one, single or bulk, gets taken back. Nothing is sent until the count reaches
-zero.
+Filters default to `NEW`, but every status list — NEW / REPLAYED / DISCARDED /
+ALL — is one click away; resolved messages otherwise live on History. Status
+colors are consistent everywhere (NEW = attention/amber, REPLAYED =
+success/green, DISCARDED = muted), and color is never the only signal: each
+status pairs a glyph with its hue. Destructive and bulk actions always confirm
+and always show per-message results — silent partial failure is a bug.
+**Discard's grace period is a toast, not a modal**: the confirm dialog (which
+takes an optional reason, carried through to the audit entry) fires nothing
+yet — it opens `UndoBar` (`components/Modal.tsx`), a bar that counts down five
+seconds and only then calls the action, with `Undo` unmounting it. The rest of
+the screen stays fully usable while it counts, which is the point: a
+mis-aimed discard — the one action with no undo in the UI — gets taken back
+without blocking on it. Bulk progress (`BulkProgressBar`, `components/bulk/`)
+follows the same non-blocking shape: a bar that polls until the run is `DONE`,
+per-message results collapsed behind "Details" rather than a popup that would
+have to be dismissed before the operator could do anything else.
 
-`components/Footer.tsx` carries the signature line and two easter eggs (the
-skull cycles epitaphs, the konami code prints a line). They are inert by
-construction — they change text and nothing else, touch no request, no session
-and no store — because the worst thing an operator should be able to do by
-poking at the footer mid-incident is read a joke. The key handler ignores events
-from `INPUT`/`TEXTAREA` so it cannot fire while someone is editing a payload.
+Neither bar positions itself — both render inside `BottomBarStack`
+(`components/Modal.tsx`), the one `position: fixed` element at the bottom of
+the viewport, alongside the overview's own selection bar when that's also up.
+`BottomBarStack` lays its children out with `flex-col-reverse`, so whichever
+combination happens to be active — a selection, a discard counting down, a
+bulk run still in flight, any two, all three (replay a group, then discard a
+different selection before dismissing that run's progress) — stacks by real
+layout instead of by a hand-picked offset that only covers the cases someone
+thought to enumerate. List bottom-most-first: the overview puts the
+selection bar (persistent, reflects whatever is currently checked) before the
+action bars (ephemeral, can be tracking an earlier selection than what's
+checked now). Replay is recoverable on its own terms (the message goes back
+to its topic and re-dead-letters if it fails again), so it fires immediately
+with no grace period.
+
+Paginated lists (messages, an expanded group, History) let the operator pick
+the page size (`Pagination`'s `onPageSize`, `components/ui.tsx`) rather than
+being locked to one row count.
+
+`components/Footer.tsx` carries only the signature line — no store epitaph, no
+skull, no konami code.
 
 ## Build & run
 

@@ -8,7 +8,7 @@ import { useState } from "react";
  *
  * The screens are client components against `/api` rather than server
  * components reading Mongo directly, and that is deliberate: a triage console is
- * a live instrument — polling for lag and bulk progress, invalidating after an
+ * a live instrument — polling for bulk progress, invalidating after an
  * action, keeping filters in the URL — which is what a query cache is for. It
  * also means the same REST surface the old SPA had stays available to anything
  * else that wants it.

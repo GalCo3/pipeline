@@ -17,5 +17,6 @@ export const GET = route(async (request: Request, ctx: { params: Promise<{ id: s
   const url = new URL(request.url);
   const fingerprint = url.searchParams.get("fingerprint");
   if (!fingerprint) return NextResponse.json({ prev: null, next: null });
-  return NextResponse.json(await neighbours(id, fingerprint, url.searchParams.get("status")));
+  const status = url.searchParams.get("status");
+  return NextResponse.json(await neighbours(id, fingerprint, status ? status.split(",").filter(Boolean) : null));
 });

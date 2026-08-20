@@ -3,8 +3,23 @@
 import { useState } from "react";
 
 import type { RecordOverrides } from "@/lib/types";
-import { FieldsEditor } from "@/components/Fields";
+import { PayloadEditor } from "@/components/Json";
 import { Eyebrow, Input } from "@/components/ui";
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Headers go out as a flat string map — a value that parsed as something else
+ * (a number, an object, ...) is stringified on the way out, same as it would
+ * be if typed as a string literally.
+ */
+function stringifyValues(value: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(value).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]),
+  );
+}
 
 /**
  * The record-level fields a replay form offers: where it goes, what key it
@@ -27,14 +42,15 @@ import { Eyebrow, Input } from "@/components/ui";
 export type OverridesState = {
   key: string;
   setKey: (value: string) => void;
-  /** parsed headers, or `undefined` while a row is invalid */
+  headersText: string;
+  setHeadersText: (value: string) => void;
+  /** parsed + stringified headers, or `undefined` while the JSON is invalid/not an object */
   headers: Record<string, string> | undefined;
-  setHeaders: (value: Record<string, string> | undefined) => void;
-  headersError: string | null;
-  setHeadersError: (value: string | null) => void;
+  /** only for shapes `PayloadEditor`'s own syntax check can't catch — valid JSON that isn't an object */
+  headersShapeError: string | null;
   targetTopic: string;
   setTargetTopic: (value: string) => void;
-  /** false while a field is mid-edit and invalid — the caller disables commit */
+  /** false while the headers JSON is mid-edit and invalid — the caller disables commit */
   valid: boolean;
   /** only the fields the operator actually filled in */
   overrides: RecordOverrides;
@@ -44,19 +60,48 @@ export type OverridesState = {
 export function useRecordOverrides(): OverridesState {
   const [key, setKey] = useState("");
   const [targetTopic, setTargetTopic] = useState("");
+  const [headersText, setHeadersTextState] = useState("");
   const [headers, setHeaders] = useState<Record<string, string> | undefined>({});
-  const [headersError, setHeadersError] = useState<string | null>(null);
+  const [headersShapeError, setHeadersShapeError] = useState<string | null>(null);
+
+  function setHeadersText(text: string) {
+    setHeadersTextState(text);
+    if (!text.trim()) {
+      // Untouched (or cleared back to empty) means "no extra headers", not
+      // "invalid JSON" — the placeholder shows `{}` but nothing is sent.
+      setHeaders({});
+      setHeadersShapeError(null);
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Syntax errors are shown by `PayloadEditor` itself, right under the
+      // textarea — nothing more to say here.
+      setHeaders(undefined);
+      setHeadersShapeError(null);
+      return;
+    }
+    if (!isPlainObject(parsed)) {
+      setHeaders(undefined);
+      setHeadersShapeError("Headers must be a JSON object.");
+      return;
+    }
+    setHeaders(stringifyValues(parsed));
+    setHeadersShapeError(null);
+  }
 
   return {
     key,
     setKey,
+    headersText,
+    setHeadersText,
     headers,
-    headersError,
-    setHeaders,
-    setHeadersError,
+    headersShapeError,
     targetTopic,
     setTargetTopic,
-    valid: headersError === null,
+    valid: headers !== undefined,
     overrides: {
       key: key || null,
       headers: headers && Object.keys(headers).length ? headers : null,
@@ -65,69 +110,74 @@ export function useRecordOverrides(): OverridesState {
   };
 }
 
-export function RecordOverridesFields({
+/**
+ * Three independent sections — topic, key, headers — kept separate (rather
+ * than one fixed-order block) so a caller can interleave them with its own
+ * payload field: the single-message panel wants topic, key, value, headers;
+ * bulk has no key at all.
+ */
+
+export function TargetTopicField({
   state,
-  topicPlaceholder,
-  topicHint,
-  showKey = true,
+  placeholder,
+  hint,
 }: {
   state: OverridesState;
-  topicPlaceholder: string;
-  topicHint: string;
-  showKey?: boolean;
+  placeholder: string;
+  hint: string;
 }) {
   return (
-    <div className="space-y-4">
-      <div>
-        <Eyebrow>Produced to</Eyebrow>
-        <Input
-          className="mt-1 w-full font-mono"
-          placeholder={topicPlaceholder}
-          value={state.targetTopic}
-          onChange={(e) => state.setTargetTopic(e.target.value)}
-          aria-label="Target topic"
+    <div>
+      <Eyebrow>Topic</Eyebrow>
+      <Input
+        className="mt-1 w-full font-mono"
+        placeholder={placeholder}
+        value={state.targetTopic}
+        onChange={(e) => state.setTargetTopic(e.target.value)}
+        aria-label="Target topic"
+      />
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+export function RecordKeyField({ state }: { state: OverridesState }) {
+  return (
+    <div>
+      <Eyebrow>Key</Eyebrow>
+      <Input
+        className="mt-1 w-full font-mono"
+        placeholder="none — produced keyless"
+        value={state.key}
+        onChange={(e) => state.setKey(e.target.value)}
+        aria-label="Record key"
+      />
+      <p className="mt-1 text-xs text-muted-foreground">
+        Chooses the partition. The original key was never stored, so empty means keyless.
+      </p>
+    </div>
+  );
+}
+
+export function HeadersField({ state }: { state: OverridesState }) {
+  return (
+    <div>
+      <Eyebrow>Headers</Eyebrow>
+      <div className="mt-1">
+        <PayloadEditor
+          value={state.headersText}
+          rows={4}
+          placeholder="{}"
+          onChange={(text) => state.setHeadersText(text)}
         />
-        <p className="mt-1 text-xs text-muted-foreground">{topicHint}</p>
       </div>
-
-      {showKey && (
-        <div>
-          <Eyebrow>Record key</Eyebrow>
-          <Input
-            className="mt-1 w-full font-mono"
-            placeholder="none — produced keyless"
-            value={state.key}
-            onChange={(e) => state.setKey(e.target.value)}
-            aria-label="Record key"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Chooses the partition. The original key was never stored, so empty means keyless.
-          </p>
-        </div>
+      {state.headersShapeError && (
+        <p className="mt-1 text-xs text-destructive">{state.headersShapeError}</p>
       )}
-
-      <div>
-        <Eyebrow>Headers</Eyebrow>
-        <div className="mt-1">
-          {/* Kafka headers are a flat string map on the wire, so every value is
-              a string — a nested one would have to be stringified on the way
-              out anyway, and doing that silently would hide it from whoever
-              typed it. */}
-          <FieldsEditor
-            stringsOnly
-            initial={{}}
-            addLabel="Add header"
-            emptyHint="No extra headers."
-            onChange={(value, error) => {
-              state.setHeaders(value as Record<string, string> | undefined);
-              state.setHeadersError(error);
-            }}
-          />
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          <span className="font-mono">x-dls-replay-of</span> is added automatically.
-        </p>
-      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        A flat JSON object of strings. <span className="font-mono">x-dls-replay-of</span> is added
+        automatically.
+      </p>
     </div>
   );
 }
