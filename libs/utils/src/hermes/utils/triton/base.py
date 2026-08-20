@@ -144,6 +144,36 @@ class TritonLM:
             local_downloads_folder=local_downloads_folder,
         )
         self._accepted_inputs: set[str] | None = None
+        self._max_batch_size: int | None = None
+
+    @property
+    def model_tag(self) -> str:
+        """Identifies the served model a result came from, e.g. to stamp onto the
+        documents built out of that result."""
+        return f"{self.model_name}:{self.model_version}"
+
+    def max_batch_size(self) -> int:
+        """
+        The `max_batch_size` the served model declares, read once per instance.
+
+        Triton rejects a request with more rows than that outright, so callers
+        batch on this number rather than one of their own. A model with batching
+        disabled declares 0, and a failed config fetch is reported as 0 too —
+        both meaning "send it in one request and let Triton be the authority".
+        """
+        if self._max_batch_size is None:
+            try:
+                self._max_batch_size = self.triton_handler.get_model_batch_size(
+                    self.model_name, self.model_version
+                )
+            except RuntimeError:
+                logger.warning(
+                    "Could not read the max batch size of '%s'; sending unbatched requests",
+                    self.model_name,
+                )
+                self._max_batch_size = 0
+
+        return self._max_batch_size
 
     def tokenize(self, text: str | list[str] | list[list[str]], **kwargs) -> dict[str, np.ndarray]:
         """Tokenizes input text into NumPy array dictionary."""

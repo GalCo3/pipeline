@@ -31,11 +31,13 @@ env:
   MONGO_CONFIG__PORT: "27017"
   MONGO_CONFIG__DATABASE: hermes
 
-  # No local-infra Triton chart exists yet — this points at a host to stand
-  # up separately (or swap for a real deployment's Triton endpoint).
-  TRITON_CONFIG__URL: triton:8000
-  TRITON_CONFIG__MODEL_NAME: text-embedding
-  TRITON_CONFIG__EMBEDDING_DIM: "1024"
+  # Locally this is the mock-triton chart (helm-charts/local-infra/backing/triton);
+  # in a real deployment, that environment's Triton endpoint.
+  TRITON_CONFIG__LOCAL_SITE__ENDPOINT: http://triton:8000
+  EMBEDDING_MODEL_NAME: retrieval_embedder
+
+  TOKENIZER_NAME_OR_PATH: sentence-transformers/all-MiniLM-L6-v2
+  S3_CONFIG__LOCAL_SITE__ENDPOINT: http://minio:9000
 
   LEXICAL_INDEX_NAME: cargo-my-storage-lexical
   SEMANTIC_INDEX_NAME: cargo-my-storage-semantic
@@ -50,6 +52,8 @@ secretEnv:
   ELASTIC_CONFIG__PASSWORD: changeme
   MONGO_CONFIG__AUTH__USERNAME: root
   MONGO_CONFIG__AUTH__PASSWORD: mongoadmin
+  S3_CONFIG__LOCAL_SITE__ACCESS_KEY: minioadmin
+  S3_CONFIG__LOCAL_SITE__SECRET_KEY: minioadmin
 
 # The consumer touches this file on every poll (see BaseConsumerHandler).
 livenessProbe:

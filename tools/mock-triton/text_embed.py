@@ -2,9 +2,13 @@
 
 Unlike `retrieval_embedder`, which takes the token ids a caller tokenised
 itself, this model takes raw UTF-8 text (a BYTES tensor) and returns one
-1024-d vector per row — the shape `hermes.semantic_enrichment`'s
-`BaseEmbeddingHandler` sends and expects, and the dimension the semantic index
-mappings are built from.
+1024-d vector per row — the dimension the semantic index mappings are built
+from.
+
+Nothing in the pipeline calls it any more: the `*-semantic` services embed
+through `retrieval_embedder` (tokenising themselves, as prod requires) since
+`hermes.semantic_enrichment` and its `BaseEmbeddingHandler` were removed. It is
+kept only so a caller of the text-in contract still has something to hit.
 
 The same two properties `embed.py` documents hold here, for the same reasons:
 

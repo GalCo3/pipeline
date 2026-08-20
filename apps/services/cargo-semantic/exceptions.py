@@ -1,4 +1,3 @@
-class SourceDocumentNotFoundError(Exception):
-    """Raised when the lexical document a trigger message refers to is missing."""
+from hermes.utils import SourceDocumentNotFoundError
 
-    pass
+__all__ = ["SourceDocumentNotFoundError"]

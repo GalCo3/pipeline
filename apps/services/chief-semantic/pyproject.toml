@@ -9,14 +9,12 @@ dependencies = [
     "connections",
     "observability",
     "utils",
-    "semantic-enrichment",
 ]
 
 [tool.uv.sources]
 connections = { workspace = true }
 observability = { workspace = true }
 utils = { workspace = true }
-semantic-enrichment = { workspace = true }
 
 [tool.uv]
 package = false

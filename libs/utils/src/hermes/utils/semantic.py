@@ -5,11 +5,18 @@ from pydantic import BaseModel, ConfigDict
 from hermes.connections import BaseElasticHandler, BasePlainProducerHandler
 from hermes.observability import get_logger
 
+from .chunking import CHUNKING_VERSION, SentenceChunker
 from .site import site_error
+from .triton import TritonEmbedder
 
 logger = get_logger(__name__)
 
 SemanticAction = Literal["delete", "update_metadata", "index"]
+
+
+class SourceDocumentNotFoundError(Exception):
+    """Raised when the lexical document a trigger message refers to is missing."""
+
 
 # Fields that describe a chunk itself rather than its parent document, so they
 # never belong in a lexical/chunk metadata diff.
@@ -134,7 +141,7 @@ def build_chunk_documents(
     parent's denormalized metadata fields plus its own chunk_order/chunk_content/embedding.
 
     :param parent_id: The lexical document id these chunks belong to.
-    :param chunks: Ordered chunk texts, from `hermes.semantic_enrichment.chunk_text`.
+    :param chunks: Ordered chunk texts, from `SentenceChunker.chunk_text`.
     :param embeddings: One embedding vector per chunk, in the same order.
     :param denormalized_fields: The parent's fields to copy onto every chunk.
     :param chunking_version: Stamped as `__chunking_version` on every chunk.
@@ -173,3 +180,105 @@ def diff_metadata_fields(lexical_document: dict, chunk_document: dict) -> dict:
         for key in shared_keys
         if lexical_document[key] != chunk_document[key]
     }
+
+
+def denormalized_fields(lexical_document: dict, excluded_fields: set[str]) -> dict:
+    """The parent fields copied onto every chunk of a document."""
+    return {key: value for key, value in lexical_document.items() if key not in excluded_fields}
+
+
+def fetch_lexical_document(
+    elastic_handler: BaseElasticHandler, lexical_index: str, doc_id: str | int
+) -> dict:
+    """
+    The source document a trigger refers to.
+
+    :raises SourceDocumentNotFoundError: If it is not in the lexical index.
+    """
+    response, _ = elastic_handler.search_by_id(lexical_index, str(doc_id))
+    if not response.is_success:
+        raise SourceDocumentNotFoundError(f"Document {doc_id} not found in {lexical_index}")
+    return (response.response or {})["_source"]
+
+
+def fetch_first_chunk(
+    elastic_handler: BaseElasticHandler, semantic_index: str, doc_id: str | int
+) -> dict | None:
+    """
+    Chunk 0 of `doc_id`, which carries the same denormalized metadata as the rest,
+    so a metadata diff only has to read one document.
+
+    :return: The chunk, or None if the document has no chunks indexed.
+    """
+    response, _ = elastic_handler.search(
+        semantic_index,
+        {"bool": {"filter": [{"term": {"parent_id": doc_id}}, {"term": {"chunk_order": 0}}]}},
+    )
+    if not response.is_success:
+        return None
+
+    hits = (response.response or {}).get("hits", {}).get("hits", [])
+    return hits[0]["_source"] if hits else None
+
+
+def chunk_and_embed_document(
+    elastic_handler: BaseElasticHandler,
+    embedder: TritonEmbedder,
+    chunker: SentenceChunker,
+    semantic_index: str,
+    doc_id: str | int,
+    text: str,
+    denormalized_fields: dict,
+) -> None:
+    """
+    Chunk and embed `text`, then replace every chunk of `doc_id` with the result.
+
+    :param elastic_handler: The handler for the semantic index.
+    :param embedder: The Triton embedder the chunks are vectorised with.
+    :param chunker: The chunker, measuring in `embedder`'s tokenizer's tokens.
+    :param semantic_index: The semantic index/alias chunks are written to.
+    :param doc_id: The lexical document id the chunks belong to.
+    :param text: The lexical field's text to chunk and embed.
+    :param denormalized_fields: The parent fields to copy onto every chunk.
+    """
+    chunks = chunker.chunk_text(text)
+    embeddings = embedder.embed_batched(chunks)
+
+    chunk_documents = build_chunk_documents(
+        parent_id=doc_id,
+        chunks=chunks,
+        embeddings=embeddings,
+        denormalized_fields=denormalized_fields,
+        chunking_version=CHUNKING_VERSION,
+        embedding_version=embedder.model_tag,
+    )
+
+    replace_chunks(elastic_handler, semantic_index, doc_id, chunk_documents)
+
+
+def patch_chunk_metadata(
+    elastic_handler: BaseElasticHandler,
+    semantic_index: str,
+    doc_id: str | int,
+    fields: dict,
+) -> None:
+    """
+    Write changed parent fields onto every chunk of `doc_id` in place, for a
+    metadata change that leaves the embedded text untouched.
+    """
+    local_response, remote_response = elastic_handler.update_by_query(
+        semantic_index,
+        {
+            "query": {"term": {"parent_id": doc_id}},
+            "script": {
+                "lang": "painless",
+                "source": (
+                    "for (entry in params.fields.entrySet()) "
+                    "{ ctx._source[entry.getKey()] = entry.getValue() }"
+                ),
+                "params": {"fields": fields},
+            },
+        },
+        is_multisite=True,
+    )
+    site_error(local_response, remote_response, f"Failed to patch chunk metadata for {doc_id}")
