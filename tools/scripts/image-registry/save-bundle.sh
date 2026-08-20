@@ -31,6 +31,11 @@ OUT_DIR="${OUT_DIR:-.}"
 ZSTD_OPTS="${ZSTD_OPTS:--19 --long=31 -T0}"
 BUNDLE_NAME="${BUNDLE_NAME:-bundle}"
 
+for dep in skopeo jq zstd tar; do
+  command -v "$dep" >/dev/null 2>&1 ||
+    { echo "missing dependency: $dep (brew install $dep)" >&2; exit 1; }
+done
+
 GITLAB_API="https://gitlab.com/api/v4"
 
 # `glab` carries its own credentials; without it fall back to GITLAB_TOKEN.
