@@ -10,8 +10,6 @@ import {
   type GridPaginationModel,
   type GridRowSelectionModel,
 } from "@mui/x-data-grid-pro";
-import { useEffect } from "react";
-
 import { formatTs } from "@/lib/format";
 import { muiDarkTheme, muiLightTheme } from "@/lib/muiTheme";
 import { useDarkMode } from "@/lib/useDarkMode";
@@ -25,14 +23,11 @@ import {
 import { STATUS_META } from "@/components/status";
 import { cx } from "@/lib/format";
 
-let licensed = false;
-/** Once per page load — `DataGridPro` reads the key off a module-level singleton, not a prop. */
-function ensureLicense() {
-  if (licensed) return;
-  const key = process.env.NEXT_PUBLIC_MUI_LICENSE_KEY;
-  if (key) LicenseInfo.setLicenseKey(key);
-  licensed = true;
-}
+// `NEXT_PUBLIC_*` is inlined at build time, so this needs no effect or
+// lazy guard — it runs once, at module load, before `DataGridPro` ever
+// renders and checks the module-level singleton the key lives on.
+const muiLicenseKey = process.env.NEXT_PUBLIC_MUI_LICENSE_KEY;
+if (muiLicenseKey) LicenseInfo.setLicenseKey(muiLicenseKey);
 
 /**
  * Filterable (via the grid's own header menu — `is`/`not`/`isAnyOf`, same as
@@ -155,7 +150,6 @@ export function MessageDataGrid({
   onFilterChange: (model: MessageFilterModel) => void;
   onOpen: (message: MessageSummary) => void;
 }) {
-  useEffect(ensureLicense, []);
   const dark = useDarkMode();
 
   const paginationModel: GridPaginationModel = { page: page - 1, pageSize };

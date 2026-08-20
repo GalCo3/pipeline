@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ArchiveRestore, Search, Send } from "lucide-react";
+import { Archive, ArchiveRestore, Search, Send, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -209,6 +209,18 @@ function Backlog() {
     updateParams({ filter: model.items.length ? JSON.stringify(model) : null, page: null });
   }
 
+  // Anything narrower than the bare-`/` default (NEW only, no other filters)
+  // counts as active. `statusParam` alone can't be compared to `null` the way
+  // the others can — see the `status` update below — so it's active whenever
+  // it names anything other than plain "NEW".
+  const hasActiveFilters = Boolean(
+    topicParam || errorParam || idParam || filterModel.items.length || (statusParam && statusParam !== "NEW"),
+  );
+
+  function clearAllFilters() {
+    updateParams({ topic: null, fingerprint: null, status: null, id: null, filter: null, page: null });
+  }
+
   // Replay/Discard need every checked row to be NEW (the only actionable
   // status); Undiscard needs every checked row to be DISCARDED (the one way
   // back). A selection spanning more than one status — or a row on a page
@@ -350,6 +362,12 @@ function Backlog() {
               aria-label="Filter by message id"
             />
           </div>
+
+          {hasActiveFilters && (
+            <Button size="sm" variant="ghost" icon={X} onClick={clearAllFilters}>
+              Clear filters
+            </Button>
+          )}
         </div>
 
         <MessageDataGrid
