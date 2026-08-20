@@ -73,12 +73,11 @@ resolve_repo_tag() {
 # Lists every repository as "name<TAB>tag<TAB>createdAt<TAB>size", one repo per
 # background job so the per-repo tag queries do not run end to end.
 list_repo_builds() {
-  local list_dir="$1" repos id name
+  local list_dir="$1" repos id name row
   repos="$(api_get "projects/${PROJECT_PATH//\//%2F}/registry/repositories?per_page=100")"
 
   while IFS=$'\t' read -r id name; do
     {
-      local row
       row="$(api_graphql "query {
         containerRepository(id: \"gid://gitlab/ContainerRepository/$id\") {
           tags(first: 100) { nodes { name digest createdAt totalSize } }
@@ -101,40 +100,143 @@ human_size() {
   }'
 }
 
-# Expands "1 3-5 7" / "all" into the chosen "<image>:<tag>" refs.
-select_images() {
-  local -n out=$1
-  local -a names=() tags=()
-  local line name tag created size i token start end reply
+# Menu state, shared by both pickers: parallel arrays plus a 0/1 mark per row.
+MENU_NAMES=()
+MENU_TAGS=()
+MENU_LABELS=()
+MENU_MARKS=()
+
+load_menu() {
+  local name tag created size
+  MENU_NAMES=(); MENU_TAGS=(); MENU_LABELS=(); MENU_MARKS=()
 
   while IFS=$'\t' read -r name tag created size; do
-    names+=("$name")
-    tags+=("$tag")
-    printf '  %2d) %-26s %-10s %10s  %s\n' \
-      "${#names[@]}" "$name" "$tag" "$(human_size "$size")" "${created%T*}" >&2
-  done < <(list_repo_builds "$2")
+    MENU_NAMES+=("$name")
+    MENU_TAGS+=("$tag")
+    MENU_LABELS+=("$(printf '%-26s %-10s %10s  %s' \
+      "$name" "$tag" "$(human_size "$size")" "${created%T*}")")
+    MENU_MARKS+=(0)
+  done < <(list_repo_builds "$1")
 
-  [ "${#names[@]}" -gt 0 ] || { echo "no images found in $PROJECT_PATH" >&2; exit 1; }
+  [ "${#MENU_NAMES[@]}" -gt 0 ] || { echo "no images found in $PROJECT_PATH" >&2; return 1; }
+}
 
+emit_marked() {
+  local i any=0
+  for ((i = 0; i < ${#MENU_NAMES[@]}; i++)); do
+    if [ "${MENU_MARKS[i]}" = 1 ]; then
+      printf '%s:%s\n' "${MENU_NAMES[i]}" "${MENU_TAGS[i]}"
+      any=1
+    fi
+  done
+  [ "$any" = 1 ] || { echo "nothing selected" >&2; return 1; }
+}
+
+# Full-list redraw: every frame reprints in place, so the cursor is parked at
+# the top of the block before drawing and the previous frame's line is cleared
+# rather than scrolled away.
+draw_menu() {
+  local cursor="$1" i box pointer
+  for ((i = 0; i < ${#MENU_NAMES[@]}; i++)); do
+    [ "${MENU_MARKS[i]}" = 1 ] && box="[x]" || box="[ ]"
+    if [ "$i" = "$cursor" ]; then
+      pointer=" >"
+      printf '\033[2K%s \033[7m%s %s\033[0m\n' "$pointer" "$box" "${MENU_LABELS[i]}"
+    else
+      printf '\033[2K   %s %s\n' "$box" "${MENU_LABELS[i]}"
+    fi
+  done
+  printf '\033[2K\n\033[2K  \033[2m^/v move  space toggle  a all  enter confirm  q quit\033[0m\n'
+}
+
+# Arrow-key checkbox picker. Draws on /dev/tty and reads keys from it, leaving
+# stdout free for the selected refs.
+pick_interactive() {
+  # draw_menu emits one line per entry plus a blank and the key hint.
+  local rows=$((${#MENU_NAMES[@]} + 2))
+  local cursor=0 aborted=0 key rest i
+
+  # Between reads the tty would drop back to cooked mode and echo whatever is
+  # typed into the frame, so hold it raw for the whole loop. A RETURN trap
+  # would fire for the nested calls too; the loop restores state explicitly.
+  local saved_stty
+  saved_stty="$(stty -g < /dev/tty)"
+  stty -echo -icanon min 1 time 0 < /dev/tty
+  exec 3>/dev/tty
+  printf '\033[?25l' >&3
+
+  draw_menu "$cursor" >&3
+  while true; do
+    IFS= read -rsn1 key < /dev/tty || { aborted=1; break; }
+    case "$key" in
+      $'\e')
+        # bash 3.2 takes whole-second timeouts only; a lone Esc waits it out.
+        read -rsn2 -t 1 rest < /dev/tty || rest=""
+        case "$rest" in
+          '[A') ((cursor > 0)) && ((cursor--)) ;;
+          '[B') ((cursor < ${#MENU_NAMES[@]} - 1)) && ((cursor++)) ;;
+          '') aborted=1; break ;;
+        esac ;;
+      k) ((cursor > 0)) && ((cursor--)) ;;
+      j) ((cursor < ${#MENU_NAMES[@]} - 1)) && ((cursor++)) ;;
+      ' ') [ "${MENU_MARKS[cursor]}" = 1 ] && MENU_MARKS[cursor]=0 || MENU_MARKS[cursor]=1 ;;
+      a)
+        # All-or-nothing: if anything is marked, `a` clears; otherwise marks all.
+        local target=1
+        for ((i = 0; i < ${#MENU_MARKS[@]}; i++)); do
+          [ "${MENU_MARKS[i]}" = 1 ] && target=0 && break
+        done
+        for ((i = 0; i < ${#MENU_MARKS[@]}; i++)); do MENU_MARKS[i]=$target; done ;;
+      q) aborted=1; break ;;
+      '') break ;;
+    esac
+    printf '\033[%dA' "$rows" >&3
+    draw_menu "$cursor" >&3
+  done
+
+  printf '\033[?25h' >&3
+  exec 3>&-
+  stty "$saved_stty" < /dev/tty
+  [ "$aborted" = 0 ] || return 1
+  emit_marked
+}
+
+# Typed fallback for pipes and dumb terminals: "1 3-5 7" or "all".
+pick_typed() {
+  local reply=() token i start end
+
+  for ((i = 0; i < ${#MENU_NAMES[@]}; i++)); do
+    printf '  %2d) %s\n' "$((i + 1))" "${MENU_LABELS[i]}" >&2
+  done
   echo >&2
   read -rp "images to bundle (numbers, ranges, or 'all'): " -a reply
-  [ "${#reply[@]}" -gt 0 ] || { echo "nothing selected" >&2; exit 1; }
 
   for token in "${reply[@]}"; do
     case "$token" in
-      all|a|ALL) for i in "${!names[@]}"; do out+=("${names[i]}:${tags[i]}"); done ;;
+      all|a|ALL) for ((i = 0; i < ${#MENU_MARKS[@]}; i++)); do MENU_MARKS[i]=1; done ;;
       *-*)
         start="${token%%-*}"; end="${token##*-}"
         for ((i = start; i <= end; i++)); do
-          [ "$i" -ge 1 ] && [ "$i" -le "${#names[@]}" ] || { echo "out of range: $i" >&2; exit 1; }
-          out+=("${names[i-1]}:${tags[i-1]}")
+          [ "$i" -ge 1 ] && [ "$i" -le "${#MENU_NAMES[@]}" ] || { echo "out of range: $i" >&2; return 1; }
+          MENU_MARKS[i-1]=1
         done ;;
-      *[!0-9]*|"") echo "not a selection: $token" >&2; exit 1 ;;
+      *[!0-9]*|"") echo "not a selection: $token" >&2; return 1 ;;
       *)
-        [ "$token" -ge 1 ] && [ "$token" -le "${#names[@]}" ] || { echo "out of range: $token" >&2; exit 1; }
-        out+=("${names[token-1]}:${tags[token-1]}") ;;
+        [ "$token" -ge 1 ] && [ "$token" -le "${#MENU_NAMES[@]}" ] || { echo "out of range: $token" >&2; return 1; }
+        MENU_MARKS[token-1]=1 ;;
     esac
   done
+
+  emit_marked
+}
+
+select_images() {
+  load_menu "$1" || return 1
+  if [ -t 0 ] && [ -r /dev/tty ] && [ "${TERM:-dumb}" != dumb ]; then
+    pick_interactive
+  else
+    pick_typed
+  fi
 }
 
 WORK_DIR="${WORK_DIR:-$(mktemp -d)}"
@@ -143,11 +245,13 @@ META="$WORK_DIR/meta"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
 IMAGES=("$@")
-if [ "${#IMAGES[@]}" -eq 0 ]; then
+if [ "$#" -eq 0 ]; then
   require_api_auth
   mkdir -p "$WORK_DIR/repos"
   echo "=== Images in $PROJECT_PATH ===" >&2
-  select_images IMAGES "$WORK_DIR/repos"
+  IMAGES=()
+  while IFS= read -r line; do IMAGES+=("$line"); done < <(select_images "$WORK_DIR/repos")
+  [ "${#IMAGES[@]}" -gt 0 ] || exit 1
 fi
 
 echo "=== Bundling ${#IMAGES[@]} image(s) ==="
