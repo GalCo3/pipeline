@@ -15,9 +15,14 @@ set -euo pipefail
 #      WORK_DIR (mktemp -d), ZSTD_OPTS (-19 --long=31 -T0),
 #      GITLAB_TOKEN (only needed when `glab` is not installed)
 #
-# Layers are exported uncompressed, so the bundle does not carry the registry's
-# manifest digest. Merging into one OCI layout dedups shared base blobs, and
-# zstd's 2GB match window collapses the near-identical per-service .venv layers.
+# Requires: skopeo, authenticated with `skopeo login registry.gitlab.com`
+# (separate from `docker login` -- skopeo keeps its own credential store).
+#
+# Images are pulled straight from the registry via skopeo, not the Docker
+# daemon, so this needs no local Docker/buildx driver support. Each image
+# lands in the classic docker-save layout; merging them by content-addressed
+# layer/config filename dedups shared base layers before zstd (whose 2GB
+# match window then collapses the near-identical per-service .venv layers).
 
 REGISTRY_PREFIX="registry.gitlab.com/textfactory/hermes/pipeline"
 PROJECT_PATH="textfactory/hermes/pipeline"
@@ -100,6 +105,19 @@ human_size() {
   }'
 }
 
+# GitLab's createdAt is UTC ("2024-01-15T10:30:00.123Z"); render it in the
+# local timezone, human-readable.
+human_datetime() {
+  # First 19 chars are always "YYYY-MM-DDTHH:MM:SS"; GitLab appends either a
+  # "Z" or a "+00:00" offset (both UTC), so drop whatever trails and re-add Z.
+  local iso="${1:0:19}Z"
+  if date --version >/dev/null 2>&1; then
+    date -d "$iso" '+%d/%m/%y %H:%M'
+  else
+    date -r "$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" '+%s')" '+%d/%m/%y %H:%M'
+  fi
+}
+
 # Menu state, shared by both pickers: parallel arrays plus a 0/1 mark per row.
 MENU_NAMES=()
 MENU_TAGS=()
@@ -114,7 +132,7 @@ load_menu() {
     MENU_NAMES+=("$name")
     MENU_TAGS+=("$tag")
     MENU_LABELS+=("$(printf '%-26s %-10s %10s  %s' \
-      "$name" "$tag" "$(human_size "$size")" "${created%T*}")")
+      "$name" "$tag" "$(human_size "$size")" "$(human_datetime "$created")")")
     MENU_MARKS+=(0)
   done < <(list_repo_builds "$1")
 
@@ -173,12 +191,12 @@ pick_interactive() {
         # bash 3.2 takes whole-second timeouts only; a lone Esc waits it out.
         read -rsn2 -t 1 rest < /dev/tty || rest=""
         case "$rest" in
-          '[A') ((cursor > 0)) && ((cursor--)) ;;
-          '[B') ((cursor < ${#MENU_NAMES[@]} - 1)) && ((cursor++)) ;;
+          '[A') ((cursor > 0)) && ((cursor--)) || true ;;
+          '[B') ((cursor < ${#MENU_NAMES[@]} - 1)) && ((cursor++)) || true ;;
           '') aborted=1; break ;;
         esac ;;
-      k) ((cursor > 0)) && ((cursor--)) ;;
-      j) ((cursor < ${#MENU_NAMES[@]} - 1)) && ((cursor++)) ;;
+      k) ((cursor > 0)) && ((cursor--)) || true ;;
+      j) ((cursor < ${#MENU_NAMES[@]} - 1)) && ((cursor++)) || true ;;
       ' ') [ "${MENU_MARKS[cursor]}" = 1 ] && MENU_MARKS[cursor]=0 || MENU_MARKS[cursor]=1 ;;
       a)
         # All-or-nothing: if anything is marked, `a` clears; otherwise marks all.
@@ -255,9 +273,9 @@ if [ "$#" -eq 0 ]; then
 fi
 
 echo "=== Bundling ${#IMAGES[@]} image(s) ==="
-docker login registry.gitlab.com
+skopeo login registry.gitlab.com
 
-mkdir -p "$MERGED/blobs/sha256" "$META" "$OUT_DIR"
+mkdir -p "$MERGED" "$META" "$OUT_DIR"
 
 for FULL_IMAGE in "${IMAGES[@]}"; do
   IMAGE_TAG_PAIR="${FULL_IMAGE##*/}"
@@ -273,37 +291,28 @@ for FULL_IMAGE in "${IMAGES[@]}"; do
   mkdir -p "$EXTRACTED"
   TMP_TAR="$WORK_DIR/image.tar"
 
-  # buildx, not `docker save`: with the containerd image store `docker save`
-  # can emit a metadata-only tar. $EXTRACTED doubles as an empty build context.
-  printf 'FROM %s\n' "$IMAGE_REF" | docker buildx build \
-    --platform "$PLATFORM" \
-    --provenance=false \
-    -t "$IMAGE_REF" \
-    --output "type=docker,dest=$TMP_TAR,compression=uncompressed,force-compression=true" \
-    -f - "$EXTRACTED"
+  skopeo copy --override-os "${PLATFORM%%/*}" --override-arch "${PLATFORM##*/}" \
+    "docker://$IMAGE_REF" "docker-archive:$TMP_TAR:$IMAGE_REF"
 
   tar -xf "$TMP_TAR" -C "$EXTRACTED"
   rm -f "$TMP_TAR"
 
-  # -n keeps the first copy; identical digest means identical bytes.
-  cp -n "$EXTRACTED"/blobs/sha256/* "$MERGED/blobs/sha256/" 2>/dev/null || true
-  cp "$EXTRACTED/index.json" "$META/$NAME.index.json"
+  # Layer blobs and config files are named by content digest, so -n across
+  # images naturally dedups shared base layers; only manifest.json needs merging.
+  cp -n "$EXTRACTED"/*.tar "$MERGED/" 2>/dev/null || true
+  find "$EXTRACTED" -maxdepth 1 -name '*.json' ! -name manifest.json \
+    -exec cp -n {} "$MERGED/" \;
   cp "$EXTRACTED/manifest.json" "$META/$NAME.manifest.json"
   rm -rf "$EXTRACTED"
 done
 
-jq -s '{schemaVersion: 2,
-        mediaType: "application/vnd.oci.image.index.v1+json",
-        manifests: (map(.manifests) | add)}' \
-  "$META"/*.index.json > "$MERGED/index.json"
 jq -s 'add' "$META"/*.manifest.json > "$MERGED/manifest.json"
-printf '{"imageLayoutVersion":"1.0.0"}' > "$MERGED/oci-layout"
 
 BUNDLE="$OUT_DIR/$BUNDLE_NAME.tar.zst"
 rm -f "$BUNDLE"
 # shellcheck disable=SC2086
-tar -cf - -C "$MERGED" . | zstd $ZSTD_OPTS -q -o "$BUNDLE"
+tar --no-xattrs -cf - -C "$MERGED" . | zstd $ZSTD_OPTS -q -o "$BUNDLE"
 
 echo "=== Wrote $BUNDLE ($(du -h "$BUNDLE" | cut -f1)) ==="
-jq -r '.manifests[].annotations["io.containerd.image.name"] | "      " + .' "$MERGED/index.json"
+jq -r '.[].RepoTags[] | "      " + .' "$MERGED/manifest.json"
 echo "=== Load with: zstd -dc --long=31 $(basename "$BUNDLE") | docker load ==="
