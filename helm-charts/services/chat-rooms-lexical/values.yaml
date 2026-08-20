@@ -29,7 +29,7 @@ env:
   MONGO_CONFIG__PORT: "27017"
   MONGO_CONFIG__DATABASE: hermes
 
-  INDEX_NAME: chat-rooms-lexical-rooms
+  INDEX_NAME: chat-rooms-lexical
   DLS_COLLECTION: dls
 
   # The injected sidecar, which forwards to the namespace collector.

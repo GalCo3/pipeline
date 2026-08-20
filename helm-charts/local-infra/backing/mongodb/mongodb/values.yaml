@@ -46,6 +46,9 @@ volumeMounts:
   - name: data
     mountPath: /data/db
 
+# `mongosh` starts a full JS shell before it can ping, which does not fit in the
+# 1s timeoutSeconds defaults to — on a loaded node the probe times out, the
+# kubelet kills a perfectly healthy mongod, and it restarts in a loop.
 readinessProbe:
   exec:
     command:
@@ -55,6 +58,7 @@ readinessProbe:
       - "db.adminCommand('ping')"
   initialDelaySeconds: 15
   periodSeconds: 10
+  timeoutSeconds: 10
   failureThreshold: 6
 
 livenessProbe:
@@ -66,6 +70,7 @@ livenessProbe:
       - "db.adminCommand('ping')"
   initialDelaySeconds: 60
   periodSeconds: 30
+  timeoutSeconds: 10
 
 # Measured at ~224Mi, so the memory request stays as-is — WiredTiger's cache
 # grows to fill what it is given and this is already the floor it settles at.

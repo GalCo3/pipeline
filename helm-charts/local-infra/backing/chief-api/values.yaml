@@ -84,7 +84,7 @@ configFiles:
       - id: "4001-section-1"
         name: "כללי"
         full_name: "פרק א׳ — כללי"
-        order: 1
+        order: "1"
         user_id: "user-chief-001"
         create_date: "2026-01-05T08:00:00"
         last_update_date: "2026-02-01T09:30:00"
@@ -93,7 +93,7 @@ configFiles:
       - id: "4001-section-2"
         name: "ביצוע"
         full_name: "פרק ב׳ — ביצוע"
-        order: 2
+        order: "2"
         user_id: "user-chief-001"
         create_date: "2026-01-05T08:05:00"
         last_update_date: "2026-02-01T09:40:00"
@@ -101,7 +101,7 @@ configFiles:
       - id: "4001-section-3"
         name: "נספחים"
         full_name: "פרק ג׳ — נספחים"
-        order: 3
+        order: "3"
         user_id: "user-chief-002"
         create_date: "2026-01-06T07:00:00"
         last_update_date: "2026-02-01T10:00:00"
@@ -115,7 +115,7 @@ configFiles:
       - id: 40021
         name: "כללי"
         full_name: "פרק א׳ — כללי"
-        order: 1
+        order: "1"
         user_id: 4711
         create_date: "2026-01-08T09:00:00"
         last_update_date: "2026-02-02T11:00:00"
@@ -123,7 +123,7 @@ configFiles:
       - id: 40022
         name: "ביצוע"
         full_name: "פרק ב׳ — ביצוע"
-        order: 2
+        order: "2"
         user_id: 4711
         create_date: "2026-01-08T09:20:00"
         last_update_date: "2026-02-02T11:30:00"
@@ -135,7 +135,7 @@ configFiles:
       - id: "4005-section-1"
         name: "הוראה"
         full_name: "הוראת שעה — גוף ההוראה"
-        order: 1
+        order: "1"
         user_id: "user-chief-003"
         create_date: "2026-01-12T06:30:00"
         last_update_date: "2026-01-12T06:30:00"
@@ -146,7 +146,7 @@ configFiles:
       - id: "4006-section-1"
         name: "מטרה"
         full_name: "פרק א׳ — מטרה"
-        order: 1
+        order: "1"
         user_id: "user-chief-001"
         create_date: "2026-01-15T08:00:00"
         last_update_date: "2026-02-05T09:00:00"
@@ -154,7 +154,7 @@ configFiles:
       - id: "4006-section-2"
         name: "הגדרות"
         full_name: "פרק ב׳ — הגדרות"
-        order: 2
+        order: "2"
         user_id: "user-chief-001"
         create_date: "2026-01-15T08:30:00"
         last_update_date: "2026-02-05T09:15:00"
@@ -162,7 +162,7 @@ configFiles:
       - id: "4006-section-3"
         name: "חלוקת אחריות"
         full_name: "פרק ג׳ — חלוקת אחריות"
-        order: 3
+        order: "3"
         user_id: "user-chief-002"
         create_date: "2026-01-16T10:00:00"
         last_update_date: "2026-02-05T10:00:00"
@@ -171,7 +171,7 @@ configFiles:
       - id: "4006-section-4"
         name: "נספחים"
         full_name: "פרק ד׳ — נספחים"
-        order: 4
+        order: "4"
         user_id: "user-chief-002"
         create_date: "2026-01-16T10:30:00"
         last_update_date: "2026-02-05T10:30:00"
@@ -184,7 +184,7 @@ configFiles:
       - id: "4007-section-1"
         name: "כללי"
         full_name: "פרק א׳ — כללי"
-        order: 1
+        order: "1"
         user_id: "user-chief-004"
         create_date: "2026-01-20T05:00:00Z"
         last_update_date: "2026-02-06T07:45:00Z"
@@ -192,7 +192,7 @@ configFiles:
       - id: "4007-section-2"
         name: "ביצוע"
         full_name: "פרק ב׳ — ביצוע"
-        order: 2
+        order: "2"
         user_id: "user-chief-004"
         create_date: "2026-01-20T05:30:00Z"
         last_update_date: "2026-02-06T08:00:00Z"
@@ -208,7 +208,7 @@ configFiles:
       - id: "4010-section-1"
         name: "טיוטה"
         full_name: "טיוטה — פרק א׳"
-        order: 1
+        order: "1"
         user_id: "user-chief-005"
         create_date: "not-a-date"
         last_update_date: "2026-02-08T12:00:00"
@@ -216,7 +216,7 @@ configFiles:
       - id: "4010-section-2"
         name: "הערות"
         full_name: "טיוטה — הערות"
-        order: 2
+        order: "2"
         user_id: "user-chief-005"
         create_date: "2026-02-08T12:00:00"
         last_update_date: "2026-02-08T12:00:00"
@@ -229,7 +229,7 @@ configFiles:
       - id: "fallback-section-1"
         name: "כללי"
         full_name: "מסמך ברירת מחדל"
-        order: 1
+        order: "1"
         user_id: "user-chief-000"
         create_date: "2026-01-01T00:00:00"
         last_update_date: "2026-01-01T00:00:00"

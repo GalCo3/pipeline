@@ -282,7 +282,7 @@ configFiles:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (level) (count_over_time({service_name=~\"$service\"} | json | level =~ \"$level\" [$__auto]))",
+              "expr": "sum by (level) (count_over_time({service_name=~\"$service\"} | level =~ \"$level\" [$__auto]))",
               "legendFormat": "{{level}}"
             }
           ]
@@ -336,7 +336,7 @@ configFiles:
           "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
           "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
           "targets": [
-            { "refId": "A", "expr": "{service_name=~\"$service\"} | json | level =~ \"$level\"" }
+            { "refId": "A", "expr": "{service_name=~\"$service\"} | level =~ \"$level\"" }
           ]
         }
       ]
@@ -442,7 +442,7 @@ configFiles:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (level) (count_over_time({service_name=\"$service\"} | json | level =~ \"WARNING|ERROR|CRITICAL\" [$__auto]))",
+              "expr": "sum by (level) (count_over_time({service_name=\"$service\"} | level =~ \"WARNING|ERROR|CRITICAL\" [$__auto]))",
               "legendFormat": "{{level}}"
             }
           ]

@@ -7,7 +7,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "name": "Alice Cohen",
         "email_address": "alice@example.test",
         "username": "alice",
@@ -26,7 +26,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}"
+        "_updatedAt": "{{now}}"
       }
     },
     {
@@ -35,7 +35,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "name": "Bob Levi",
         "username": "bob",
         "roles": null
@@ -47,7 +47,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{past}}",
+        "_updatedAt": "{{past}}",
         "name": "Cargo Bot",
         "username": "cargo.bot",
         "email_address": null,
@@ -60,7 +60,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "username": "dana",
         "hatzava_chail": "מודיעין",
         "hatzava_pikud": "פיקוד הצפון",
@@ -73,7 +73,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "name": "Dana Mizrahi",
         "cleanName": "dana mizrahi",
         "classification_level": 4,
@@ -87,7 +87,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "email_address": "erez@example.test",
         "username": null,
         "name": "Erez Barak"
@@ -99,7 +99,7 @@
       "message": {
         "id": "{{id_int}}",
         "createdAt": "{{past_z}}",
-        "updatedAt_": "{{now_z}}",
+        "_updatedAt": "{{now_z}}",
         "name": "Numeric Id User",
         "username": "numeric.id",
         "roles": ["user"]
@@ -111,7 +111,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "name": "יעל אברהמי",
         "cleanName": "יעל אברהמי",
         "username": "yael",
@@ -127,7 +127,7 @@
       "message": {
         "id": "{{id}}",
         "createdAt": "{{past}}",
-        "updatedAt_": "{{now}}",
+        "_updatedAt": "{{now}}",
         "name": null,
         "email_address": null,
         "username": null,

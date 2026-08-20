@@ -5,50 +5,6 @@
   "mappings": {
     "dynamic": "strict",
     "properties": {
-      "__high_0": {
-        "type": "alias",
-        "path": "type_display_name"
-      },
-      "__high_1": {
-        "type": "alias",
-        "path": "name"
-      },
-      "__low_0": {
-        "type": "alias",
-        "path": "reference_id"
-      },
-      "__low_1": {
-        "type": "alias",
-        "path": "template_id"
-      },
-      "__low_2": {
-        "type": "alias",
-        "path": "command_content.full_name"
-      },
-      "__low_3": {
-        "type": "alias",
-        "path": "command_content.name"
-      },
-      "__low_4": {
-        "type": "alias",
-        "path": "command_content.note"
-      },
-      "__low_5": {
-        "type": "alias",
-        "path": "command_content.text"
-      },
-      "__low_6": {
-        "type": "alias",
-        "path": "cleaned_text"
-      },
-      "__low_7": {
-        "type": "alias",
-        "path": "description"
-      },
-      "__low_8": {
-        "type": "alias",
-        "path": "attachments_description"
-      },
       "attachments_description": {
         "type": "text",
         "term_vector": "with_positions_offsets",
@@ -67,7 +23,8 @@
       "command_content": {
         "properties": {
           "create_date": {
-            "type": "date"
+            "type": "date",
+            "ignore_malformed": true
           },
           "full_name": {
             "type": "text",
@@ -79,7 +36,8 @@
             "type": "keyword"
           },
           "last_update_date": {
-            "type": "date"
+            "type": "date",
+            "ignore_malformed": true
           },
           "name": {
             "type": "text",
@@ -122,16 +80,8 @@
       "distribution_date": {
         "type": "date"
       },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "validity_start_date"
-      },
       "doc_num": {
         "type": "integer"
-      },
-      "highlighted_field": {
-        "type": "alias",
-        "path": "cleaned_text"
       },
       "id": {
         "type": "keyword"

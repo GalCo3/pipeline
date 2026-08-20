@@ -1,8 +1,7 @@
 # Runs at install/upgrade time (see tools/scripts/sandbox/install.sh), same as
-# demo-producer. Note the definitions under apps/jobs/index-definitions/definitions
-# are named for real environments (np/prep/prod) — e.g. a plain "cargo-lexical"
-# index, no alias — which does not match the aliased index name
-# (cargo-lexical-files) the cargo-lexical service itself reads and writes.
+# demo-producer. The definitions under apps/jobs/index-definitions/definitions are
+# versioned (`<name>-v1`) and each carries an alias without the suffix — that alias
+# is what every service's INDEX_NAME points at, so the two must stay in step.
 fullnameOverride: index-definitions
 
 image:

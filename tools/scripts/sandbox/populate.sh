@@ -12,7 +12,11 @@ NAMESPACE="${NAMESPACE:-hermes}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 CHARTS_DIR="$REPO_ROOT/helm-charts"
 
-SERVICES=(candy-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical)
+# The semantic consumers are here too: their trigger topics are produced by the
+# lexical services below, so they have the same "topic does not exist yet"
+# problem, and starting them after the produce is what gets them a partition
+# assignment on the recreated topic.
+SERVICES=(candy-lexical cargo-operational-lexical cargo-my-storage-lexical chat-messages-lexical chat-rooms-lexical chat-users-lexical chief-lexical cargo-operational-semantic cargo-my-storage-semantic chief-semantic)
 
 # The consumers come up last, after the jobs, for two reasons: their memory
 # requests fill the single dev node, leaving nothing for the job pods to

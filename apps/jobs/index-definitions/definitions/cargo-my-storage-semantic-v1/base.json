@@ -34,18 +34,6 @@
       "_embedding_version": {
         "type": "keyword"
       },
-      "_high__": {
-        "type": "alias",
-        "path": "name"
-      },
-      "_low_0": {
-        "type": "alias",
-        "path": "chunk_content"
-      },
-      "_low_1": {
-        "type": "alias",
-        "path": "path"
-      },
       "_metadata_fields": {
         "type": "keyword"
       },
@@ -71,10 +59,6 @@
         "type": "text",
         "term_vector": "with_positions_offsets"
       },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "ver_last_modified"
-      },
       "embedding": {
         "type": "dense_vector",
         "dims": 1024,
@@ -83,10 +67,6 @@
         "index_options": {
           "type": "int8_hnsw"
         }
-      },
-      "highlighted_field": {
-        "type": "alias",
-        "path": "chunk_content"
       },
       "holder": {
         "type": "keyword"
@@ -127,6 +107,31 @@
       },
       "reality_type": {
         "type": "keyword"
+      },
+      "reality_id": {
+        "type": "integer"
+      },
+      "is_verified": {
+        "type": "boolean"
+      },
+      "labels": {
+        "properties": {
+          "created": {
+            "type": "date"
+          },
+          "group_id": {
+            "type": "integer"
+          },
+          "group_name": {
+            "type": "keyword"
+          },
+          "label_id": {
+            "type": "integer"
+          },
+          "label_name": {
+            "type": "keyword"
+          }
+        }
       },
       "id": {
         "type": "integer"

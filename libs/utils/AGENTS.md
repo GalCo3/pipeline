@@ -14,12 +14,25 @@ See the workspace-level [AGENTS.md](../../AGENTS.md) for shared tooling commands
   Per-service collections were tried and reverted — the triage UI is
   cross-service, so a split turns every listing into a `$unionWith` fan-out and
   makes the document identity `(collection, _id)` instead of `_id`.
+- `dates.py` — `parse_date_value`, the single date entry point for every service's
+  `field_validator`. Sources disagree (epoch millis, offset-bearing ISO, bare ISO), so it
+  normalises to a **naive UTC** datetime at second resolution — every document then
+  serialises as `yyyy-mm-ddThh:mm:ss`, which the `date` mappings accept as UTC under the
+  default `strict_date_optional_time`. A bare input is read as UTC, not local time.
 - `site.py` — `site_error`, raises from a multi-site `(SiteResponse, SiteResponse | None)`
   pair (see `connections` `AGENTS.md`) if either side failed.
 - `indexing.py` — `with_indexed_at`, stamps a document with the time the pipeline handed
   it to Elasticsearch. Every service wraps its `index`/`update_by_id` body with it; the
   field must be declared in that index's mapping wherever `dynamic: strict` applies
   (see `apps/jobs/index-definitions`), so any further stamped field has to be added there too.
+- `semantic.py` — shared between the `*-lexical`/`*-semantic` service pairs:
+  `SemanticTriggerMessage`/`produce_semantic_trigger` for the lexical side to publish
+  delete/update_metadata/index triggers, and `build_chunk_documents`/`replace_chunks`/
+  `delete_chunks`/`diff_metadata_fields` for the semantic side to turn chunks+embeddings
+  into indexed documents and decide whether a metadata change requires re-embedding.
+  Chunking itself (`chunk_text`) and embedding (`BaseEmbeddingHandler`) live in the
+  separate `semantic-enrichment` library — this module only orchestrates Elasticsearch
+  writes around them.
 
 ## Conventions
 

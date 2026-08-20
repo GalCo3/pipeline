@@ -45,7 +45,7 @@ class CargoMessage(BaseModel):
     path: str
     path_list: list[str] = []
 
-    reality_id: str | None = None  # only in operational
+    reality_id: int | None = None  # only in operational
     reality_type: str | None = None  # only in non-operational
 
     s3_key: str

@@ -5,34 +5,6 @@
   "mappings": {
     "dynamic": "strict",
     "properties": {
-      "__high_0": {
-        "type": "alias",
-        "path": "type_display_name"
-      },
-      "__high_1": {
-        "type": "alias",
-        "path": "name"
-      },
-      "__low_0": {
-        "type": "alias",
-        "path": "chunk_content"
-      },
-      "__low_1": {
-        "type": "alias",
-        "path": "reference_id"
-      },
-      "__low_2": {
-        "type": "alias",
-        "path": "template_id"
-      },
-      "__low_3": {
-        "type": "alias",
-        "path": "description"
-      },
-      "__low_4": {
-        "type": "alias",
-        "path": "attachments_description"
-      },
       "attachments_description": {
         "type": "text",
         "term_vector": "with_positions_offsets",
@@ -56,10 +28,6 @@
       },
       "distribution_date": {
         "type": "date"
-      },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "validity_start_date"
       },
       "doc_num": {
         "type": "integer"

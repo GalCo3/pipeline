@@ -1,0 +1,62 @@
+fullnameOverride: labels-api
+replicaCount: 1
+
+image:
+  registry: ""
+  repository: labels-api
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  portName: http
+
+env:
+  CARGO_CONFIG__LOCAL_SITE__ENDPOINT: http://minio:9000
+
+  LLM_CONFIG__BASE_URL: http://llm-api:8080
+  LLM_CONFIG__MODEL_NAME: openai/gpt-oss-120b
+  LLM_CONFIG__ENDPOINT: v1/chat/completions
+
+  HERMES_TEXT_EXTRACTION__TIKA_SERVER_URL: http://tika:9998
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+
+secretEnv:
+  CARGO_CONFIG__LOCAL_SITE__ACCESS_KEY: minioadmin
+  CARGO_CONFIG__LOCAL_SITE__SECRET_KEY: minioadmin
+  LLM_CONFIG__TOKEN: dev-ai-token
+
+livenessProbe:
+  httpGet:
+    path: /docs
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /docs
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 160Mi
+  limits:
+    memory: 512Mi
+
+podSecurityContext: {}
+containerSecurityContext: {}
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+volumes: []
+volumeMounts: []
+podAnnotations:
+  sidecar.opentelemetry.io/inject: "true"

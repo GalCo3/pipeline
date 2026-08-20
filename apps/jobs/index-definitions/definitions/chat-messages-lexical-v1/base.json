@@ -14,14 +14,6 @@
       }
     },
     "properties": {
-      "__low__0": {
-        "type": "alias",
-        "path": "msg"
-      },
-      "__low__1": {
-        "type": "alias",
-        "path": "file.name"
-      },
       "channels": {
         "properties": {
           "name": {
@@ -34,10 +26,6 @@
             "type": "keyword"
           }
         }
-      },
-      "doc_date_field": {
-        "type": "alias",
-        "path": "created_at"
       },
       "file": {
         "properties": {
@@ -54,10 +42,6 @@
             "type": "keyword"
           }
         }
-      },
-      "highlighted_field": {
-        "type": "alias",
-        "path": "msg"
       },
       "id": {
         "type": "keyword"

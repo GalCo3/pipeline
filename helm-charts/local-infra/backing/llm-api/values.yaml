@@ -1,0 +1,48 @@
+fullnameOverride: llm-api
+replicaCount: 1
+
+image:
+  registry: docker.io
+  repository: nginxinc/nginx-unprivileged
+  tag: 1.27-alpine
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  portName: http
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 2
+  periodSeconds: 10
+
+configFiles:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name _;
+        default_type application/json;
+
+        location = /health {
+            return 200 '{"status":"ok"}';
+        }
+
+        location = /v1/chat/completions {
+            return 200 '{"id":"chatcmpl-mock-123","object":"chat.completion","created":1700000000,"model":"openai/gpt-oss-120b","choices":[{"index":0,"message":{"role":"assistant","content":"This is a generic response from the LLM service."},"finish_reason":"stop"}]}';
+        }
+
+        location / {
+            return 200 '{"id":"chatcmpl-mock-123","object":"chat.completion","created":1700000000,"model":"openai/gpt-oss-120b","choices":[{"index":0,"message":{"role":"assistant","content":"This is a generic response from the LLM service."},"finish_reason":"stop"}]}';
+        }
+    }
