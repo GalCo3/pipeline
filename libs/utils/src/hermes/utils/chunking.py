@@ -7,8 +7,8 @@ from llama_index.core.node_parser import SentenceSplitter
 # Bump on any behaviour change; stamped on every stored chunk.
 CHUNKING_VERSION = "v2"
 
-# Tokens, not words.
-DEFAULT_CHUNK_SIZE_TOKENS = 512
+# Tokens, not words; 510 leaves room for [CLS]/[SEP] in a 512-token model.
+DEFAULT_CHUNK_SIZE_TOKENS = 510
 DEFAULT_CHUNK_OVERLAP_TOKENS = 64
 
 _REPEATED_DOTS = re.compile(r"(?:\.\s*){3,}")

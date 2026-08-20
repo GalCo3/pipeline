@@ -34,7 +34,7 @@ env:
   TRITON_CONFIG__LOCAL_SITE__ENDPOINT: http://triton:8000
   EMBEDDING_MODEL_NAME: retrieval_embedder
 
-  TOKENIZER_NAME_OR_PATH: sentence-transformers/all-MiniLM-L6-v2
+  TOKENIZER_NAME_OR_PATH: all-MiniLM-L6-v2
   S3_CONFIG__LOCAL_SITE__ENDPOINT: http://minio:9000
 
   LEXICAL_INDEX_NAME: chief-lexical
