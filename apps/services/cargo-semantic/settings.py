@@ -8,12 +8,10 @@ from hermes.connections import (
     BaseElasticBasicConfig,
     BaseElasticCertConfig,
     BaseMongoConfig,
+    BaseS3Config,
+    BaseTritonConfig,
 )
-from hermes.semantic_enrichment import (
-    DEFAULT_CHUNK_OVERLAP_WORDS,
-    DEFAULT_CHUNK_SIZE_WORDS,
-    TritonConfig,
-)
+from hermes.utils import DEFAULT_CHUNK_OVERLAP_TOKENS, DEFAULT_CHUNK_SIZE_TOKENS
 
 
 class Settings(BaseSettings):
@@ -26,13 +24,19 @@ class Settings(BaseSettings):
     # Cert auth in real deployments; basic auth for local/compose runs.
     elastic_config: BaseElasticCertConfig | BaseElasticBasicConfig
     mongo_config: BaseMongoConfig
-    triton_config: TritonConfig
+    triton_config: BaseTritonConfig
+    # Only for a tokenizer pulled from the `tokenizers` bucket.
+    s3_config: BaseS3Config | None = None
 
     lexical_index_name: str
     semantic_index_name: str
     dls_collection: str = "dls"
-    chunk_size: int = DEFAULT_CHUNK_SIZE_WORDS
-    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP_WORDS
+    embedding_model_name: str
+    embedding_model_version: str = "1"
+    # Triton serves raw ONNX, so the service tokenizes and chunks itself.
+    tokenizer_name_or_path: str
+    chunk_size: int = DEFAULT_CHUNK_SIZE_TOKENS
+    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP_TOKENS
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

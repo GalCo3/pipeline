@@ -9,7 +9,4 @@ class RecommendationRequest(BaseModel):
 
 
 class RecommendationResponse(BaseModel):
-    label: str | None = Field(
-        default=None, description="The recommended label, or null if none fit / error"
-    )
-    error: str | None = Field(default=None, description="Error message if any")
+    label: str = Field(..., description="The recommended label")

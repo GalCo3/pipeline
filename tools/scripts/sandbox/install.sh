@@ -33,9 +33,9 @@ tag_of() {
 }
 
 # release[:image] under services/; image defaults to the release name.
-# The cargo-*-semantic releases need a Triton endpoint (TRITON_CONFIG__URL in
-# each chart's values.yaml) that this stack does not stand up itself — messages
-# land in the DLS until one is reachable.
+# The *-semantic releases embed through the `triton` release below and tokenize
+# with the tokenizer in MinIO's `tokenizers` bucket — see
+# tools/scripts/tokenizers to put it there.
 APPS=(
     candy-lexical
     chat-messages-lexical

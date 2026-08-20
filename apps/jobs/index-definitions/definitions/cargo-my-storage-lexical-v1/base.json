@@ -69,10 +69,12 @@
         "type": "date"
       },
       "name": {
-        "type": "text"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "path": {
-        "type": "text"
+        "type": "text",
+        "term_vector": "with_positions_offsets"
       },
       "path_id": {
         "type": "keyword"
@@ -87,10 +89,12 @@
         "type": "keyword"
       },
       "s3_bucket": {
-        "type": "keyword"
+        "type": "keyword",
+        "term_vector": "with_positions_offsets"
       },
       "s3_key": {
-        "type": "keyword"
+        "type": "keyword",
+        "term_vector": "with_positions_offsets"
       },
       "text_content": {
         "type": "text",

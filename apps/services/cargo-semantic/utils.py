@@ -3,15 +3,19 @@ from settings import Settings
 
 from hermes.connections import BaseElasticHandler
 from hermes.semantic_enrichment import CHUNKING_VERSION, BaseEmbeddingHandler, chunk_text
-from hermes.utils import build_chunk_documents, replace_chunks
+from hermes.utils import (
+    CargoFileNotFoundError,
+    build_chunk_documents,
+    extract_cargo_files_text,
+    replace_chunks,
+)
 
 # CargoEnrichedMessage.text_content is the raw extracted file text — nothing from
 # CargoMessage is prefixed into it, so no field is baked into the embedded text.
 TEXT_FIELD = "text_content"
 EMBEDDED_FIELDS: set[str] = set()
 
-# Fields written by cargo-lexical that never belong on a chunk document (large
-# text bodies, pipeline-internal bookkeeping).
+# Never belong on a chunk document: text bodies, pipeline bookkeeping.
 EXCLUDED_FIELDS = {TEXT_FIELD, "indexed_at"}
 
 
@@ -70,3 +74,6 @@ def chunk_and_embed_document(
     )
 
     replace_chunks(elastic_handler, settings.semantic_index_name, doc_id, chunk_documents)
+
+
+__all__ = ["CargoFileNotFoundError", "extract_cargo_files_text"]

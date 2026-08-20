@@ -14,3 +14,23 @@ class TritonEmbedder(TritonLM):
         output = parsed_model_output[target_key]
 
         return output.squeeze(axis=0) if isinstance(text, str) else output
+
+    def embed_batched(self, texts: list[str], batch_size: int | None = None) -> list[list[float]]:
+        """
+        Embed many texts as several requests the served model accepts, in order.
+
+        :param batch_size: Rows per request; defaults to the model's own
+            `max_batch_size`, and 0 sends everything in one request.
+        """
+        if not texts:
+            return []
+
+        step = self.max_batch_size() if batch_size is None else batch_size
+        if step <= 0:
+            return self.embed(texts).tolist()
+
+        return [
+            embedding
+            for start in range(0, len(texts), step)
+            for embedding in self.embed(texts[start : start + step]).tolist()
+        ]

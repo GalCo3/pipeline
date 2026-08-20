@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
 from http import HTTPStatus
+from pathlib import Path
 
 from constants import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, MAX_CONTENT_LENGTH
 from fastapi import FastAPI, HTTPException
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
 from models import RecommendationRequest, RecommendationResponse
 from settings import get_settings
 from utils import (
@@ -12,7 +15,6 @@ from utils import (
 )
 
 from hermes.connections import BaseLLMHandler, BaseS3Handler
-from hermes.utils import CargoFileNotFoundError, extract_cargo_files_text
 from hermes.observability import (
     MessageStatus,
     TelemetryCounter,
@@ -20,6 +22,9 @@ from hermes.observability import (
     init_observability,
 )
 from hermes.observability.fastapi import add_fastapi_observability
+from hermes.utils import CargoFileNotFoundError, extract_cargo_files_text
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 init_observability(service_name="labels-api")
 logger = get_logger(__name__)
@@ -55,8 +60,28 @@ async def lifespan(app: FastAPI):
         state.llm_client.close()
 
 
-app = FastAPI(title="Labels API", lifespan=lifespan)
-add_fastapi_observability(app)
+app = FastAPI(title="Labels API", lifespan=lifespan, docs_url=None)
+add_fastapi_observability(app, enable_access_logs=False)
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    if (STATIC_DIR / "swagger-ui-bundle.js").exists():
+        return get_swagger_ui_html(
+            openapi_url=app.openapi_url,
+            title=app.title + " - Swagger UI",
+            oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+            swagger_js_url="/static/swagger-ui-bundle.js",
+            swagger_css_url="/static/swagger-ui.css",
+        )
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+    )
 
 
 @app.post("/recommend", response_model=RecommendationResponse)
@@ -72,7 +97,10 @@ async def recommend_label(request: RecommendationRequest):
         if not extraction_result or not extraction_result.text.strip():
             logger.warning("Document extraction failed or empty", doc_name=request.name)
             requests_processed.inc(labels={"status": MessageStatus.SKIPPED})
-            return RecommendationResponse(error="Document could not be extracted or is empty")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail="Document could not be extracted or is empty",
+            )
 
         # 2. Build Prompt
         system_prompt = build_system_prompt()
@@ -96,7 +124,10 @@ async def recommend_label(request: RecommendationRequest):
         if not llm_response.is_success:
             logger.error("LLM Request Failed", error=str(llm_response.error))
             requests_processed.inc(labels={"status": MessageStatus.ERROR})
-            return RecommendationResponse(error="Failed to get recommendation from LLM")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail="Failed to get recommendation from LLM",
+            )
 
         # Parse LLM response (OpenAI format)
         try:
@@ -107,15 +138,19 @@ async def recommend_label(request: RecommendationRequest):
                 "Unexpected LLM response format", error=str(e), response=llm_response.response
             )
             requests_processed.inc(labels={"status": MessageStatus.ERROR})
-            return RecommendationResponse(error="Invalid response structure from LLM")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail="Invalid response structure from LLM",
+            ) from e
 
         # Extract label from JSON or fallback
         suggested_label = parse_llm_json_response(raw_text, request.available_labels)
         if not suggested_label:
             logger.warning("Could not parse JSON or missing recommended_label", raw_text=raw_text)
             requests_processed.inc(labels={"status": MessageStatus.ERROR})
-            return RecommendationResponse(
-                error="Failed to parse valid recommendation label from LLM response"
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail="Failed to parse valid recommendation label from LLM response",
             )
 
         # 4. Validate Label against allowed set
@@ -126,12 +161,21 @@ async def recommend_label(request: RecommendationRequest):
                 available=request.available_labels,
             )
             requests_processed.inc(labels={"status": MessageStatus.ERROR})
-            return RecommendationResponse(error=f"LLM returned invalid label: {suggested_label}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"LLM returned invalid label: {suggested_label}",
+            )
 
-        logger.info("Successfully recommended label", doc_name=request.name, label=suggested_label)
+        logger.info(
+            f"Successfully recommended label '{suggested_label}' for document '{request.name}'",
+            doc_name=request.name,
+            label=suggested_label,
+        )
         requests_processed.inc(labels={"status": MessageStatus.SUCCESS})
         return RecommendationResponse(label=suggested_label)
 
+    except HTTPException:
+        raise
     except CargoFileNotFoundError as e:
         logger.warning("Cargo file not found in S3 for recommendation", error=str(e))
         requests_processed.inc(labels={"status": MessageStatus.NOT_FOUND})
@@ -147,4 +191,4 @@ async def recommend_label(request: RecommendationRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8080, access_log=False, reload=False)
